@@ -1,0 +1,4 @@
+leverans_id,arbetsorder,handelssortiment,leveransdatum,volym_m3fub,matmetod,antal_matenheter
+L0000033,AO00003,GRAN_SAG,2026-01-31,33.858,travmatning,3
+L0000043,AO00003,GRAN_SAG,2026-01-30,34.62,travmatning,3
+L0000172,AO00010,GRAN_SAG,2026-01-25,35.739,travmatning,3

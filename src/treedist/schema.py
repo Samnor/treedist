@@ -1,0 +1,167 @@
+"""Input columns, reading and validation.
+
+Column names are Swedish since they mirror the source systems. A problem in the
+input stops the run: these numbers end up on an invoice.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+
+from .config import Config
+
+AO = "arbetsorder"
+SORT = "handelssortiment"
+DIA = "diametergrupp"
+LEN = "langdgrupp"
+VOL = "volym_m3fub"
+LOGS = "antal_stockar"
+VINTAGE = "avverkningsmanad"
+TIER = "sakerhetsklass"
+
+NO_CLASS = "-"
+UNKNOWN_CLASS = "OKÄND"
+
+HARVEST_REQUIRED = [AO, SORT, DIA, LEN, VOL]
+DELIVERY_REQUIRED = ["leverans_id", AO, SORT, "leveransdatum", VOL]
+
+
+def group_sort_key(group: str) -> tuple[int, float, str]:
+    """Numeric class floors first in numeric order, then labels, OKÄND last."""
+    if group == UNKNOWN_CLASS:
+        return (2, 0.0, group)
+    try:
+        return (0, float(group), group)
+    except ValueError:
+        return (1, 0.0, group)
+
+
+def sorted_groups(groups) -> list[str]:
+    return sorted(set(groups), key=group_sort_key)
+
+
+def _normalize_group(value: object) -> str:
+    text = "" if pd.isna(value) else str(value).strip()
+    if not text:
+        return NO_CLASS
+    try:
+        number = float(text.replace(",", "."))
+    except ValueError:
+        return text
+    return str(int(number)) if number.is_integer() else str(number)
+
+
+def _require_columns(df: pd.DataFrame, required: list[str], name: str) -> None:
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ValueError(f"{name}: kolumner saknas: {missing}")
+
+
+def _require_keys(df: pd.DataFrame, columns: list[str], name: str) -> None:
+    for column in columns:
+        bad = df[column].isna() | (df[column].astype(str).str.strip() == "")
+        if bad.any():
+            raise ValueError(f"{name}: tomt värde i {column} på {int(bad.sum())} rader")
+
+
+def _numeric(df: pd.DataFrame, column: str, name: str) -> pd.Series:
+    parsed = pd.to_numeric(df[column].astype(str).str.replace(",", "."), errors="coerce")
+    if parsed.isna().any():
+        raise ValueError(f"{name}: icke-numeriskt värde i {column}: {df.loc[parsed.isna(), column].iloc[0]!r}")
+    if (parsed < 0).any():
+        raise ValueError(f"{name}: negativt värde i {column}")
+    return parsed
+
+
+def period_bounds(period: str) -> tuple[pd.Timestamp, pd.Timestamp]:
+    p = pd.Period(period, freq="M")
+    return p.start_time.normalize(), p.end_time.normalize()
+
+
+def validate_harvest(df: pd.DataFrame, period: str) -> pd.DataFrame:
+    """Harvest rows reported in `period`; they may be dated earlier, never later."""
+    name = "Skördarmätningar"
+    _require_columns(df, HARVEST_REQUIRED, name)
+    _require_keys(df, [AO, SORT], name)
+
+    out = df[HARVEST_REQUIRED].copy()
+    out[AO] = out[AO].astype(str).str.strip()
+    out[SORT] = out[SORT].astype(str).str.strip()
+    out[DIA] = df[DIA].map(_normalize_group).astype(object)
+    out[LEN] = df[LEN].map(_normalize_group).astype(object)
+    out[VOL] = _numeric(df, VOL, name)
+    if ((out[DIA] == UNKNOWN_CLASS) | (out[LEN] == UNKNOWN_CLASS)).any():
+        raise ValueError(f"{name}: {UNKNOWN_CLASS} är en reserverad klass")
+
+    out[LOGS] = _numeric(df, LOGS, name) if LOGS in df.columns else float("nan")
+
+    start, end = period_bounds(period)
+    if "avverkningsdatum" in df.columns:
+        dates = pd.to_datetime(df["avverkningsdatum"], errors="coerce")
+        if dates.isna().any():
+            raise ValueError(f"{name}: ogiltigt avverkningsdatum på {int(dates.isna().sum())} rader")
+        if (dates > end).any():
+            raise ValueError(f"{name}: avverkningsdatum efter perioden {period}")
+        out[VINTAGE] = dates.dt.strftime("%Y-%m")
+    else:
+        out[VINTAGE] = period
+    # An empty row carries no distribution and would divide by zero downstream.
+    return out[out[VOL] > 0].reset_index(drop=True)
+
+
+def validate_deliveries(df: pd.DataFrame, period: str, cfg: Config) -> pd.DataFrame:
+    name = "Leveransmätningar"
+    _require_columns(df, DELIVERY_REQUIRED, name)
+    _require_keys(df, ["leverans_id", AO, SORT], name)
+
+    leaked = [c for c in (DIA, LEN) if c in df.columns]
+    if leaked:
+        raise ValueError(f"{name}: oväntade kolumner {leaked}; leveranser bär ingen klassinformation")
+
+    out = df[DELIVERY_REQUIRED].copy()
+    for column in ("leverans_id", AO, SORT):
+        out[column] = out[column].astype(str).str.strip()
+    out[VOL] = _numeric(df, VOL, name)
+
+    duplicated = out["leverans_id"].duplicated()
+    if duplicated.any():
+        raise ValueError(f"{name}: dubblerat leverans_id: {out.loc[duplicated, 'leverans_id'].iloc[0]}")
+
+    dates = pd.to_datetime(df["leveransdatum"], errors="coerce")
+    start, end = period_bounds(period)
+    if dates.isna().any() or (dates < start).any() or (dates > end).any():
+        raise ValueError(f"{name}: leveransdatum saknas eller ligger utanför perioden {period}")
+    out["leveransdatum"] = dates
+
+    if "mottagningsplats" in df.columns and df["mottagningsplats"].nunique() > 1:
+        raise ValueError(f"{name}: flera mottagningsplatser i samma fil; kör en liggare per sågverk")
+
+    if "matmetod" in df.columns:
+        out["matmetod"] = df["matmetod"].fillna("okand").astype(str).str.strip().str.lower()
+    else:
+        out["matmetod"] = "okand"
+    unknown = set(out["matmetod"]) - set(cfg.volume_methods)
+    if unknown:
+        raise ValueError(f"{name}: okänd matmetod {sorted(unknown)}; lägg till under volume_methods i konfigurationen")
+
+    if "antal_matenheter" in df.columns:
+        units = pd.to_numeric(df["antal_matenheter"], errors="coerce")
+    else:
+        units = pd.Series(float("nan"), index=df.index)
+    defaults = out["matmetod"].map(lambda m: cfg.volume_methods[m].default_units)
+    out["antal_matenheter"] = units.where(units > 0, defaults)
+    return out
+
+
+def read_csv(path: Path) -> pd.DataFrame:
+    return pd.read_csv(path, dtype=str, keep_default_na=False, na_values=[""])
+
+
+def read_closed_aos(path: Path | None) -> set[str]:
+    if path is None:
+        return set()
+    df = read_csv(path)
+    _require_columns(df, [AO], str(path))
+    return set(df[AO].astype(str).str.strip())
