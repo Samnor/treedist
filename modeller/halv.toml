@@ -1,0 +1,75 @@
+# Modell halv. Kör med --config modeller/halv.toml; se scripts/modell.py.
+
+harvester_bias = 0
+handling_loss = 0
+donor_destination_weight = 16.0
+donor_group_weight = 4.0
+donor_sibling_cm = 0
+pool_min_pairs = 3
+design_effect = 200.0
+default_log_volume = 0.25
+pool_remaining_share = 0.5
+oldest_first = true
+draw_gross = false
+history_fallback = false
+finite_population = false
+donor_draws = false
+volume_error = false
+intervals = true
+mc_draws = 2000
+seed = 20261102
+
+[volume_methods.stockmatning]
+unit_cv = 0.043
+default_units = 150
+systematic_sd = 0.0005
+
+[volume_methods.travmatning]
+unit_cv = 0.051
+default_units = 3
+systematic_sd = 0.0015
+
+[volume_methods.vagning]
+unit_cv = 0.069
+default_units = 3
+systematic_sd = 0.005
+
+[volume_methods.skordarmatning]
+unit_cv = 0.05
+default_units = 150
+systematic_sd = 0.005
+
+[volume_methods.okand]
+unit_cv = 0.08
+default_units = 1
+systematic_sd = 0.02
+
+[modell]
+namn = "halv"
+beskrivning = "Enkel + äldsta först, gruppvikt och lätta intervall: brus efter effektivt antal stockar, utan ändlighetskorrektion, givardragning och volymfel"
+kod = "efe2df3"
+sparad = "2026-11-03"
+delar = 9
+delar_av = 23
+anvanda_delar = ["liggare", "aldst_forst", "S3", "donor_destination_weight", "donor_group_weight", "S4", "dirichlet", "design_effect", "default_log_volume"]
+prisfel = 11.36
+prisfel_naiv = 43.96
+prestanda = 0.986
+varde_90 = 0.917
+poang = 12.553
+standardens_prisfel = 10.89
+kontroll_prisfel = 11.97
+kontroll_prestanda = 0.98
+kontroll_varde_90 = 0.908
+
+[modell.prestanda_per_scenario]
+"30 % utan skördardata" = 0.981
+"bas" = 0.984
+"destination oberoende av grovlek" = 0.979
+"stora skillnader inom AO" = 1.0
+
+[modell.kontroll_prestanda_per_scenario]
+"30 % utan skördardata" = 0.98
+"bas" = 0.985
+"destination oberoende av grovlek" = 0.974
+"stora skillnader inom AO" = 0.986
