@@ -25,7 +25,7 @@ from .schema import AO, BILLED, DEST, DIA, LEN, LOGS, SORT, VINTAGE, VOL
 # ledger. A deficit also keeps the assortment it was invoiced as, which differs
 # when the mill reclassified the wood, so that its correction lands there.
 STOCK_COLUMNS = [AO, SORT, DIA, LEN, VINTAGE, VOL, LOGS]
-HISTORY_COLUMNS = [AO, SORT, DIA, LEN, VOL]
+HISTORY_COLUMNS = [AO, SORT, DIA, LEN, VINTAGE, VOL]
 DEFICIT_COLUMNS = [AO, SORT, BILLED, DEST, DIA, LEN, VOL]
 DEFICIT_KEYS = DEFICIT_COLUMNS[:-1]
 
@@ -63,8 +63,10 @@ class Ledger:
             pd.read_csv(source / name, dtype=_TEXT_COLUMNS, keep_default_na=False, na_values=[""])
             for name in ("lager.csv", "historik.csv", "underskott.csv")
         ]
+        # Snapshots from before harvest dates were kept and reclassification supported.
+        if VINTAGE not in frames[1].columns:
+            frames[1][VINTAGE] = f"{period}-01"
         if BILLED not in frames[2].columns:
-            # Snapshots from before reclassification was supported.
             frames[2][BILLED] = frames[2][SORT]
         columns = (STOCK_COLUMNS, HISTORY_COLUMNS, DEFICIT_COLUMNS)
         stock, history, deficit = (f[c] if len(f) else _empty(c) for f, c in zip(frames, columns))

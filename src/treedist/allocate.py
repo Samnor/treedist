@@ -60,7 +60,8 @@ class Component:
     whole compositions, because neighbouring classes move together: within a
     work order the rows are parts of the harvest, weighted by Dirichlet with
     `mixture_concentration`. Among work orders, where that is None, a draw is
-    one donor's composition.
+    one donor's composition. With `donor_parts` the draw then takes a part of
+    that donor's harvest, the same way as within a work order.
     """
 
     ao: str
@@ -76,16 +77,21 @@ class Component:
     mixture_weights: np.ndarray | None = None
     mixture_concentration: float | None = None
     destination: str = NO_DESTINATION
+    donor_parts: tuple[tuple[np.ndarray, np.ndarray], ...] | None = None
 
 
 @dataclass(frozen=True)
 class Pool:
-    """Harvest history of comparable work orders, all on the same cells."""
+    """Harvest history of comparable work orders, all on the same cells.
+
+    `parts` holds each donor's harvest date blocks: compositions and weights.
+    """
 
     cells: pd.MultiIndex
     donors: np.ndarray
     donor_weights: np.ndarray
     work_orders: tuple[str, ...] = ()
+    parts: tuple[tuple[np.ndarray, np.ndarray], ...] = ()
 
 
 @dataclass
@@ -106,11 +112,38 @@ def _composition(block: pd.DataFrame) -> pd.Series:
     return summed / summed.sum()
 
 
-def _build_pool(history: pd.DataFrame) -> Pool:
+def _blocks(frame: pd.DataFrame, cells: pd.Index, cfg: Config) -> tuple[np.ndarray, np.ndarray]:
+    """Compositions of the harvest date blocks on `cells`, and their volume weights."""
+    days = pd.to_datetime(frame[VINTAGE]).to_numpy("datetime64[D]").astype(np.int64)
+    blocks = frame.assign(_block=days // cfg.stock_block_days)
+    matrix = blocks.pivot_table(index="_block", columns=[DIA, LEN], values=VOL, aggfunc="sum", fill_value=0.0)
+    matrix = matrix.reindex(columns=cells, fill_value=0.0).to_numpy()
+    totals = matrix.sum(axis=1)
+    kept = totals > 0
+    return matrix[kept] / totals[kept, None], totals[kept] / totals[kept].sum()
+
+
+def _build_pool(history: pd.DataFrame, cfg: Config) -> Pool:
     per_ao = history.pivot_table(index=AO, columns=[DIA, LEN], values=VOL, aggfunc="sum", fill_value=0.0)
     per_ao.columns.names = [DIA, LEN]
     totals = per_ao.sum(axis=1).to_numpy()
-    return Pool(per_ao.columns, per_ao.to_numpy() / totals[:, None], totals / totals.sum(), tuple(per_ao.index))
+    by_ao = dict(tuple(history.groupby(AO, sort=False)))
+    parts = tuple(_blocks(by_ao[ao], per_ao.columns, cfg) for ao in per_ao.index)
+    return Pool(per_ao.columns, per_ao.to_numpy() / totals[:, None], totals / totals.sum(), tuple(per_ao.index), parts)
+
+
+def _part_concentrations(volume: float, log_count: float, remaining_share: float, cfg: Config) -> tuple[float, float]:
+    """Precision of the cells and of the harvest blocks when part of a harvest left.
+
+    What the deliveries leave out of the whole harvest is the finite population
+    correction. Logs travel in piles from one part of the stand, so the
+    effective number of independent logs is reduced by the design effect, and
+    whole blocks of the harvest move together in clusters.
+    """
+    effective = max(log_count / cfg.design_effect, 1.0)
+    cells = min(max(effective / remaining_share - 1, 1.0), float(log_count))
+    clusters = max(volume / cfg.cluster_volume, 1.0)
+    return cells, max(clusters / remaining_share - 1, cfg.mixture_min_concentration)
 
 
 def _draw_fractions(block: pd.DataFrame, dated: pd.DataFrame, volume: float, cfg: Config) -> np.ndarray:
@@ -170,9 +203,9 @@ def _stock_component(
     leaves in one month. Emptying a stock in a second month does not count: that
     remainder is the harvest minus an uncertain first part. The harvester's
     classing of each log stays uncertain, which caps the precision at one
-    independent error per log. Logs travel in piles and piles come from one
-    part of the stand, so sampling has two levels: which parts of the harvest
-    left, measured as compositions of harvest date blocks, and noise within them.
+    independent error per log. Sampling has two levels: which parts of the
+    harvest left, measured as compositions of harvest date blocks, and noise
+    within them.
     """
     shares = _composition(taken)
     logs = taken[LOGS].sum(min_count=1)
@@ -181,24 +214,30 @@ def _stock_component(
     if remaining_share <= 1e-9:
         return _component(key, "S1", volume, shares, float(log_count), True)
 
-    effective = max(log_count / cfg.design_effect, 1.0)
-    concentration = min(max(effective / remaining_share - 1, 1.0), float(log_count))
+    concentration, mixture_concentration = _part_concentrations(volume, log_count, remaining_share, cfg)
     part = _component(key, "S1", volume, shares, concentration, True)
-
-    days = pd.to_datetime(taken[VINTAGE]).to_numpy("datetime64[D]").astype(np.int64)
-    blocks = taken.assign(_block=days // cfg.stock_block_days)
-    if blocks["_block"].nunique() < 2:
+    blocks, weights = _blocks(taken, shares.index, cfg)
+    if len(weights) < 2:
         return part
-    matrix = blocks.pivot_table(index="_block", columns=[DIA, LEN], values=VOL, aggfunc="sum", fill_value=0.0)
-    matrix = matrix.reindex(columns=shares.index, fill_value=0.0)
-    totals = matrix.sum(axis=1).to_numpy()
-    clusters = max(volume / cfg.cluster_volume, 1.0)
-    return replace(
-        part,
-        mixture=matrix.to_numpy() / totals[:, None],
-        mixture_weights=totals / totals.sum(),
-        mixture_concentration=max(clusters / remaining_share - 1, cfg.mixture_min_concentration),
+    return replace(part, mixture=blocks, mixture_weights=weights, mixture_concentration=mixture_concentration)
+
+
+def _history_component(
+    key: tuple[str, str], volume: float, history: pd.DataFrame, shares: pd.Series, cfg: Config
+) -> Component:
+    """More delivered than the stock holds: wood the harvester data does not show yet.
+
+    It is usually a part of the stand not reported yet, so a draw is a part of
+    the work order's harvest rather than its average.
+    """
+    concentration, mixture_concentration = _part_concentrations(
+        volume, volume / cfg.default_log_volume, cfg.pool_remaining_share, cfg
     )
+    part = _component(key, "S2", volume, shares, concentration, True)
+    blocks, weights = _blocks(history, shares.index, cfg)
+    if len(weights) < 2:
+        return part
+    return replace(part, mixture=blocks, mixture_weights=weights, mixture_concentration=mixture_concentration)
 
 
 def _unknown_shares() -> pd.Series:
@@ -243,9 +282,14 @@ def _donor_weights(
         other = np.array([mean_diameters.get((a, sibling), np.nan) for a in pool.work_orders])
         both = ~np.isnan(own) & ~np.isnan(other)
         if both.sum() >= cfg.pool_min_pairs:
-            expected = mean_diameters[(key[0], sibling)] + float((own[both] - other[both]).mean())
+            differences = own[both] - other[both]
+            expected = mean_diameters[(key[0], sibling)] + float(differences.mean())
+            # The kernel is as wide as the prediction is uncertain, so that the
+            # spread among the chosen donors is the spread of the missing stand.
+            residual = float(np.sqrt(differences.var(ddof=1) * (1 + 1 / both.sum())))
+            width = max(cfg.donor_sibling_cm, residual)
             known = ~np.isnan(own)
-            weights[known] *= np.exp(-0.5 * ((own[known] - expected) / cfg.donor_sibling_cm) ** 2)
+            weights[known] *= np.exp(-0.5 * ((own[known] - expected) / width) ** 2)
     total = weights.sum()
     return weights / total if total > 0 else pool.donor_weights
 
@@ -253,17 +297,28 @@ def _donor_weights(
 def _pool_component(
     key: tuple[str, str], volume: float, pool: Pool, weights: np.ndarray, cfg: Config
 ) -> tuple[pd.Series, Component]:
-    """Distribution of wood without harvester data, from comparable work orders."""
+    """Distribution of wood without harvester data, from comparable work orders.
+
+    A draw is a part of one donor's harvest, as if the donor had delivered it:
+    the work order's own harvest is unknown, so a typical share of it,
+    `pool_remaining_share`, is assumed to stay behind.
+    """
     shares = pd.Series(weights @ pool.donors, index=pool.cells)
     shares = shares[shares > 0]
     part = _component(key, "S3", volume, shares, cfg.pool_concentration_default, False)
     if len(pool.donors) < cfg.pool_min_donors:
         return shares, part
+    columns = pool.cells.get_indexer(shares.index)
+    concentration, mixture_concentration = _part_concentrations(
+        volume, volume / cfg.default_log_volume, cfg.pool_remaining_share, cfg
+    )
     return shares, replace(
         part,
-        concentration=float("inf"),
-        mixture=pool.donors[:, pool.cells.get_indexer(shares.index)],
+        concentration=concentration,
+        mixture=pool.donors[:, columns],
         mixture_weights=weights,
+        mixture_concentration=mixture_concentration,
+        donor_parts=tuple((blocks[:, columns], block_weights) for blocks, block_weights in pool.parts),
     )
 
 
@@ -293,11 +348,11 @@ def close_month(
 
     calibrated = harvest.assign(**{VOL: harvest[VOL] * cfg.calibration})
     stock_keys = [AO, SORT, DIA, LEN, VINTAGE]
-    history_keys = [AO, SORT, DIA, LEN]
+    history_keys = [AO, SORT, DIA, LEN, VINTAGE]
     stock = merge([ledger.stock, calibrated[STOCK_COLUMNS]], stock_keys, STOCK_COLUMNS)
     history = merge([ledger.history, calibrated[HISTORY_COLUMNS]], history_keys, HISTORY_COLUMNS)
 
-    pools = {s: _build_pool(block) for s, block in history.groupby(SORT, sort=False)}
+    pools = {s: _build_pool(block, cfg) for s, block in history.groupby(SORT, sort=False)}
     mean_diameters = _mean_diameters(history)
 
     stock_by_key = dict(tuple(stock.groupby([AO, SORT], sort=False)))
@@ -381,7 +436,7 @@ def close_month(
                 billed = shortfall * net_share
                 if key in history_by_key:
                     shares = _composition(history_by_key[key])
-                    part = _component(key, "S2", billed, shares, cfg.history_concentration, True)
+                    part = _history_component(key, billed, history_by_key[key], shares, cfg)
                 elif key[1] in pools:
                     destination = work_orders.destinations.get(key[0], split_by_key[key].index[0][0])
                     pool = pools[key[1]]

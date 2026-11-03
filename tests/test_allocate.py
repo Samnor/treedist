@@ -1,5 +1,6 @@
 from dataclasses import replace
 
+import numpy as np
 import pandas as pd
 import pytest
 from conftest import delivery_frame, harvest_frame
@@ -89,6 +90,32 @@ def test_late_harvester_data_corrects_provisional_distribution(cfg):
     assert second.ledger.deficit.empty
     stock_a = second.ledger.stock[second.ledger.stock["arbetsorder"] == "A"][VOL].sum()
     assert stock_a == pytest.approx(40.0)
+
+
+def test_borrowed_distribution_draws_parts_of_donor_harvests(cfg):
+    rows = [(f"B{i}", "TALL", str(14 + 2 * i), "340", 50.0) for i in range(6)]
+    harvest = validate_harvest(
+        pd.DataFrame(rows, columns=["arbetsorder", "handelssortiment", "diametergrupp", "langdgrupp", "volym_m3fub"])
+        .assign(avverkningsdatum=["2026-01-02", "2026-01-20"] * 3),
+        "2026-01",
+    )
+    step = close_month(Ledger.empty(), harvest, delivery_frame("2026-01", [("A", "TALL", 10.0)], cfg), "2026-01", set(), cfg)
+    (component,) = step.components
+    assert component.tier == "S3"
+    assert component.donor_parts is not None and len(component.donor_parts) == 6
+    assert np.isfinite(component.concentration)
+
+
+def test_overdelivery_draws_a_part_of_the_work_orders_harvest(cfg):
+    rows = [("A", "TALL", "14", "340", 50.0), ("A", "TALL", "26", "340", 50.0)]
+    harvest = validate_harvest(
+        pd.DataFrame(rows, columns=["arbetsorder", "handelssortiment", "diametergrupp", "langdgrupp", "volym_m3fub"])
+        .assign(avverkningsdatum=["2026-01-02", "2026-01-20"]),
+        "2026-01",
+    )
+    step = close_month(Ledger.empty(), harvest, delivery_frame("2026-01", [("A", "TALL", 150.0)], cfg), "2026-01", set(), cfg)
+    (overdelivered,) = [c for c in step.components if c.tier == "S2"]
+    assert overdelivered.mixture is not None and len(overdelivered.mixture) == 2
 
 
 def reclassified(period, rows, cfg):

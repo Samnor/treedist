@@ -64,15 +64,30 @@ class Draws:
     total: dict[MatrixKey, np.ndarray]
 
 
+def _sample_part(
+    rng: np.random.Generator, blocks: np.ndarray, weights: np.ndarray, concentration: float, n: int
+) -> np.ndarray:
+    """Compositions of `n` random parts of a harvest made of `blocks`."""
+    gamma = rng.standard_gamma(weights * concentration, size=(n, len(blocks)))
+    totals = gamma.sum(axis=1, keepdims=True)
+    drawn = np.where(totals > 0, gamma / np.where(totals > 0, totals, 1.0), weights)
+    return drawn @ blocks
+
+
 def _sample_mean(rng: np.random.Generator, c: Component, n: int) -> np.ndarray:
     if c.mixture is None:
         return np.tile(c.q, (n, 1))
     if c.mixture_concentration is None:
         return c.mixture[rng.choice(len(c.mixture), size=n, p=c.mixture_weights)]
-    gamma = rng.standard_gamma(c.mixture_weights * c.mixture_concentration, size=(n, len(c.mixture)))
-    totals = gamma.sum(axis=1, keepdims=True)
-    weights = np.where(totals > 0, gamma / np.where(totals > 0, totals, 1.0), c.mixture_weights)
-    return weights @ c.mixture
+    if c.donor_parts is None:
+        return _sample_part(rng, c.mixture, c.mixture_weights, c.mixture_concentration, n)
+    donors = rng.choice(len(c.mixture), size=n, p=c.mixture_weights)
+    out = np.empty((n, len(c.q)))
+    for donor in np.unique(donors):
+        drawn = donors == donor
+        blocks, weights = c.donor_parts[donor]
+        out[drawn] = _sample_part(rng, blocks, weights, c.mixture_concentration, int(drawn.sum()))
+    return out
 
 
 def _sample_composition(rng: np.random.Generator, c: Component, n: int) -> np.ndarray:

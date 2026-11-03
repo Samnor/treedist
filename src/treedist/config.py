@@ -46,9 +46,9 @@ class Config:
     mixture_min_concentration: float = 0.25
     design_effect: float = 20.0
     default_log_volume: float = 0.25
-    history_concentration: float = 50.0
     pool_concentration_default: float = 20.0
     pool_min_donors: int = 5
+    pool_remaining_share: float = 0.5
     pool_min_pairs: int = 3
     donor_destination_weight: float = 16.0
     donor_group_weight: float = 4.0

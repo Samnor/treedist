@@ -62,11 +62,16 @@ Varje dragning i Monte Carlo-simuleringen slumpar om det som inte är känt:
   Skillnaderna inom arbetsordern hämtas alltså ur skördardata. Ovanpå det kommer urvalsbrus, styrt av `design_effect`.
   Ändlighetskorrektionen tar bort urvalsosäkerheten bara om hela skörden levereras samma månad. En rest i en senare månad
   är lika osäker som första delen. Skördarens klassningsfel finns alltid kvar, ett per stock.
-- **Fördelning, S2.** Dirichlet runt AO-historiken med precision `history_concentration`.
-- **Fördelning, S3.** Hela kompositionen hos en slumpad annan arbetsorder. Vikten är volymen, gånger 16 vid samma
-  destination, gånger 4 vid samma grupp, och en normalfördelad vikt runt den medeldiameter som arbetsorderns andra
-  sortiment förutsäger. Bestånd skiljer sig genom att hela fördelningen förskjuts, så närliggande klasser samvarierar,
-  vilket en Dirichlet inte kan uttrycka. Med färre än `pool_min_donors` arbetsordrar används Dirichlet.
+- **Fördelning, S2.** Mer levererat än lagret räcker till är oftast en del av beståndet som skördardatan ännu inte
+  visar. En dragning är därför en slumpad del av arbetsorderns skörd, med skördeblock som för S1. Hur stor del som
+  antas stå kvar anger `pool_remaining_share`.
+- **Fördelning, S3.** En slumpad annan arbetsorder, och sedan en slumpad del av dess skörd, som om den levererat.
+  Bestånd skiljer sig genom att hela fördelningen förskjuts, så närliggande klasser samvarierar, vilket en Dirichlet
+  inte kan uttrycka. Givarens vikt är volymen, gånger 16 vid samma destination, gånger 4 vid samma grupp, och en
+  normalfördelad vikt runt den medeldiameter som arbetsorderns andra sortiment förutsäger. Bandbredden är
+  förutsägelsens skattade fel, minst `donor_sibling_cm`. En fast, smalare bandbredd gav nästan samma skattning men för
+  snäva intervall, eftersom givarna då liknade förutsägelsen mer än det saknade beståndet gör. Med färre än
+  `pool_min_donors` arbetsordrar används Dirichlet.
 - **Diameterbias.** Skördaren på en arbetsorder mäter systematiskt högt eller lågt, vilket flyttar volym till
   grannklasser.
 - **Volym.** Per leverans `unit_cv / sqrt(antal_matenheter)`, plus ett fel per metod som delas av alla månadens
@@ -87,10 +92,10 @@ Två spridningar redovisas. `std_fordelning` håller volymen fast och är osäke
 | `mixture_min_concentration` | 0,25 | Inställd mot simulatorn |
 | `donor_destination_weight` | 16 | Inställd mot simulatorn |
 | `donor_group_weight` | 4 | Inställd mot simulatorn |
-| `donor_sibling_cm` | 1,5 | Inställd mot simulatorn |
+| `donor_sibling_cm` | 1,5 | Inställd mot simulatorn. Minsta bandbredd, annars skattas den ur data |
+| `pool_remaining_share` | 0,5 | Antagande: en arbetsorder utan skördardata levererar halva skörden samma månad |
 | `stock_block_days` | 5 | Antagande |
 | `min_forwarding_days` | 2 | Antagande |
-| `history_concentration` | 50 | Antagande |
 | `pool_concentration_default` | 20 | Antagande |
 | `pool_min_donors` | 5 | Antagande |
 | `diameter_bias_sd_mm` | 2 | Antagande |
@@ -106,8 +111,8 @@ Två spridningar redovisas. `std_fordelning` håller volymen fast och är osäke
 Metoden får bara det verkliga system skulle se. [Underlaget](simuleringsunderlag.md) beskriver vad simulatorn bygger på.
 Resultat, tre metoder och jämförelse med forskningen finns i [metodjämförelsen](metodjamforelse.md).
 
-I korthet, i basscenariot: 6,3 % av volymen hamnar i fel cell mot 21,9 % om man bara använder månadens skörd, och
-medelpriset fel med 10,0 mot 52,3 kr/m3fub. Över tolv månader är prisfelet 3,8 kr/m3fub. Värdeintervallet täcker 83–88 %
+I korthet, i basscenariot: 5,3 % av volymen hamnar i fel cell mot 20,3 % om man bara använder månadens skörd, och
+medelpriset fel med 8,1 mot 46,8 kr/m3fub. Över tolv månader är prisfelet 3,2 kr/m3fub. Värdeintervallet täcker 84–89 %
 mot nominellt 90 %.
 
 Eftersom leveranser saknar diameter och längd finns inget direkt facit i verklig drift. Det som går att följa upp är
