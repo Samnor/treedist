@@ -47,6 +47,7 @@ Ett test som slutar fungera ska inte skrivas om för att passera.
 | Vad är `brutto_m3fub`? | Volymen som lämnade avlägget, före avdrag | Samma kolumn som netto |
 | Vad är `diametergrupp`? | Klassens nedre gräns i cm, till exempel 24 | Millimeter (240), eller klassens mitt (25) |
 | Vad är `leveransdatum`? | Dagen lasset kördes | Redovisningsdatum eller mätdatum en annan månad |
+| Hur läses datum? | Ange alltid `datumformat`, till exempel `"%Y%m%d"` eller `"%d.%m.%Y"`; då ger avvikande värden `FEL` | Utan format kan dag och månad tolkas omvänt utan att något märks |
 | Vilket sortiment är `handelssortiment` i inmätningen? | Det inmätta, som faktureras | Det skördaren producerade. Det hör hemma i `producerat_handelssortiment` |
 | Vilken destination? | `mottagningsplats` är den faktiska, `arbetsordrar.destination` den planerade | Planerad destination i `mottagningsplats` |
 | Är arbetsorder-id samma i båda källorna? | Ja, exakt samma sträng | Inledande nollor eller prefix som skiljer. `check` visar det som hög andel S3 |

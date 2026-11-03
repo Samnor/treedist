@@ -53,7 +53,7 @@ Haiku klarade alla åtta källor med bara AGENTS.md, varav fyra krävde en egen 
 alltså främst att `check` hittar fel som en modell annars inte märker, och att den slutar larma om sådant som
 inte är fel. Agenternas tidsåtgång sjönk inte mätbart.
 
-Kontrollkatalogen visar att de nya kontrollerna är specifika: de fångar felen de skrevs för men bara två av sex
+Första kontrollkatalogen visade att de första kontrollerna var specifika: de fångar felen de skrevs för men bara två av sex
 nya. Falsklarmet i kontrollen är befogat: i den källan saknar två arbetsordrar skördardata, och varningen
 pekar ut dem.
 
@@ -63,4 +63,4 @@ pekar ut dem.
   i skördardata och inmätning finns i arbetsordertabellen. Ett nytt steg behöver en ny kontrollkatalog, eftersom
   båda de hittillsvarande nu har använts för beslut.
 - **Dag och månad bytta när inget `datumformat` anges.** Den automatiska tolkningen kan inte veta vilket som
-  avses. AGENTS.md och exemplet anger därför alltid formatet.
+  avses. AGENTS.md säger därför att formatet alltid ska anges.
