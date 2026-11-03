@@ -41,6 +41,7 @@ class Config:
     coverage_tolerance: float = 0.03
     draw_policy: str = "dated"
     min_forwarding_days: int = 2
+    overlap_fifo: bool = True
     stock_block_days: int = 5
     cluster_volume: float = 2400.0
     mixture_min_concentration: float = 0.25

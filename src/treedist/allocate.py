@@ -162,12 +162,21 @@ def _draw_fractions(block: pd.DataFrame, dated: pd.DataFrame, volume: float, cfg
     days = dated["leveransdatum"].to_numpy("datetime64[D]").astype(np.int64)
     amounts = dated[BRUTTO].to_numpy(dtype=float) * volume / float(dated[BRUTTO].sum())
 
+    # Trucks that start while the harvester is still there follow it, oldest wood first.
+    dates, date_of = np.unique(harvested, return_inverse=True)
+    oldest_first = cfg.overlap_fifo and days.min() <= harvested.max()
+
     unplaced = 0.0
     for j in np.argsort(days, kind="stable"):
         weight = left * (harvested <= days[j] - cfg.min_forwarding_days)
         available = weight.sum()
         used = min(amounts[j], available)
-        if available > 0:
+        if oldest_first:
+            per_date = np.bincount(date_of, weights=weight, minlength=len(dates))
+            taken = np.clip(used - (np.cumsum(per_date) - per_date), 0.0, per_date)
+            share = np.divide(taken, per_date, out=np.zeros_like(per_date), where=per_date > 0)
+            left -= weight * share[date_of]
+        elif available > 0:
             left -= weight * used / available
         unplaced += amounts[j] - used
 

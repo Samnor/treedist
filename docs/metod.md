@@ -27,7 +27,9 @@ För varje kombination av arbetsorder och handelssortiment (AO × sortiment):
 2. **Korrigering.** Finns ett underskott från tidigare månad och har skördardata kommit in, tas den volymen ur
    lagret. Skillnaden mot den preliminära fördelningen bokas som korrigering.
 3. **Dragning.** Bruttovolymen tas ur lagret, eftersom den lämnat avlägget. Varje leverans drar pro rata ur virke som
-   var avverkat och skotat på leveransdatumet (`dated`). Utan datum räknas leveransen till månadens slut.
+   var avverkat och skotat på leveransdatumet (`dated`). Utan datum räknas leveransen till månadens slut. Började
+   leveranserna innan det sista i lagret var avverkat följer lastbilarna skördaren, och då går det äldsta virket först
+   (`overlap_fifo`). Det är vanligt på sommaren, när köparna vill ha sågtimret fram inom ett par veckor.
 4. **Destination.** Alla destinationer delar liggare, eftersom en arbetsorders lager är samma virke vart det än går.
    Levererad volym hamnar hos mottagningsplatsen om den finns, annars hos den planerade destinationen. Går en arbetsorder
    till flera destinationer delas fördelningen efter nettovolym.
@@ -97,6 +99,7 @@ Två spridningar redovisas. `std_fordelning` håller volymen fast och är osäke
 | `pool_remaining_share` | 0,5 | Antagande: en arbetsorder utan skördardata levererar halva skörden samma månad |
 | `stock_block_days` | 5 | Antagande |
 | `min_forwarding_days` | 2 | Antagande |
+| `overlap_fifo` | på | Klättring: prisfel 11,9 → 10,9 kr/m3fub i snitt över klättringens scenarier. Bygger på antagandet att lastbilar som börjar under skörden tar avläggen i skördeordning |
 | `pool_concentration_default` | 20 | Antagande |
 | `pool_min_donors` | 5 | Antagande |
 | `diameter_bias_sd_mm` | 2 | Antagande |

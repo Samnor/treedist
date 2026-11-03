@@ -72,6 +72,8 @@ Alla idéer prövades på egna utvecklingsfrön innan slutkontrollen. Prisfel i 
 | Automatisk parameterklättring, 30 kandidater i 10 parametrar | Inget steg slog bruset. Närmast `min_forwarding_days` 3: −0,15 ± 0,08 i poäng. `cluster_volume` från 2400 och uppåt, och `donor_sibling_cm` under 1,5, saknar effekt | Parametrarna ligger i ett lokalt optimum |
 | Designeffekt 40 i stället för 20 efter säsongsbasen | Värdetäckning 88 → 90 %, 86 → 86 % och 88 → 91 %, prisfel oförändrat | Behållen |
 | Stockantal per leverans | 7,7 → 2,1 i tidigare simulering | Uppgiften finns inte |
+| Klättring: givare viktade efter inmätt medelstockvolym | Poäng −4,96 ± 0,57 | Förkastad, kräver stockantal som inmätningen saknar |
+| Klättring: äldsta virket först när leveranserna började under skörden | Poäng −1,05 ± 0,20, prisfel 11,9 → 10,9 och bättre i alla fyra scenarier | Behållen. Till skillnad från FIFO ovan gäller den bara när lastbilarna följer skördaren |
 
 ## För- och nackdelar
 

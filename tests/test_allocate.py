@@ -172,6 +172,26 @@ def test_wood_cannot_leave_before_it_was_harvested(cfg):
     assert by_class(step) == pytest.approx({"14": 40.0})
 
 
+def test_trucks_that_follow_the_harvester_take_the_oldest_wood(cfg):
+    df = pd.DataFrame(
+        {
+            "arbetsorder": ["A"] * 3,
+            "handelssortiment": ["TALL"] * 3,
+            "diametergrupp": ["14", "20", "26"],
+            "langdgrupp": ["340"] * 3,
+            "volym_m3fub": [100.0] * 3,
+            "avverkningsdatum": ["2026-01-02", "2026-01-05", "2026-01-20"],
+        }
+    )
+    harvest = validate_harvest(df, "2026-01")
+    deliveries = delivery_frame("2026-01", [("A", "TALL", 140.0)], cfg)
+    first = 100.0 * cfg.calibration
+    overlapping = close_month(Ledger.empty(), harvest, deliveries, "2026-01", set(), cfg)
+    assert by_class(overlapping) == pytest.approx({"14": first, "20": 140.0 - first})
+    pro_rata = close_month(Ledger.empty(), harvest, deliveries, "2026-01", set(), replace(cfg, overlap_fifo=False))
+    assert by_class(pro_rata) == pytest.approx({"14": 70.0, "20": 70.0})
+
+
 def test_gross_leaves_stock_and_net_is_allocated(cfg):
     harvest = harvest_frame("2026-01", [("A", "TALL", "14", "340", 100.0)])
     deliveries = delivery_frame("2026-01", [("A", "TALL", 18.0)], cfg).assign(brutto_m3fub=20.0)

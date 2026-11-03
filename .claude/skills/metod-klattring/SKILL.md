@@ -52,6 +52,11 @@ undo the steps since the last check that held.
 
 ## Rules
 
+- Use only inputs the real data has. The delivery measurement gives gross and net volume per
+  work order or truck, with no dimensions and no log count; the simulator emits
+  `antal_matenheter` only for the volume error model. A step that reads anything else the
+  simulator knows is rejected however much it gains (the delivered mean log volume gained
+  4.96 and was rejected for this reason).
 - Decisions use the development seeds only. Never pick or tune anything from control results.
 - One change per step. Do not change the simulator in the same step as the method: a better
   score must come from the method, not from easier data.
