@@ -1,29 +1,29 @@
 scenario,metod,index_matris,prisfel,kum_prisfel,varde_90,andel_s1
-bas,A liggare,0.069,13.0127,9.4226,0.8971,0.8591
-bas,C liggare+,0.0585,9.6723,5.7781,0.91,0.8591
+bas,A liggare,0.0663,12.5283,9.4368,0.9104,0.8591
+bas,C liggare+,0.0559,9.1668,5.783,0.9275,0.8591
 bas,B faltning,0.1152,27.1156,,,
 bas,Naiv,0.177,43.5782,,,
 "leverans efter skörd året runt, lång lagring",A liggare,0.064,11.972,6.5376,0.93,0.8893
 "leverans efter skörd året runt, lång lagring",C liggare+,0.0562,9.3085,3.8561,0.9292,0.8893
 "leverans efter skörd året runt, lång lagring",B faltning,0.0933,19.7789,,,
 "leverans efter skörd året runt, lång lagring",Naiv,0.2038,48.1342,,,
-leverans under pågående skörd året runt,A liggare,0.0646,11.0572,6.9162,0.9175,0.8935
-leverans under pågående skörd året runt,C liggare+,0.0537,8.1443,3.8069,0.9279,0.8935
+leverans under pågående skörd året runt,A liggare,0.059,9.5888,7.0508,0.9217,0.8935
+leverans under pågående skörd året runt,C liggare+,0.0481,6.7406,3.8823,0.9396,0.8935
 leverans under pågående skörd året runt,B faltning,0.1207,28.099,,,
 leverans under pågående skörd året runt,Naiv,0.1586,34.947,,,
-lång lagring,A liggare,0.0688,12.9743,9.1039,0.895,0.8736
-lång lagring,C liggare+,0.0597,10.1308,6.0008,0.9217,0.8736
+lång lagring,A liggare,0.0671,12.6897,9.1169,0.9062,0.8736
+lång lagring,C liggare+,0.0579,9.8323,6.0104,0.9246,0.8736
 lång lagring,B faltning,0.1214,28.9801,,,
 lång lagring,Naiv,0.2062,52.1698,,,
-destination oberoende av grovlek,A liggare,0.0668,13.1698,5.8498,0.86,0.8591
-destination oberoende av grovlek,C liggare+,0.0605,10.2934,4.4779,0.8475,0.8591
+destination oberoende av grovlek,A liggare,0.0644,12.7708,5.8576,0.8629,0.8591
+destination oberoende av grovlek,C liggare+,0.0581,9.8677,4.4746,0.88,0.8591
 destination oberoende av grovlek,B faltning,0.1348,34.8866,,,
 destination oberoende av grovlek,Naiv,0.2059,55.4461,,,
-mindre arbetsordrar,A liggare,0.0666,11.8608,8.8108,0.8821,0.8648
-mindre arbetsordrar,C liggare+,0.0519,6.2689,2.8663,0.9442,0.8648
+mindre arbetsordrar,A liggare,0.0651,11.6027,8.793,0.8738,0.8648
+mindre arbetsordrar,C liggare+,0.0503,6.0155,2.8958,0.9442,0.8648
 mindre arbetsordrar,B faltning,0.0965,19.7448,,,
 mindre arbetsordrar,Naiv,0.1368,29.0791,,,
-20 % omdirigerat,A liggare,0.0608,11.4299,8.3867,0.8879,0.8894
-20 % omdirigerat,C liggare+,0.0521,8.1049,4.0436,0.9329,0.8894
+20 % omdirigerat,A liggare,0.0575,10.5942,8.3872,0.8971,0.8894
+20 % omdirigerat,C liggare+,0.0489,7.4613,4.0345,0.9358,0.8894
 20 % omdirigerat,B faltning,0.149,40.3984,,,
 20 % omdirigerat,Naiv,0.1899,50.5342,,,

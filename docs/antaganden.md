@@ -7,7 +7,7 @@ det. **Härlett** betyder egen beräkning ur källor.
 **Sammanfattning.** Granskningen hittade två antaganden som inte höll: lagringstiden var för lång, och sommaravverkat
 timmer låg lika länge som vinteravverkat trots att köparna kräver leverans inom två veckor. Simulatorn är rättad och följer nu
 säsongen. De övriga antagandena är rimliga eller går inte att pröva utan egna data. Känslighetsproven visar att metod C
-har lägst fel i alla sju varianter, med prisfel 6,3–10,3 kr/m3fub. Det som mest påverkar resultatet i verkligheten är
+har lägst fel i alla sju varianter, med prisfel 6,0–9,9 kr/m3fub. Det som mest påverkar resultatet i verkligheten är
 hur stor andel som saknar skördardata, och i vilken ordning avläggen körs.
 
 ## Vad exempelresorna visar
@@ -68,21 +68,23 @@ Varje variant ändrar ett antagande, med fyra nya simuleringar om 12 månader pe
 
 | Variant | Prisfel C | Prisfel A | Prisfel naiv | Värdetäckning C | Andel eget lager |
 |---|---|---|---|---|---|
-| Bas, med säsong | 9,7 | 13,0 | 43,6 | 91 % | 86 % |
+| Bas, med säsong | 9,2 | 12,5 | 43,6 | 93 % | 86 % |
 | Leverans efter skörd året runt, lång lagring (förra basen) | 9,3 | 12,0 | 48,1 | 93 % | 89 % |
-| Leverans under pågående skörd året runt | 8,1 | 11,1 | 34,9 | 93 % | 89 % |
-| Tre gånger så lång paus före leverans | 10,1 | 13,0 | 52,2 | 92 % | 87 % |
-| Destination oberoende av grovlek | 10,3 | 13,2 | 55,4 | 85 % | 86 % |
-| Mindre arbetsordrar, dubbelt så många | 6,3 | 11,9 | 29,1 | 94 % | 86 % |
-| 20 % omdirigerat | 8,1 | 11,4 | 50,5 | 93 % | 89 % |
+| Leverans under pågående skörd året runt | 6,7 | 9,6 | 34,9 | 94 % | 89 % |
+| Tre gånger så lång paus före leverans | 9,8 | 12,7 | 52,2 | 92 % | 87 % |
+| Destination oberoende av grovlek | 9,9 | 12,8 | 55,4 | 88 % | 86 % |
+| Mindre arbetsordrar, dubbelt så många | 6,0 | 11,6 | 29,1 | 94 % | 86 % |
+| 20 % omdirigerat | 7,5 | 10,6 | 50,5 | 94 % | 89 % |
 
 Prisfel i kr/m3fub per månad, destination och sortiment.
 
 - **Rättningen av säsongen ändrade inte slutsatserna.** Den naiva metoden blev bättre med kortare lagring, 43,6 mot
   48,1, men C har fortfarande under en fjärdedel av dess fel. Med säsong ligger något mindre ur eget lager, 86 mot
   89 %, eftersom mer virke hinner levereras innan skördardatan kommit in.
-- **Utan koppling mellan destination och grovlek krymper C:s försprång** mot A, och intervallet blir för smalt (85 %).
+- **Utan koppling mellan destination och grovlek krymper C:s försprång** mot A, och intervallet blir för smalt (88 %).
   Vikten för samma destination är inställd mot simulatorn och bör prövas på verkliga data.
+- **Äldsta virket först vinner mest när lastbilarna följer skördaren.** Med leverans under pågående skörd året
+  runt sjönk C:s prisfel från 8,1 till 6,7 när klättringen införde det, och med leverans efter skörd är det oförändrat.
 - **Mindre arbetsordrar ger lägre fel**, eftersom fler och mindre leveranser jämnar ut månadsskiftena. Om verkliga
   arbetsordrar är mindre än i simulatorn är basens fel alltså snarare för högt.
 
