@@ -54,11 +54,7 @@ MISTAKES = [
     ("makulerade lass med", '[leverans.filter]\nStatus = "Godkänd"\n', ""),
     ("diameter som klassmitt", "diametergrupp = 0.1   # mm -> cm", "diametergrupp = 0.1   # mm -> cm\n# MITT"),
     ("antal stockar från fel kolumn", 'antal_stockar = "AntalStockar"', 'antal_stockar = "DiamKlassMM"'),
-]
-
-
-# Written after the climb's decisions and used once, to see whether the checks generalise.
-CONTROL_MISTAKES = [
+    # From the first round's control.
     ("mottagare som sortiment", 'handelssortiment = "InmattSortiment"', 'handelssortiment = "Mottagare"'),
     ("arbetsorder som mottagningsplats", 'mottagningsplats = "Mottagare"', 'mottagningsplats = "AO_Nr"'),
     ("antal stockar som skördad volym", 'volym_m3fub = "VolymFub"', 'volym_m3fub = "AntalStockar"'),
@@ -69,24 +65,41 @@ CONTROL_MISTAKES = [
 ]
 
 
-def _mistake_source(tmp: Path, old: str, new: str) -> Path:
+# Control: written before the second round's decisions and used once, to see whether the checks generalise.
+# The first round's control mistakes moved into MISTAKES once decisions used them.
+CONTROL_MISTAKES = [
+    ("diameter och längd bytta", 'diametergrupp = "DiamKlassMM"\nlangdgrupp = "LangdKlassCM"',
+     'diametergrupp = "LangdKlassCM"\nlangdgrupp = "DiamKlassMM"'),
+    ("mottagare som arbetsorder i arbetsordrar", 'arbetsorder = "AO"\ndestination = "PlaneradMottagare"',
+     'arbetsorder = "PlaneradMottagare"\ndestination = "PlaneradMottagare"'),
+    ("ett sortiment som konstant i inmätningen", [('handelssortiment = "InmattSortiment"\n', ""),
+     ("[leverans.filter]", '[leverans.konstanter]\nhandelssortiment = "TALL_SAG"\n\n[leverans.filter]')]),
+    ("antal enheter som bruttovolym", 'brutto_m3fub = "BruttoFub"', 'brutto_m3fub = "AntalEnheter"'),
+    ("dag och månad bytta i fällningsdatum", '[skordning]\nfil = "export/produktion_{period}.csv"\nseparator = ";"\ndatumformat = "%Y%m%d"',
+     '[skordning]\nfil = "export/produktion_{period}.csv"\nseparator = ";"\ndatumformat = "%Y%d%m"'),
+]
+
+
+def _mistake_source(tmp: Path, edits: list[tuple[str, str]]) -> Path:
     text = (EXAMPLE / "kalla.toml").read_text(encoding="utf-8")
-    text = text.replace('"export/', f'"{EXAMPLE}/export/').replace('"../demo/', f'"{EXAMPLE.parent}/demo/')
-    if old == "diameter_grupp_placeholder":
-        old, new = "diametergrupp = 0.1   # mm -> cm", ""
-    if new.endswith("# MITT"):
-        # Class midpoints: export the class bottom plus half a 2 cm class.
-        export = tmp / "export"
-        shutil.copytree(EXAMPLE / "export", export, dirs_exist_ok=True)
-        harvest = pd.read_csv(export / f"produktion_{PERIOD}.csv", sep=";", dtype=str)
-        harvest["DiamKlassMM"] = (harvest["DiamKlassMM"].astype(int) + 10).astype(str)
-        harvest.to_csv(export / f"produktion_{PERIOD}.csv", sep=";", index=False)
-        text = text.replace(f'"{EXAMPLE}/export/produktion', f'"{export}/produktion')
-        new = new.replace("\n# MITT", "")
-    if old not in text:
-        raise SystemExit(f"Felkatalogen passar inte längre kalla.toml: {old!r}")
+    export = EXAMPLE / "export"
+    for old, new in edits:
+        if old == "diameter_grupp_placeholder":
+            old, new = "diametergrupp = 0.1   # mm -> cm", ""
+        if new.endswith("# MITT"):
+            # Class midpoints: export the class bottom plus half a 2 cm class.
+            export = tmp / "export"
+            shutil.copytree(EXAMPLE / "export", export, dirs_exist_ok=True)
+            harvest = pd.read_csv(export / f"produktion_{PERIOD}.csv", sep=";", dtype=str)
+            harvest["DiamKlassMM"] = (harvest["DiamKlassMM"].astype(int) + 10).astype(str)
+            harvest.to_csv(export / f"produktion_{PERIOD}.csv", sep=";", index=False)
+            new = new.replace("\n# MITT", "")
+        if old not in text:
+            raise SystemExit(f"Felkatalogen passar inte längre kalla.toml: {old!r}")
+        text = text.replace(old, new)
+    text = text.replace('"export/', f'"{export}/').replace('"../demo/', f'"{EXAMPLE.parent}/demo/')
     path = tmp / "kalla.toml"
-    path.write_text(text.replace(old, new), encoding="utf-8")
+    path.write_text(text, encoding="utf-8")
     return path
 
 
@@ -95,9 +108,10 @@ def mistakes(catalog=MISTAKES) -> int:
 
     baseline = {(f.level, f.message) for f in check(PERIOD, CFG, source=EXAMPLE / "kalla.toml") if f.level != OK}
     found = 0
-    for name, old, new in catalog:
+    for name, *edit in catalog:
+        edits = edit[0] if len(edit) == 1 else [tuple(edit)]
         with tempfile.TemporaryDirectory() as tmp:
-            source = _mistake_source(Path(tmp), old, new)
+            source = _mistake_source(Path(tmp), edits)
             findings = check(PERIOD, CFG, source=source)
         raised = [f for f in findings if f.level in (FEL, VARNING) and (f.level, f.message) not in baseline]
         found += bool(raised)

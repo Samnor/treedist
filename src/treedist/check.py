@@ -69,6 +69,7 @@ def check(
     findings += _gross_and_net(raw.get("leverans"), inputs.deliveries)
     findings += _loads(raw.get("leverans"), inputs.deliveries)
     findings += _dates(inputs.harvest, inputs.deliveries)
+    findings += _destinations(raw.get("leverans"), inputs)
     findings += _prices(inputs)
 
     ledger = None
@@ -150,7 +151,17 @@ def _harvest_logs(harvest: pd.DataFrame) -> list[Finding]:
     per_log = float(counted[VOL].sum() / counted[LOGS].sum())
     if not 0.02 <= per_log <= 2.0:
         return [Finding(VARNING, "skordning", f"{per_log:.3g} m3fub per stock är orimligt; är volymen i dm3, eller antalet fel kolumn?")]
-    return [Finding(OK, "skordning", f"{per_log:.3f} m3fub per stock")]
+    # A cylinder on the class bottoms; real logs taper and sit above the bottom, so about 1.3 times that.
+    diameters = pd.to_numeric(counted[DIA], errors="coerce") / 100
+    lengths = pd.to_numeric(counted[LEN], errors="coerce") / 100
+    sized = diameters.notna() & lengths.notna()
+    cylinders = float((np.pi / 4 * diameters[sized] ** 2 * lengths[sized] * counted.loc[sized, LOGS]).sum())
+    if cylinders > 0:
+        ratio = float(counted.loc[sized, VOL].sum()) / cylinders
+        if not 0.7 <= ratio <= 2.5:
+            return [Finding(VARNING, "skordning", f"volymen är {ratio:.2g} gånger vad klasserna och antalet stockar ger, "
+                            "normalt cirka 1,3; är volym, antal stockar eller klasserna fel kolumn eller enhet?")]
+    return [Finding(OK, "skordning", f"{per_log:.3f} m3fub per stock, i linje med klasserna")]
 
 
 def _gross_and_net(raw: pd.DataFrame | None, deliveries: pd.DataFrame) -> list[Finding]:
@@ -204,6 +215,22 @@ def _dates(harvest: pd.DataFrame, deliveries: pd.DataFrame) -> list[Finding]:
     elif not findings:
         findings.append(Finding(OK, "leverans", "leveransdatum följer efter avverkningen"))
     return findings
+
+
+def _destinations(raw: pd.DataFrame | None, inputs) -> list[Finding]:
+    """Actual and planned destinations name the same mills; if they hardly meet, one is the wrong column."""
+    planned = set(inputs.work_orders.destinations.values())
+    if raw is None or "mottagningsplats" not in raw.columns or not planned:
+        return []
+    deliveries = inputs.deliveries
+    known = float(deliveries.loc[deliveries[DEST].isin(planned), VOL].sum() / deliveries[VOL].sum())
+    if known < 0.5:
+        actual = sorted(set(deliveries[DEST]))[:3]
+        return [
+            Finding(VARNING, "leverans", f"bara {known:.0%} av volymen gick till en planerad destination; mottagningsplats "
+                    f"har till exempel {actual}, arbetsordrarna {sorted(planned)[:3]}. Är någon mappad från fel kolumn?")
+        ]
+    return [Finding(OK, "leverans", f"{known:.0%} av volymen gick till en planerad destination")]
 
 
 def _prices(inputs) -> list[Finding]:

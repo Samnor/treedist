@@ -30,6 +30,25 @@ på två sätt, och första klättringen mot de måtten gjordes 2026-11-03.
 | Lista över arbetsordrar utan skördardata, och tydligare dokumentation om decimalkomma och när `.py` behövs | 12 av 12 | 0 | |
 | **Kontroll** med nya fel och nya månader som inget beslut sett | **2 av 6** | 1 på 5 källor | **4 av 4**, cirka 90 000 tokens och 16 verktygsanrop |
 
+### Andra omgången
+
+De fyra missarna från första kontrollen blev träningsfall, och en ny kontrollkatalog med fem andra fel frystes
+innan något ändrades.
+
+| Steg | Felkatalog | Falsklarm |
+|---|---|---|
+| Baslinje, med första kontrollens fel som träning | 14 av 18 | 0 |
+| Datum som inte följer ett angivet `datumformat` är `FEL`, i stället för att tolkas automatiskt | 15 av 18 | 0 |
+| Mottagningsplats och planerad destination ska i stort sett nämna samma sågverk | 17 av 18 | 0 |
+| Skördad volym ska stämma med klasser och antal stockar, normalt cirka 1,3 gånger en cylinder på klassbottnarna | 18 av 18 | 0 |
+| **Kontroll 2** med fem nya fel | **4 av 5** | 0 |
+
+Kontrollen generaliserade bättre den här gången, 4 av 5 mot 2 av 6, eftersom stegen jämför uppgifter med varandra
+i stället för att leta efter ett visst fel. Kvoten mellan skördad volym och klassernas cylinder var 1,28–1,36 i alla
+nio korrekta källor, och gränsen sattes brett, 0,7–2,5, eftersom verklig data kan avvika från simulatorn.
+
+### Sammanfattning
+
 Haiku klarade alla åtta källor med bara AGENTS.md, varav fyra krävde en egen `.py`. Det som förbättrades är
 alltså främst att `check` hittar fel som en modell annars inte märker, och att den slutar larma om sådant som
 inte är fel. Agenternas tidsåtgång sjönk inte mätbart.
@@ -40,11 +59,8 @@ pekar ut dem.
 
 ## Det som `check` ännu inte ser
 
-Från kontrollkatalogen, i ordning efter hur troliga felen är i verklig data:
-
-- **Dag och månad bytta i datumformatet.** Ger rimliga datum fram till den tolfte. Kan fångas genom att jämföra
-  transportdatum med fällningsdatum per arbetsorder, eller genom att se att dagarna aldrig passerar 12.
-- **Fel kolumn som mottagningsplats eller planerad destination.** Kan fångas genom att jämföra mottagningsplatser
-  med planerade destinationer och prislistans destinationer: helt olika mängder tyder på fel kolumn.
-- **Antal stockar mappat som skördad volym.** Ger ungefär 1 m³ per stock, som ligger inom gränsen. Kan fångas
-  genom att jämföra skördad och inmätt volym för arbetsordrar som avslutats.
+- **Fel kolumn som id i arbetsordertabellen.** Missen i kontroll 2. Kan fångas genom att kräva att arbetsordrarna
+  i skördardata och inmätning finns i arbetsordertabellen. Ett nytt steg behöver en ny kontrollkatalog, eftersom
+  båda de hittillsvarande nu har använts för beslut.
+- **Dag och månad bytta när inget `datumformat` anges.** Den automatiska tolkningen kan inte veta vilket som
+  avses. AGENTS.md och exemplet anger därför alltid formatet.

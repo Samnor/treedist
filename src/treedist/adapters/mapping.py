@@ -107,6 +107,12 @@ def _table(key: str, settings: dict, file: Path) -> pd.DataFrame:
             values = values.where(values != "", None)
         if column.kind == "datum" and "datumformat" in settings:
             dates = pd.to_datetime(values, format=settings["datumformat"], errors="coerce")
-            values = dates.dt.strftime("%Y-%m-%d").where(dates.notna(), values)
+            wrong = values.notna() & dates.isna()
+            if wrong.any():
+                raise ValueError(
+                    f"{where}: {int(wrong.sum())} värden i {columns.get(column.name, column.name)} följer inte "
+                    f"datumformat {settings['datumformat']!r}, till exempel {values[wrong].iloc[0]!r}"
+                )
+            values = dates.dt.strftime("%Y-%m-%d").where(dates.notna(), None)
         out[column.name] = values
     return out.reset_index(drop=True)
