@@ -103,6 +103,51 @@ borttagna delar utom toleransen bara rörde osäkerheten. Det som försvann är 
 Carlo-modellen: skördeblock, delar av givare och diameterbias. Intervallen styrs nu av en parameter, `design_effect`.
 Fakturorna i demot blev identiska på öret.
 
+### En femtedel av delarna
+
+Hur liten kan metoden bli och ändå göra det mesta av jobbet? Komplexitet räknas som antal delar en läsare måste känna
+till för att följa en skattning: varje regel och varje tal, 23 i standardmodellen, listade i
+[modell.py](../scripts/modell.py). Bokföring som varje modell behöver för en korrekt faktura räknas inte: vända lass,
+korrigeringar, omklassning, flera destinationer och avskrivning. Prestanda är hur stor del av avståndet till den naiva
+skattningen, månadens skörd, som modellen stänger, som andel av vad standardmodellen stänger. Målet var högst 20 % av
+delarna och minst 80 % av prestandan i varje scenario, inte bara i snitt.
+
+`modell.py sok` började från den minsta modellen, tre delar: liggaren, sortimentets medel för det som inte ryms i lagret
+och `OKÄND` när sortimentet saknar skördardata. Sedan lade den tillbaka den grupp av delar som gav mest prestanda per del.
+Prisfel i kr/m3fub på utvecklingsfröna; naivt är det 44,0 och standardmodellens 10,9.
+
+| Modell | Delar | Prisfel | Prestanda | Sämsta scenario |
+|---|---|---|---|---|
+| Minsta: liggare, pro rata, sortimentets medel, `OKÄND` | 3 (13 %) | 16,5 | 83 % | 66 %, 30 % utan skördardata |
+| + bruttovolym ur lagret | 4 | 16,6 | 83 % | 66 % |
+| + kalibrering | 5 | 16,6 | 83 % | 66 % |
+| + AO-historik för överleverans (S2) | 4 | 16,2 | 84 % | 67 % |
+| + syskonsortimentet | 6 | 15,4 | 87 % | 74 % |
+| + äldsta först | 4 | 15,1 | 87 % | 71 % |
+| + gruppvikten | 4 | 15,1 | 87 % | 75 % |
+| + intervall, tio delar | 13 | 16,5 | 83 % | 66 % |
+| **+ destinationsvikten: `enkel`** | **4 (17 %)** | **13,5** | **92 %** | **90 %, basscenariot** |
+| `enkel` + äldsta först | 5 (22 %) | 12,0 | 97 % | 95 % |
+
+**Modellen [enkel](../modeller/enkel.toml) har 4 av 23 delar och stänger 92 % av avståndet**, minst 90 % i varje scenario.
+På kontrollfröna, som inget beslut använt, är prisfelet 13,8 mot standardens 11,3, och prestandan 93 %. Den är liggaren
+med pro rata-dragning och nettovolym, och allt som inte ryms i lagret får ett volymviktat medel av sortimentets
+arbetsordrar där samma destination väger 16 gånger mer. Destinationsvikten är den enda del som ensam räddar scenariot
+med 30 % utan skördardata.
+
+Det som går förlorat:
+
+- **Intervallen.** `enkel` har ingen Monte Carlo och inga `std`, `p05` eller `p95`. Säkerhetsklasserna visar fortfarande
+  hur säker fördelningen är. Intervallen kostar tio delar och påverkar inte skattningen alls.
+- **Kalibreringen och bruttovolymen** ändrar nästan inte prisfelet. De styr hur länge lagret räcker och därmed hur
+  mycket som blir preliminärt och korrigeras senare, inte fördelningen.
+- **Äldsta först** är den enda utelämnade del som är värd sitt pris om en femte del tillåts: prisfelet går från 13,5 till
+  12,0 kr/m3fub. Den betyder mest på sommaren, när leveranserna börjar under skörden.
+
+Allt är prövat mot simulatorn. Att destinationen säger så mycket om grovleken bygger på hur simulatorn kopplar
+sågverk och dimension; i scenariot där destinationen är oberoende av grovlek ger `enkel` ändå 91 %.
+[Flödesrapporten för enkel](flodesrapport_enkel.html) visar demots månader med modellen.
+
 ## För- och nackdelar
 
 | | Fördelar | Nackdelar |

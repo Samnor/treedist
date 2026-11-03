@@ -53,6 +53,15 @@ def test_overdelivery_falls_back_on_work_order_history(cfg):
     assert step.ledger.deficit[VOL].sum() == pytest.approx(50.0)
 
 
+def test_without_history_fallback_overdelivery_borrows_from_the_pool(cfg):
+    harvest = harvest_frame("2026-01", [("A", "TALL", "14", "340", 100.0), ("B", "TALL", "20", "340", 300.0)])
+    deliveries = delivery_frame("2026-01", [("A", "TALL", 150.0)], cfg)
+    step = close_month(Ledger.empty(), harvest, deliveries, "2026-01", set(), replace(cfg, history_fallback=False))
+    tiers = step.allocation.groupby(TIER)[VOL].sum()
+    assert set(tiers.index) == {"S1", "S3"}
+    assert tiers["S3"] == pytest.approx(50.0)
+
+
 def test_work_order_without_harvester_data_uses_assortment_pool(cfg):
     harvest = harvest_frame("2026-01", [("B", "TALL", "20", "340", 100.0)])
     step = close_month(Ledger.empty(), harvest, delivery_frame("2026-01", [("A", "TALL", 10.0)], cfg), "2026-01", set(), cfg)
@@ -166,6 +175,8 @@ def test_trucks_that_follow_the_harvester_take_the_oldest_wood_and_later_trucks_
     after = deliveries.assign(leveransdatum=pd.Timestamp("2026-01-25"))
     pro_rata = close_month(Ledger.empty(), harvest, after, "2026-01", set(), cfg)
     assert by_class(pro_rata) == pytest.approx({"14": 140 / 3, "20": 140 / 3, "26": 140 / 3})
+    switched_off = close_month(Ledger.empty(), harvest, deliveries, "2026-01", set(), replace(cfg, oldest_first=False))
+    assert by_class(switched_off) == pytest.approx(by_class(pro_rata))
 
 
 def test_gross_leaves_stock_and_net_is_allocated(cfg):
@@ -174,6 +185,8 @@ def test_gross_leaves_stock_and_net_is_allocated(cfg):
     step = close_month(Ledger.empty(), harvest, deliveries, "2026-01", set(), cfg)
     assert step.allocation[VOL].sum() == pytest.approx(18.0)
     assert step.ledger.stock[VOL].sum() == pytest.approx(80.0)
+    net_only = close_month(Ledger.empty(), harvest, deliveries, "2026-01", set(), replace(cfg, draw_gross=False))
+    assert net_only.ledger.stock[VOL].sum() == pytest.approx(82.0)
 
 
 def test_groups_choose_comparable_work_orders(cfg):

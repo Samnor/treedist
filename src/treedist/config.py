@@ -42,6 +42,10 @@ class Config:
     design_effect: float = 200.0
     default_log_volume: float = 0.25
     pool_remaining_share: float = 0.5
+    # Switches that keep a saved simpler model reachable; see modeller/.
+    oldest_first: bool = True
+    draw_gross: bool = True
+    history_fallback: bool = True
     intervals: bool = True
     mc_draws: int = 2000
     seed: int = 20261102
@@ -65,10 +69,13 @@ def load_config(path: Path | None) -> Config:
     with open(path, "rb") as f:
         raw = tomllib.load(f)
 
+    # A saved model describes itself in [modell]; only its parameters configure the run.
+    model = raw.pop("modell", {})
     known = {f.name for f in fields(Config)}
     unknown = set(raw) - known
     if unknown:
-        raise ValueError(f"Okända nycklar i {path}: {sorted(unknown)}")
+        hint = f". Modellen sparades med kod {model['kod']}; kör den i en checkout av den" if "kod" in model else ""
+        raise ValueError(f"Okända nycklar i {path}: {sorted(unknown)}{hint}")
 
     if "volume_methods" in raw:
         methods = default_volume_methods()

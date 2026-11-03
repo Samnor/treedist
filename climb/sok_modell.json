@@ -1,0 +1,50 @@
+[
+  {
+    "modell": {
+      "draw_gross": false,
+      "harvester_bias": 0.0,
+      "handling_loss": 0.0,
+      "oldest_first": false,
+      "history_fallback": false,
+      "donor_destination_weight": 1.0,
+      "donor_group_weight": 1.0,
+      "donor_sibling_cm": 0.0,
+      "intervals": false
+    },
+    "delar": 3,
+    "prisfel": 16.54,
+    "prisfel_naiv": 43.96,
+    "prestanda": 0.829,
+    "prestanda_per_scenario": {
+      "30 % utan skördardata": 0.663,
+      "bas": 0.793,
+      "destination oberoende av grovlek": 0.917,
+      "stora skillnader inom AO": 0.887
+    },
+    "varde_90": null
+  },
+  {
+    "modell": {
+      "draw_gross": false,
+      "harvester_bias": 0.0,
+      "handling_loss": 0.0,
+      "oldest_first": false,
+      "history_fallback": false,
+      "donor_destination_weight": 16.0,
+      "donor_group_weight": 1.0,
+      "donor_sibling_cm": 0.0,
+      "intervals": false
+    },
+    "delar": 4,
+    "prisfel": 13.45,
+    "prisfel_naiv": 43.96,
+    "prestanda": 0.922,
+    "prestanda_per_scenario": {
+      "30 % utan skördardata": 0.905,
+      "bas": 0.904,
+      "destination oberoende av grovlek": 0.912,
+      "stora skillnader inom AO": 0.964
+    },
+    "varde_90": null
+  }
+]

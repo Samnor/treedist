@@ -28,12 +28,13 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from compare_methods import _month_scores, _run_ledger
+from compare_methods import BURN_IN, _month_scores, _run_ledger
 
 from treedist.dev.backtest import _score
 from treedist.config import Config
 from treedist.core.invoice import PriceList
 from treedist.dev.simulate import SimParams, example_price_list, simulate
+from treedist.schema import AO, DEST, DIA, LEN, SORT, VOL
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "climb"
@@ -97,10 +98,22 @@ def _job(args: tuple[dict, str, int]) -> dict:
         "scenario": scenario,
         "seed": seed,
         "prisfel": float(month["prisfel"]),
+        "prisfel_naiv": _naive_price_error(months, prices),
         "felindex": float(month["index_matris"]),
         "varde_90": float(month["varde_90"]),
         "poang": float(score),
     }
+
+
+def _naive_price_error(months, prices: PriceList) -> float:
+    """The month's harvest on its planned destination, ignoring the lag: what the method must beat."""
+    errors = []
+    for month in months[BURN_IN:]:
+        harvest = month.harvest.astype({VOL: float})
+        harvest = harvest.assign(**{DEST: harvest[AO].map(month.work_orders.destinations)})
+        shares = harvest.groupby([DEST, SORT, DIA, LEN], as_index=False)[VOL].sum()
+        errors.append(_month_scores(shares, month.truth, prices)["prisfel"])
+    return float(np.mean(errors))
 
 
 def evaluate(pool: ProcessPoolExecutor, candidates: list[dict], seeds) -> list[pd.DataFrame]:

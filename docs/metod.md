@@ -102,6 +102,9 @@ Två spridningar redovisas. `std_fordelning` håller volymen fast och är osäke
 | `pool_min_pairs` | 3 | Antagande: så många arbetsordrar med båda sortimenten krävs för att använda syskonsortimentet |
 | `pool_remaining_share` | 0,5 | Antagande: en arbetsorder utan skördardata levererar halva skörden samma månad |
 | `default_log_volume` | 0,25 | Antagande: medelstockvolym när skördardata saknar antal stockar |
+| `oldest_first` | på | Av: varje klass ger alltid samma andel. Används av den sparade modellen `enkel` |
+| `draw_gross` | på | Av: nettovolymen lämnar lagret, bruttovolymen används inte |
+| `history_fallback` | på | Av: leverans utöver lagret lånar som S3 i stället för AO:ns historik (S2) |
 | `intervals` | på | Av ger profilen enkel: samma faktura och matriser, utan Monte Carlo-intervall |
 | `stockmatning` | `unit_cv` 0,043 | Biometria 2025, tabell 1. Systematiskt fel härlett ur KI ±0,1 % |
 | `travmatning` | `unit_cv` 0,051 | Biometria 2025, tabell 1, sågbara. Systematiskt fel härlett ur KI ±0,3 % |

@@ -134,7 +134,7 @@ def _concentration(log_count: float, remaining_share: float, cfg: Config) -> flo
     return min(max(effective / remaining_share - 1, 1.0), float(log_count))
 
 
-def _draw_fractions(block: pd.DataFrame, dated: pd.DataFrame, volume: float) -> np.ndarray:
+def _draw_fractions(block: pd.DataFrame, dated: pd.DataFrame, volume: float, oldest_first: bool = True) -> np.ndarray:
     """Share of each stock row taken by the month's deliveries.
 
     Trucks that start while the harvester is still there follow it and take the
@@ -144,7 +144,7 @@ def _draw_fractions(block: pd.DataFrame, dated: pd.DataFrame, volume: float) -> 
     stock = block[VOL].to_numpy(dtype=float)
     harvested = pd.to_datetime(block[VINTAGE]).to_numpy("datetime64[D]")
     first_delivery = dated["leveransdatum"].to_numpy("datetime64[D]").min()
-    if first_delivery > harvested.max():
+    if not oldest_first or first_delivery > harvested.max():
         return np.full(len(stock), min(volume / stock.sum(), 1.0))
     dates, date_of = np.unique(harvested, return_inverse=True)
     per_date = np.bincount(date_of, weights=stock, minlength=len(dates))
@@ -360,6 +360,8 @@ def close_month(
     history_by_key = dict(tuple(history.groupby([AO, SORT], sort=False)))
     deficit_by_key = dict(tuple(ledger.deficit.groupby([AO, SORT], sort=False)))
     harvested = calibrated.groupby([AO, SORT], sort=False)[VOL].sum()
+    if not cfg.draw_gross:
+        deliveries = deliveries.assign(**{BRUTTO: deliveries[VOL]})
     if PRODUCED not in deliveries.columns:
         deliveries = deliveries.assign(**{PRODUCED: deliveries[SORT]})
     deliveries, reversals = _split_reversals(deliveries)
@@ -458,7 +460,7 @@ def close_month(
         net_share = net / volume if volume > 0 else 1.0
         covered = min(volume, float(block[VOL].sum()))
         if covered > 0:
-            taken, block = split(block, _draw_fractions(block, dated_by_key[key], covered))
+            taken, block = split(block, _draw_fractions(block, dated_by_key[key], covered, cfg.oldest_first))
             if net > 0:
                 harvested_total = max(float(history_by_key[key][VOL].sum()), covered)
                 part = _stock_component(key, taken, covered, harvested_total, cfg)
@@ -467,7 +469,7 @@ def close_month(
         shortfall = max(volume - covered, 0.0)
         if shortfall > 0 and net > 0:
             billed = shortfall * net_share
-            if key in history_by_key:
+            if key in history_by_key and cfg.history_fallback:
                 shares = _composition(history_by_key[key])
                 part = _history_component(key, billed, shares, cfg)
             elif key[1] in pools:

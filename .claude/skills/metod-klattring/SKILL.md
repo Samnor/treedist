@@ -30,7 +30,9 @@ The point is a trail of small, explained decisions, not one big rewrite.
    the noise by two standard errors and gains at least 0.05.
 4. **Better:** make the new value the default in `config.py`, update `docs/metod.md` and the
    experiment table in `docs/metodjamforelse.md`, regenerate the flow report with
-   `uv run python scripts/flodesrapport.py`, run the tests, and commit with a message that
+   `uv run python scripts/flodesrapport.py`, save the new standard with
+   `uv run python scripts/modell.py spara standard-<date> --beskrivning "..." --utvardera` so the
+   previous one stays reachable, run the tests, and commit with a message that
    starts `Klättring:`. Then rerun `compare` with no `--set` once, to confirm the new default is
    the new baseline. The step stays in the log.
    **Not better:** revert the code (`git checkout -- src tests`), keep the log entry, and add a

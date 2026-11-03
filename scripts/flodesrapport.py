@@ -429,6 +429,7 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"Inga leveransfiler i {args.data}")
     report = build(periods, load_config(args.config), None if args.kalla else args.data.resolve(),
                    args.kalla.resolve() if args.kalla else None)
+    report["modell"] = args.config.stem if args.config else "standard"
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(render(report), encoding="utf-8")
     print(f"{len(periods)} månader, rapport i {args.out}")
@@ -682,7 +683,7 @@ function drawTrend() {
 
 function drawStatic() {
   document.getElementById("meta").textContent =
-    `Data ${R.data} · kod ${R.kod} · skapad ${R.skapad} · ${R.manader.length} månader körda i följd från tom liggare`;
+    `Modell ${R.modell} · data ${R.data} · kod ${R.kod} · skapad ${R.skapad} · ${R.manader.length} månader körda i följd från tom liggare`;
   const c = R.klattring, el = document.getElementById("climb");
   if (c) {
     let html = `<p class="note" style="font-size:13px">Simulerade flöden, 4 scenarier × 6 utvecklingsfrön × 12 månader. ` +

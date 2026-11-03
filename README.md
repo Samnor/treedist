@@ -73,6 +73,19 @@ borttagningar mot samma baslinje; varje steg får kosta högst 0,25 i poäng och
 uv run python scripts/climb.py forenkla donor_group_weight=1 'design_effect=100,pool_min_pairs=5'
 ```
 
+Sparade modeller ligger i [modeller/](modeller), en TOML-fil per modell som `--config` läser direkt, med kod,
+antal delar och resultat i tabellen `[modell]`. Byt modell genom att ange en annan fil, till exempel
+`--config modeller/enkel.toml`: 4 av 23 delar och 92 % av standardmodellens förbättring mot den naiva skattningen,
+men utan intervall, se [metodjämförelsen](docs/metodjamforelse.md#en-femtedel-av-delarna).
+
+```bash
+uv run python scripts/modell.py lista
+```
+
+```bash
+uv run python scripts/modell.py spara NAMN --beskrivning "vad som ändrats" --utvardera
+```
+
 [Flödesrapporten](docs/flodesrapport.html) visar demons månader steg för steg som en graf, från indata via liggaren,
 dragningen och säkerhetsklasserna till matriser, faktura och facit. Klicka på ett steg för detaljerna. Skapa den på
 nytt efter en ändring i metoden, eller för annan data med `--data` eller `--kalla` och `--perioder`:
