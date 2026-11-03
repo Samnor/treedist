@@ -49,8 +49,20 @@ After every three taken steps, and always before moving parameters into the defa
 `uv run python scripts/climb.py holdout`. It compares the best against today's defaults on
 eight control seeds that no decision has used. A structural step changes the defaults
 themselves, so check it against the settings that switch it off:
-`holdout --mot overlap_fifo=false`, one `--mot` per step since the last check. If the gain
+`holdout --mot <flag>=false`, one `--mot` per step since the last check. If the gain
 does not hold there, say so and undo the steps since the last check that held.
+
+## Simplifying
+
+A simplification removes a part instead of adding one, and is judged by what it costs, not
+what it gains. Put the removal behind a flag as usual and screen several at once with
+`uv run python scripts/climb.py forenkla <k=v[,k=v]> ...`: each costs at most 0.25 in score
+(`SIMPLIFY_TOLERANCE`), and a whole simplification climb at most 1.0 (`SIMPLIFY_BUDGET`) from
+where it started. Combine the acceptable ones and screen the combination, since removals that
+each widen or narrow the intervals add up. Check it with `holdout` with the combination saved
+as best, and accept a cost there within the budget. Then delete the code and the parameters,
+not just the flags: a removal that is only switched off has simplified nothing. Every result
+of the 2026-11-03 simplification is in the experiment table in `docs/metodjamforelse.md`.
 
 ## Rules
 
@@ -70,7 +82,7 @@ does not hold there, say so and undo the steps since the last check that held.
 - A comparison takes about a minute and a parameter round about fifteen; run long climbs in the
   background and do not poll.
 
-## Where the error is (2026-11-03, after `overlap_fifo`)
+## Where the error is (2026-11-03, after oldest-first draws; still true after the simplification)
 
 Swapping one part of the allocation for the truth, base scenario, development seeds: knowing
 exactly which logs left, in harvester classes, only takes the price error from 7.3 to 6.1. The

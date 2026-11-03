@@ -2,10 +2,8 @@
 
 Each draw re-samples what is not known:
 
-    composition    which parts of the harvest left, or a whole donor work order
-                   where none of its own data exists, plus sampling noise
-    diameter bias  a work order's harvester reads systematically high or low,
-                   moving volume between neighbouring diameter classes
+    composition    sampling noise around the allocated composition, or around a
+                   whole donor work order where none of its own data exists
     volume         delivery measurement error, independent per delivery plus an
                    error shared by all deliveries measured the same way
 
@@ -36,63 +34,17 @@ class Draws:
     total: dict[MatrixKey, np.ndarray]
 
 
-def _sample_part(
-    rng: np.random.Generator, blocks: np.ndarray, weights: np.ndarray, concentration: float, n: int
-) -> np.ndarray:
-    """Compositions of `n` random parts of a harvest made of `blocks`."""
-    gamma = rng.standard_gamma(weights * concentration, size=(n, len(blocks)))
-    totals = gamma.sum(axis=1, keepdims=True)
-    drawn = np.where(totals > 0, gamma / np.where(totals > 0, totals, 1.0), weights)
-    return drawn @ blocks
-
-
-def _sample_mean(rng: np.random.Generator, c: Component, n: int) -> np.ndarray:
-    if c.mixture is None:
-        return np.tile(c.q, (n, 1))
-    if c.mixture_concentration is None:
-        return c.mixture[rng.choice(len(c.mixture), size=n, p=c.mixture_weights)]
-    if c.donor_parts is None:
-        return _sample_part(rng, c.mixture, c.mixture_weights, c.mixture_concentration, n)
-    donors = rng.choice(len(c.mixture), size=n, p=c.mixture_weights)
-    out = np.empty((n, len(c.q)))
-    for donor in np.unique(donors):
-        drawn = donors == donor
-        blocks, weights = c.donor_parts[donor]
-        out[drawn] = _sample_part(rng, blocks, weights, c.mixture_concentration, int(drawn.sum()))
-    return out
-
-
 def _sample_composition(rng: np.random.Generator, c: Component, n: int) -> np.ndarray:
-    mean = _sample_mean(rng, c, n)
+    if c.donors is None:
+        mean = np.tile(c.q, (n, 1))
+    else:
+        mean = c.donors[rng.choice(len(c.donors), size=n, p=c.donor_weights)]
     if np.isinf(c.concentration) or len(c.q) == 1:
         return mean
     gamma = rng.standard_gamma(mean * c.concentration)
     totals = gamma.sum(axis=1, keepdims=True)
     # A tiny concentration can underflow every cell; fall back to the mean.
     return np.where(totals > 0, gamma / np.where(totals > 0, totals, 1.0), mean)
-
-
-def _shift_diameters(x: np.ndarray, widths_mm: np.ndarray, bias_mm: np.ndarray) -> np.ndarray:
-    """Move a share of each numeric class to its neighbour, `bias_mm` per draw."""
-    k = len(widths_mm)
-    if k == 0:
-        return x
-    up = np.clip(np.maximum(bias_mm, 0)[:, None] / widths_mm[None, :], 0, 1)[:, :, None]
-    down = np.clip(np.maximum(-bias_mm, 0)[:, None] / widths_mm[None, :], 0, 1)[:, :, None]
-
-    numeric = x[:, :k, :]
-    moved_up = numeric * up
-    moved_down = numeric * down
-    shifted = numeric - moved_up - moved_down
-    shifted[:, 1:, :] += moved_up[:, :-1, :]
-    shifted[:, :-1, :] += moved_down[:, 1:, :]
-    # The outer classes have no neighbour to give to.
-    shifted[:, -1, :] += moved_up[:, -1, :]
-    shifted[:, 0, :] += moved_down[:, 0, :]
-
-    out = x.copy()
-    out[:, :k, :] = shifted
-    return out
 
 
 def _volume_errors(
@@ -131,17 +83,12 @@ def monte_carlo(
         grid = grids[key]
         d_index = {d: i for i, d in enumerate(grid.diameters)}
         l_index = {l: i for i, l in enumerate(grid.lengths)}
-        harvester = np.zeros((n, *grid.shape))
-        other = np.zeros((n, *grid.shape))
-
+        x = np.zeros((n, *grid.shape))
         for c in parts:
             rows = [d_index[d] for d in c.diameters]
             cols = [l_index[l] for l in c.lengths]
-            target = harvester if c.harvester_based else other
-            target[:, rows, cols] += _sample_composition(rng, c, n) * c.volume
+            x[:, rows, cols] += _sample_composition(rng, c, n) * c.volume
 
-        bias_mm = rng.normal(0, cfg.diameter_bias_sd_mm, n)
-        x = _shift_diameters(harvester, grid.diameter_widths_mm(), bias_mm) + other
         fixed[key] += x
         # A load reversed within the month leaves no measured volume, and so no volume error.
         error = volume_errors.get((ao, sortiment, destination), np.zeros(n))

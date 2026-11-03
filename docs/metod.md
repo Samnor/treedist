@@ -26,10 +26,10 @@ För varje kombination av arbetsorder och handelssortiment (AO × sortiment):
    per diameter, längd och avverkningsmånad.
 2. **Korrigering.** Finns ett underskott från tidigare månad och har skördardata kommit in, tas den volymen ur
    lagret. Skillnaden mot den preliminära fördelningen bokas som korrigering.
-3. **Dragning.** Bruttovolymen tas ur lagret, eftersom den lämnat avlägget. Varje leverans drar pro rata ur virke som
-   var avverkat och skotat på leveransdatumet (`dated`). Utan datum räknas leveransen till månadens slut. Började
-   leveranserna innan det sista i lagret var avverkat följer lastbilarna skördaren, och då går det äldsta virket först
-   (`overlap_fifo`). Det är vanligt på sommaren, när köparna vill ha sågtimret fram inom ett par veckor.
+3. **Dragning.** Bruttovolymen tas ur lagret, eftersom den lämnat avlägget. Började månadens leveranser innan det
+   sista i lagret var avverkat följer lastbilarna skördaren, och då går det äldsta virket först. Det är vanligt på
+   sommaren, när köparna vill ha sågtimret fram inom ett par veckor. Annars är lagret blandat på avlägget och
+   varje klass ger samma andel. Utan leveransdatum räknas leveransen till månadens slut.
 4. **Destination.** Alla destinationer delar liggare, eftersom en arbetsorders lager är samma virke vart det än går.
    Levererad volym hamnar hos mottagningsplatsen om den finns, annars hos den planerade destinationen. Går en arbetsorder
    till flera destinationer delas fördelningen efter nettovolym.
@@ -49,13 +49,20 @@ För varje kombination av arbetsorder och handelssortiment (AO × sortiment):
 
 | Klass | Fördelningens källa | När |
 |---|---|---|
-| S1 | AO:ns eget olevererade skördarlager | `V` ryms i lagret, med toleransen `coverage_tolerance` |
-| S2 | AO:ns hela skördehistorik | Mer levererat än lagret räcker till |
+| S1 | AO:ns eget olevererade skördarlager | Så mycket som ryms i lagret |
+| S2 | AO:ns hela skördehistorik | Det som levererats utöver lagret |
 | S3 | Andra arbetsordrar i samma sortiment, viktade efter likhet | Skördardata saknas för AO:n |
 | S4 | Inget, bokas på klassen `OKÄND` | Skördardata saknas för hela sortimentet |
 
 S2, S3 och S4 är preliminära. De ligger kvar som underskott i liggaren och korrigeras när skördardata kommer.
 S4 får bara ett pris om prislistan har en uttrycklig regel för det, annars flaggas volymen och debiteras inte.
+
+### Lånad fördelning, S3
+
+Virke utan skördardata får ett viktat medelvärde av andra arbetsordrars skörd i samma sortiment. Varje givare väger
+efter sin volym, gånger 16 vid samma destination och gånger 4 vid samma grupp. Har arbetsordern ett annat sortiment med
+skördardata väger givarna också efter hur nära de ligger den medeldiameter som det sortimentet förutsäger: ett bestånd
+med grov gran har ofta grov tall. Bandbredden är förutsägelsens skattade fel, minst `donor_sibling_cm`.
 
 ### Varför volymen på fakturan alltid stämmer
 
@@ -65,24 +72,17 @@ upp. Osäkerheten flyttar alltså värde mellan produkter men aldrig volym in el
 
 ## Osäkerhet
 
-Varje dragning i Monte Carlo-simuleringen slumpar om det som inte är känt:
+Varje dragning i Monte Carlo-simuleringen slumpar om två saker.
 
-- **Fördelning, S1.** Vilka delar av skörden som åkte: fördelningar för 5-dagarsblock av skörden blandas med Dirichletvikter.
-  Skillnaderna inom arbetsordern hämtas alltså ur skördardata. Ovanpå det kommer urvalsbrus, styrt av `design_effect`.
-  Ändlighetskorrektionen tar bort urvalsosäkerheten bara om hela skörden levereras samma månad. En rest i en senare månad
-  är lika osäker som första delen. Skördarens klassningsfel finns alltid kvar, ett per stock.
-- **Fördelning, S2.** Mer levererat än lagret räcker till är oftast en del av beståndet som skördardatan ännu inte
-  visar. En dragning är därför en slumpad del av arbetsorderns skörd, med skördeblock som för S1. Hur stor del som
-  antas stå kvar anger `pool_remaining_share`.
-- **Fördelning, S3.** En slumpad annan arbetsorder, och sedan en slumpad del av dess skörd, som om den levererat.
-  Bestånd skiljer sig genom att hela fördelningen förskjuts, så närliggande klasser samvarierar, vilket en Dirichlet
-  inte kan uttrycka. Givarens vikt är volymen, gånger 16 vid samma destination, gånger 4 vid samma grupp, och en
-  normalfördelad vikt runt den medeldiameter som arbetsorderns andra sortiment förutsäger. Bandbredden är
-  förutsägelsens skattade fel, minst `donor_sibling_cm`. En fast, smalare bandbredd gav nästan samma skattning men för
-  snäva intervall, eftersom givarna då liknade förutsägelsen mer än det saknade beståndet gör. Med färre än
-  `pool_min_donors` arbetsordrar används Dirichlet.
-- **Diameterbias.** Skördaren på en arbetsorder mäter systematiskt högt eller lågt, vilket flyttar volym till
-  grannklasser.
+- **Fördelning.** Dirichletbrus kring den fördelning som bokades. Bruset är så stort som urvalet motiverar:
+  - **S1.** Antalet stockar delat med `design_effect`, eftersom stockar åker i vältor från samma del av beståndet,
+    är det effektiva antalet oberoende stockar. Ändlighetskorrektionen gör bruset mindre ju större del av skörden som
+    levererats, och tar bort det bara om hela skörden levereras samma månad. En rest i en senare månad är lika osäker
+    som första delen. Skördarens klassning finns alltid kvar, ett fel per stock.
+  - **S2.** Samma sak, med antagandet att `pool_remaining_share` av skörden ännu inte syns i skördardata.
+  - **S3.** En slumpad givare, dragen med samma vikter som skattningen, och sedan brus som för S2. Bestånd skiljer
+    sig genom att hela fördelningen förskjuts, så närliggande klasser samvarierar, vilket en Dirichlet kring
+    medelvärdet inte kan uttrycka.
 - **Volym.** Per leverans `unit_cv / sqrt(antal_matenheter)`, plus ett fel per metod som delas av alla månadens
   leveranser.
 
@@ -95,21 +95,14 @@ Två spridningar redovisas. `std_fordelning` håller volymen fast och är osäke
 |---|---|---|
 | `harvester_bias` | 0,009 | Biometria 2025: skördaren överskattar 0,9 % under bark (1,2 % på bark), tabell 6–7 |
 | `handling_loss` | 0,01 | Antagande. Biometria 2026 räknar i ett exempel med 1 % färre stockar framme |
-| `coverage_tolerance` | 0,03 | Antagande, av samma storleksordning som stamvisa mätfel |
-| `design_effect` | 40 | Inställd mot simulatorn. Var 20 innan simulatorn fick säsongens lagringstider |
-| `cluster_volume` | 2400 | Inställd mot simulatorn: hur mycket volym som rör sig tillsammans |
-| `mixture_min_concentration` | 0,25 | Inställd mot simulatorn |
+| `design_effect` | 200 | Inställd mot simulatorn, den enda parametern som styr bredden på intervallen för S1–S3 |
 | `donor_destination_weight` | 16 | Inställd mot simulatorn |
 | `donor_group_weight` | 4 | Inställd mot simulatorn |
 | `donor_sibling_cm` | 1,5 | Inställd mot simulatorn. Minsta bandbredd, annars skattas den ur data |
+| `pool_min_pairs` | 3 | Antagande: så många arbetsordrar med båda sortimenten krävs för att använda syskonsortimentet |
 | `pool_remaining_share` | 0,5 | Antagande: en arbetsorder utan skördardata levererar halva skörden samma månad |
-| `stock_block_days` | 5 | Antagande |
-| `min_forwarding_days` | 2 | Antagande |
+| `default_log_volume` | 0,25 | Antagande: medelstockvolym när skördardata saknar antal stockar |
 | `intervals` | på | Av ger profilen enkel: samma faktura och matriser, utan Monte Carlo-intervall |
-| `overlap_fifo` | på | Klättring: prisfel 11,9 → 10,9 kr/m3fub i snitt över klättringens scenarier. Bygger på antagandet att lastbilar som börjar under skörden tar avläggen i skördeordning |
-| `pool_concentration_default` | 20 | Antagande |
-| `pool_min_donors` | 5 | Antagande |
-| `diameter_bias_sd_mm` | 2 | Antagande |
 | `stockmatning` | `unit_cv` 0,043 | Biometria 2025, tabell 1. Systematiskt fel härlett ur KI ±0,1 % |
 | `travmatning` | `unit_cv` 0,051 | Biometria 2025, tabell 1, sågbara. Systematiskt fel härlett ur KI ±0,3 % |
 | `vagning` | `unit_cv` 0,069 | Antagande: nivån för travmätt massaved i tabell 1, inte en vägningssiffra |
@@ -139,7 +132,7 @@ volymbalansen när arbetsordrar avslutas. Inget av detta är prövat på verklig
   sämsta stockarna som klassas ned, så timmerfakturan blir något för klen och den nedklassade volymen för grov. Utan
   `producerat_handelssortiment` syns omklassning bara som över- och underskott per sortiment i `avstamning_ao.csv`.
 - **Kvalitetsklasser ingår inte.** En produkt är sortiment, diameter och längd. Kvalitet måste ligga i sortimentet.
-- **Bara m3fub och inga krediterade leveranser.** Negativa leveransrader avvisas. Moms ingår inte i beloppen.
+- **Bara m3fub.** Moms ingår inte i beloppen.
 - **Korrigeringar räknas i bruttoskala.** Skillnaden mot netto är liten och volymen på korrigeringsrader går jämnt ut.
 
 ## Källor

@@ -63,7 +63,14 @@ uv run python scripts/climb.py params --budget 30
 ```
 
 ```bash
-uv run python scripts/climb.py holdout --mot overlap_fifo=false
+uv run python scripts/climb.py holdout
+```
+
+En förenkling tar bort en del i stället för att lägga till en, och får kosta lite. `forenkla` prövar flera
+borttagningar mot samma baslinje; varje steg får kosta högst 0,25 i poäng och en hel klättring högst 1,0.
+
+```bash
+uv run python scripts/climb.py forenkla donor_group_weight=1 'design_effect=100,pool_min_pairs=5'
 ```
 
 Kör testerna:

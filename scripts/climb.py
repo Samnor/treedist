@@ -59,6 +59,10 @@ NOMINAL = 0.90
 # A change must beat the noise between seeds by this many standard errors, and gain at least this much.
 SIGNIFICANCE = 2.0
 MIN_GAIN = 0.05
+# A simplification may cost at most this much in score per step. The budget for a
+# whole simplification climb is SIMPLIFY_BUDGET, counted from where it started.
+SIMPLIFY_TOLERANCE = 0.25
+SIMPLIFY_BUDGET = 1.0
 
 # Parameters the climb may move: step kind, step, lower and upper bound. Calibration from
 # published sources (harvester_bias, handling_loss) and the volume error model stay out:
@@ -67,13 +71,9 @@ PARAMS = {
     "donor_destination_weight": ("mul", 2.0, 1.0, 256.0),
     "donor_group_weight": ("mul", 2.0, 1.0, 64.0),
     "donor_sibling_cm": ("mul", 1.5, 0.25, 8.0),
-    "coverage_tolerance": ("add", 0.01, 0.0, 0.10),
-    "min_forwarding_days": ("add", 1, 0, 7),
-    "design_effect": ("mul", 1.5, 5.0, 200.0),
-    "cluster_volume": ("mul", 2.0, 300.0, 20000.0),
-    "mixture_min_concentration": ("mul", 2.0, 0.05, 5.0),
+    "pool_min_pairs": ("add", 1, 2, 10),
+    "design_effect": ("mul", 1.5, 5.0, 1000.0),
     "pool_remaining_share": ("add", 0.15, 0.1, 0.9),
-    "stock_block_days": ("add", 2, 1, 15),
 }
 
 
@@ -243,6 +243,26 @@ def compare(sets: list[str], note: str, take: bool) -> None:
         print("Sparad som bäst.")
 
 
+def simplify(candidates: list[str], note: str) -> None:
+    """Screen removals against the best: each `candidate` is a comma separated set of k=v.
+
+    A removal is acceptable when it costs at most SIMPLIFY_TOLERANCE in score.
+    Unlike `compare`, nothing has to be gained: the point is fewer parts.
+    """
+    best = load_best()["overrides"]
+    changes = [_parse(c.split(",")) for c in candidates]
+    with ProcessPoolExecutor() as pool:
+        base, *results = evaluate(pool, [best, *({**best, **c} for c in changes)], DEV_SEEDS)
+    print(f"Bäst hittills: {summary(base)}")
+    for change, result in zip(changes, results):
+        verdict = judge(base, result)
+        acceptable = verdict["diff"] <= SIMPLIFY_TOLERANCE
+        log({"typ": "forenkling", "andring": change, "anteckning": note, "kandidat": {**best, **change},
+             **summary(result), **verdict, "godtagbar": acceptable})
+        print(f"{change}: {summary(result)}  skillnad {verdict['diff']:+.3f} ± {verdict['se']:.3f}"
+              f" -> {'godtagbar' if acceptable else 'för dyr'}  {verdict['per_scenario']}")
+
+
 def holdout(against: list[str]) -> None:
     """The best against the defaults, or against `against`: the settings that undo the steps to check."""
     best = load_best()["overrides"]
@@ -279,6 +299,9 @@ def main() -> None:
     hold = commands.add_parser("holdout", help="Bästa mot standardvärden på kontrollfrön")
     hold.add_argument("--mot", action="append", default=[], metavar="NYCKEL=VÄRDE",
                       help="Jämför i stället mot detta, t.ex. strukturella steg avstängda")
+    simp = commands.add_parser("forenkla", help="Pröva borttagningar som får kosta lite")
+    simp.add_argument("kandidater", nargs="+", metavar="NYCKEL=VÄRDE[,NYCKEL=VÄRDE]")
+    simp.add_argument("--note", default="")
     commands.add_parser("status", help="Visa bästa och senaste försöken")
     args = parser.parse_args()
 
@@ -288,6 +311,8 @@ def main() -> None:
         compare(args.set, args.note, args.take)
     elif args.command == "holdout":
         holdout(args.mot)
+    elif args.command == "forenkla":
+        simplify(args.kandidater, args.note)
     else:
         status()
 

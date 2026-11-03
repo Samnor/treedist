@@ -14,7 +14,7 @@ def results(scores):
 def test_steps_stay_within_bounds():
     assert _step("donor_destination_weight", 16.0, 1.0, 1) == 32.0
     assert _step("donor_group_weight", 1.0, 1.0, -1) == 1.0
-    assert _step("min_forwarding_days", 0, 1.0, -1) == 0
+    assert _step("pool_min_pairs", 2, 1.0, -1) == 2
     assert _step("pool_remaining_share", 0.5, 0.5, 1) == 0.575
 
 

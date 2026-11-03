@@ -78,6 +78,31 @@ Alla idéer prövades på egna utvecklingsfrön innan slutkontrollen. Prisfel i 
 | Klättring: smalare blandning av skördeblock när lastbilarna följde skördaren | Poäng −0,02 ± 0,07, värdetäckning 92,1 → 91,5 % | Förkastad |
 | Parameterklättring efter föregående steg, 24 kandidater | Inget steg slog bruset | Parametrarna ligger kvar i ett lokalt optimum |
 
+### Förenkling
+
+Därefter klättrade metoden åt andra hållet: varje del prövades borttagen och fick kosta högst 0,25 i poäng, och hela
+förenklingen högst 1,0. Poängen är prisfel plus 0,3 per procentenhet som värdetäckningen avviker från 90 %. Skillnad i
+poäng mot metoden före förenklingen, på utvecklingsfröna, där plus är sämre.
+
+| Borttagen del | Skillnad i poäng | Värdetäckning | Beslut |
+|---|---|---|---|
+| Datum per leverans och skotningstid; kvar är bara äldsta först om leveranserna började under skörden, annars pro rata | ±0,000 | 92,1 % | Borttagen. Exakt samma resultat |
+| Tolerans på 3 % innan överleverans blir S2 | +0,06 | 92,2 % | Borttagen. Prisfel oförändrat |
+| Delar av givarens skörd i S3; kvar är en hel givare per dragning | +0,00 | 90,6 % | Borttagen |
+| Diameterbias i Monte Carlo | −0,02 | 88,5 % | Borttagen tillsammans med skördeblocken |
+| Skördeblock i S1 och S2 | +0,68 | 85,4 % | För dyr ensam. Borttagen när `design_effect` samtidigt gick från 40 till 200 |
+| Dirichlet med fast styrka när färre än fem givare finns, prövad efter de andra | ±0,000 | 91,2 % | Borttagen |
+| Syskonsortimentet i givarvikten | +0,48 | 92,1 % | Behållen |
+| Gruppvikten | +0,39 | 92,2 % | Behållen |
+| Destinationsvikten | +1,66, och +4,0 kr/m3fub med 30 % utan skördardata | 91,6 % | Behållen |
+| Pro rata i stället för äldsta först | +1,69 | 89,9 % | Behållen |
+| **Allt borttaget ovan, med `design_effect` 200** | **+0,14** när koden tagits bort (+0,08 bakom flaggor; skillnaden är att slumptalsföljden ändrades), på kontrollfröna +0,14 ± 0,18 | 90,8 %, på kontrollfröna 90,5 % | **Standard sedan 2026-11-03** |
+
+Prisfelet är detsamma som före förenklingen, 10,9 kr/m3fub i snitt över klättringens scenarier, eftersom alla
+borttagna delar utom toleransen bara rörde osäkerheten. Det som försvann är tio parametrar och tre lager i Monte
+Carlo-modellen: skördeblock, delar av givare och diameterbias. Intervallen styrs nu av en parameter, `design_effect`.
+Fakturorna i demot blev identiska på öret.
+
 ## För- och nackdelar
 
 | | Fördelar | Nackdelar |
