@@ -50,6 +50,7 @@ def run_cli(sim, state, out, period):
             "--leverans", str(sim / f"leverans_{period}.csv"),
             "--prislista", str(sim / "prislista.csv"),
             "--avslutade-ao", str(sim / f"avslutade_ao_{period}.csv"),
+            "--arbetsordrar", str(sim / "arbetsordrar.csv"),
             "--state", str(state),
             "--out", str(out / period),
         ]
@@ -68,12 +69,15 @@ def test_cli_closes_consecutive_months(tmp_path):
     delivered = invoice[invoice["radtyp"] == "LEVERANS"]["volym_m3fub"].sum()
     assert delivered == pytest.approx(deliveries["volym_m3fub"].sum(), abs=0.002)
 
-    matrix = pd.read_csv(march / "matriser" / "GRAN_SAG" / "levererat.csv", index_col=0)
-    tiers = sum(
-        pd.read_csv(march / "matriser" / "GRAN_SAG" / f"levererat_{t}.csv", index_col=0)
-        for t in ("S1", "S2", "S3", "S4")
-    )
+    per_destination = invoice[invoice["radtyp"] == "LEVERANS"].groupby("destination")["volym_m3fub"].sum()
+    measured = deliveries.groupby("mottagningsplats")["volym_m3fub"].sum()
+    assert per_destination.to_dict() == pytest.approx(measured.to_dict(), abs=0.002)
+
+    folder = next((march / "matriser").glob("*/GRAN_SAG"))
+    matrix = pd.read_csv(folder / "levererat.csv", index_col=0)
+    tiers = sum(pd.read_csv(folder / f"levererat_{t}.csv", index_col=0) for t in ("S1", "S2", "S3", "S4"))
     assert (matrix - tiers).abs().max().max() < 0.01
+    assert len(list((march / "fakturor").glob("*.md"))) == len(per_destination)
 
     manifest = json.loads((march / "manifest.json").read_text())
     assert manifest["period"] == "2026-03"
@@ -92,12 +96,12 @@ def test_cli_rerun_of_latest_month_gives_the_same_invoice(tmp_path):
 
 def test_cli_reports_bad_input_without_traceback(tmp_path, capsys):
     sim, state, out = tmp_path / "sim", tmp_path / "state", tmp_path / "out"
-    main(["simulate", "--out", str(sim), "--manader", "1", "--seed", "6"])
-    bad = pd.read_csv(sim / "leverans_2026-01.csv")
+    main(["simulate", "--out", str(sim), "--manader", "2", "--seed", "6"])
+    bad = pd.read_csv(sim / "leverans_2026-02.csv")
     bad.loc[0, "leveransdatum"] = "2030-01-01"
-    bad.to_csv(sim / "leverans_2026-01.csv", index=False)
-    assert run_cli(sim, state, out, "2026-01") == 1
-    assert "utanför perioden" in capsys.readouterr().err
+    bad.to_csv(sim / "leverans_2026-02.csv", index=False)
+    assert run_cli(sim, state, out, "2026-02") == 1
+    assert "efter perioden" in capsys.readouterr().err
     assert not state.exists()
 
 

@@ -6,6 +6,7 @@ input stops the run: these numbers end up on an invoice.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import pandas as pd
@@ -17,15 +18,26 @@ SORT = "handelssortiment"
 DIA = "diametergrupp"
 LEN = "langdgrupp"
 VOL = "volym_m3fub"
+BRUTTO = "brutto_m3fub"
+DEST = "destination"
 LOGS = "antal_stockar"
-VINTAGE = "avverkningsmanad"
+VINTAGE = "avverkningsdatum"
 TIER = "sakerhetsklass"
 
 NO_CLASS = "-"
+NO_DESTINATION = "-"
 UNKNOWN_CLASS = "OKÄND"
 
 HARVEST_REQUIRED = [AO, SORT, DIA, LEN, VOL]
-DELIVERY_REQUIRED = ["leverans_id", AO, SORT, "leveransdatum", VOL]
+DELIVERY_REQUIRED = [AO, SORT, VOL]
+
+
+@dataclass(frozen=True)
+class WorkOrders:
+    """What is known about work orders before any wood is measured."""
+
+    destinations: dict[str, str] = field(default_factory=dict)
+    groups: dict[str, str] = field(default_factory=dict)
 
 
 def group_sort_key(group: str) -> tuple[int, float, str]:
@@ -104,39 +116,70 @@ def validate_harvest(df: pd.DataFrame, period: str) -> pd.DataFrame:
             raise ValueError(f"{name}: ogiltigt avverkningsdatum på {int(dates.isna().sum())} rader")
         if (dates > end).any():
             raise ValueError(f"{name}: avverkningsdatum efter perioden {period}")
-        out[VINTAGE] = dates.dt.strftime("%Y-%m")
+        out[VINTAGE] = dates.dt.strftime("%Y-%m-%d")
     else:
-        out[VINTAGE] = period
+        # Without a date the wood counts as available the whole month.
+        out[VINTAGE] = start.strftime("%Y-%m-%d")
     # An empty row carries no distribution and would divide by zero downstream.
     return out[out[VOL] > 0].reset_index(drop=True)
 
 
-def validate_deliveries(df: pd.DataFrame, period: str, cfg: Config) -> pd.DataFrame:
+def validate_deliveries(
+    df: pd.DataFrame, period: str, cfg: Config, work_orders: WorkOrders | None = None
+) -> pd.DataFrame:
+    """Measured volumes per truck, or summed per work order and assortment.
+
+    `volym_m3fub` is the net volume that is paid for. Without `brutto_m3fub` the
+    gross equals the net. Without `leveransdatum` the rows count as delivered at
+    the end of the month. `mottagningsplats` is where the wood actually went;
+    without it a delivery counts as going to the work order's planned destination.
+    """
     name = "Leveransmätningar"
     _require_columns(df, DELIVERY_REQUIRED, name)
-    _require_keys(df, ["leverans_id", AO, SORT], name)
+    _require_keys(df, [AO, SORT], name)
 
     leaked = [c for c in (DIA, LEN) if c in df.columns]
     if leaked:
         raise ValueError(f"{name}: oväntade kolumner {leaked}; leveranser bär ingen klassinformation")
 
     out = df[DELIVERY_REQUIRED].copy()
-    for column in ("leverans_id", AO, SORT):
+    for column in (AO, SORT):
         out[column] = out[column].astype(str).str.strip()
     out[VOL] = _numeric(df, VOL, name)
 
-    duplicated = out["leverans_id"].duplicated()
-    if duplicated.any():
-        raise ValueError(f"{name}: dubblerat leverans_id: {out.loc[duplicated, 'leverans_id'].iloc[0]}")
+    out[BRUTTO] = _numeric(df, BRUTTO, name) if BRUTTO in df.columns else out[VOL]
+    if (out[VOL] > out[BRUTTO] + 1e-9).any():
+        raise ValueError(f"{name}: nettovolym större än bruttovolym")
 
-    dates = pd.to_datetime(df["leveransdatum"], errors="coerce")
-    start, end = period_bounds(period)
-    if dates.isna().any() or (dates < start).any() or (dates > end).any():
-        raise ValueError(f"{name}: leveransdatum saknas eller ligger utanför perioden {period}")
-    out["leveransdatum"] = dates
+    if "leverans_id" in df.columns:
+        out["leverans_id"] = df["leverans_id"].astype(str).str.strip()
+        # A truck may carry several assortments, or wood from several work orders.
+        duplicated = out.duplicated(["leverans_id", AO, SORT])
+        if duplicated.any():
+            raise ValueError(f"{name}: dubblerat leverans_id: {out.loc[duplicated, 'leverans_id'].iloc[0]}")
 
-    if "mottagningsplats" in df.columns and df["mottagningsplats"].nunique() > 1:
-        raise ValueError(f"{name}: flera mottagningsplatser i samma fil; kör en liggare per sågverk")
+    end = period_bounds(period)[1]
+    if "leveransdatum" in df.columns:
+        # A load transported late in one month may be accounted for in the next.
+        dates = pd.to_datetime(df["leveransdatum"], errors="coerce")
+        if dates.isna().any() or (dates > end).any():
+            raise ValueError(f"{name}: leveransdatum saknas eller ligger efter perioden {period}")
+        out["leveransdatum"] = dates
+    else:
+        out["leveransdatum"] = end
+
+    planned = (work_orders or WorkOrders()).destinations
+    if planned:
+        destination = out[AO].map(planned)
+    else:
+        destination = pd.Series(NO_DESTINATION, index=out.index, dtype=object)
+    if "mottagningsplats" in df.columns:
+        actual = df["mottagningsplats"].astype(object).str.strip()
+        destination = actual.where(actual.notna() & (actual != ""), destination)
+    if destination.isna().any():
+        missing = sorted(out.loc[destination.isna(), AO].unique())
+        raise ValueError(f"{name}: destination saknas för arbetsorder {missing[:5]}")
+    out[DEST] = destination.astype(object)
 
     if "matmetod" in df.columns:
         out["matmetod"] = df["matmetod"].fillna("okand").astype(str).str.strip().str.lower()
@@ -157,6 +200,21 @@ def validate_deliveries(df: pd.DataFrame, period: str, cfg: Config) -> pd.DataFr
 
 def read_csv(path: Path) -> pd.DataFrame:
     return pd.read_csv(path, dtype=str, keep_default_na=False, na_values=[""])
+
+
+def read_work_orders(path: Path | None) -> WorkOrders:
+    """Planned destination per work order, and optionally a comparable group."""
+    if path is None:
+        return WorkOrders()
+    df = read_csv(path)
+    _require_columns(df, [AO, DEST], str(path))
+    _require_keys(df, [AO, DEST], str(path))
+    keys = df[AO].astype(str).str.strip()
+    groups = {}
+    if "grupp" in df.columns:
+        labelled = df["grupp"].notna()
+        groups = dict(zip(keys[labelled], df.loc[labelled, "grupp"].astype(str).str.strip()))
+    return WorkOrders(dict(zip(keys, df[DEST].astype(str).str.strip())), groups)
 
 
 def read_closed_aos(path: Path | None) -> set[str]:

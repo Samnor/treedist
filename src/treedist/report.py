@@ -15,7 +15,7 @@ from .allocate import CERTAINTY_TIERS, TIER_NAMES
 from .config import Config
 from .invoice import invoice_total_kr
 from .pipeline import MonthOutput
-from .schema import DIA, LEN, SORT, VOL
+from .schema import DEST, DIA, LEN, SORT, VOL
 
 _ROUNDING = 3
 
@@ -26,7 +26,7 @@ def _slug(sortiment: str) -> str:
 
 def _long_matrices(output: MonthOutput) -> pd.DataFrame:
     frames = []
-    for sortiment, m in output.matrices.items():
+    for m in output.matrices.values():
         tables = {
             "levererat_m3fub": m.delivered,
             **{f"levererat_{t}_m3fub": m.by_tier[t] for t in CERTAINTY_TIERS},
@@ -44,14 +44,15 @@ def _long_matrices(output: MonthOutput) -> pd.DataFrame:
         combined = pd.DataFrame(
             {name: m.frame(values).stack(future_stack=True) for name, values in tables.items()}
         ).reset_index()
-        combined.insert(0, SORT, sortiment)
+        combined.insert(0, SORT, m.sortiment)
+        combined.insert(0, DEST, m.destination)
         frames.append(combined)
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
 def _write_matrices(output: MonthOutput, target: Path) -> None:
-    for sortiment, m in output.matrices.items():
-        folder = target / _slug(sortiment)
+    for m in output.matrices.values():
+        folder = target / _slug(m.destination) / _slug(m.sortiment)
         folder.mkdir(parents=True, exist_ok=True)
         tables = {
             "levererat": m.delivered,
@@ -71,23 +72,27 @@ def _write_matrices(output: MonthOutput, target: Path) -> None:
             m.frame(values).round(4 if name == "andel" else _ROUNDING).to_csv(folder / f"{name}.csv")
 
 
-def value_interval(output: MonthOutput) -> tuple[float, float] | None:
-    """90 % interval of the month's delivered value with volumes as measured."""
-    draws = [m.value_draws_fixed for m in output.matrices.values()]
+def value_interval(output: MonthOutput, destination: str) -> tuple[float, float] | None:
+    """90 % interval of a destination's delivered value with volumes as measured."""
+    draws = [m.value_draws_fixed for m in output.matrices.values() if m.destination == destination]
     if not draws:
         return None
     low, high = np.quantile(np.sum(draws, axis=0), [0.05, 0.95])
     return float(low), float(high)
 
 
-def warnings_for(output: MonthOutput) -> list[str]:
+def warnings_for(output: MonthOutput, destination: str | None = None) -> list[str]:
     notes = []
     invoice = output.invoice
+    allocation = output.step.allocation
+    if destination is not None:
+        invoice = invoice[invoice[DEST] == destination]
+        allocation = allocation[allocation[DEST] == destination]
     unpriced = invoice[~invoice["prissatt"].astype(bool)] if len(invoice) else invoice
     if len(unpriced):
         volume = unpriced["volym_m3fub"].sum()
         notes.append(f"{volume:.3f} m3fub saknar pris och är inte debiterat; komplettera prislistan eller invänta skördardata.")
-    tiers = output.step.allocation.groupby("sakerhetsklass")[VOL].sum()
+    tiers = allocation.groupby("sakerhetsklass")[VOL].sum()
     for tier in ("S3", "S4"):
         if tiers.get(tier, 0) > 0:
             notes.append(f"{tiers[tier]:.3f} m3fub är {tier} ({TIER_NAMES[tier]}); fördelningen är preliminär.")
@@ -101,11 +106,9 @@ def _markdown_table(df: pd.DataFrame) -> str:
     return "\n".join([header, rule, *rows])
 
 
-def _invoice_markdown(output: MonthOutput) -> str:
-    invoice = output.invoice
-    lines = [f"# Fakturaunderlag {output.step.period}", ""]
-    if invoice.empty:
-        return "\n".join([*lines, "Inga leveranser under perioden.", ""])
+def _invoice_markdown(output: MonthOutput, destination: str) -> str:
+    invoice = output.invoice[output.invoice[DEST] == destination]
+    lines = [f"# Fakturaunderlag {output.step.period}, {destination}", ""]
 
     shown = invoice.assign(
         volym_m3fub=invoice["volym_m3fub"].map(lambda v: f"{v:.3f}"),
@@ -122,22 +125,23 @@ def _invoice_markdown(output: MonthOutput) -> str:
     if len(corrected):
         lines.append(f"- Korrigering av tidigare månader: {corrected['belopp_kr'].sum():.2f} kr")
     lines.append(f"- **Att fakturera, exkl. moms: {invoice_total_kr(invoice):.2f} kr**")
-    interval = value_interval(output)
+    interval = value_interval(output, destination)
     if interval:
         lines.append(f"- 90 % intervall för leveransens värde vid mätt volym: {interval[0]:.0f}–{interval[1]:.0f} kr")
-    lines += ["", *[f"- OBS: {note}" for note in warnings_for(output)], ""]
+    lines += ["", *[f"- OBS: {note}" for note in warnings_for(output, destination)], ""]
     return "\n".join(lines)
 
 
 def _summary_markdown(output: MonthOutput) -> str:
     step = output.step
     rows = []
-    for sortiment, m in output.matrices.items():
+    for m in output.matrices.values():
         delivered = m.delivered.sum()
         tier_share = {t: m.by_tier[t].sum() / delivered if delivered > 0 else 0.0 for t in CERTAINTY_TIERS}
         rows.append(
             {
-                SORT: sortiment,
+                DEST: m.destination,
+                SORT: m.sortiment,
                 "levererat_m3fub": f"{delivered:.1f}",
                 "skordat_ra_m3fub": f"{m.harvested.sum():.1f}",
                 "utgaende_lager_m3fub": f"{m.closing_stock.sum():.1f}",
@@ -166,7 +170,10 @@ def write_month(output: MonthOutput, out_dir: Path, cfg: Config, inputs: dict[st
     output.step.corrections.round(6).to_csv(out_dir / "korrigeringar_ao_lang.csv", index=False)
     output.step.reconciliation.round(4).to_csv(out_dir / "avstamning_ao.csv", index=False)
     output.invoice.round(4).to_csv(out_dir / "faktura_rader.csv", index=False)
-    (out_dir / "faktura.md").write_text(_invoice_markdown(output), encoding="utf-8")
+    invoices = out_dir / "fakturor"
+    invoices.mkdir(exist_ok=True)
+    for destination in sorted(set(output.invoice[DEST])):
+        (invoices / f"{_slug(destination)}.md").write_text(_invoice_markdown(output, destination), encoding="utf-8")
     (out_dir / "sammanfattning.md").write_text(_summary_markdown(output), encoding="utf-8")
 
     manifest = {

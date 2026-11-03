@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 
 from .allocate import CERTAINTY_TIERS, MonthStep
-from .schema import DIA, LEN, SORT, TIER, VOL, group_sort_key, read_csv
+from .schema import DEST, DIA, LEN, SORT, TIER, VOL, group_sort_key, read_csv
 
 PRICE_COLUMNS = [SORT, "diameter_min", "diameter_max", "langd_min", "langd_max", "pris_kr_per_m3fub"]
 
@@ -28,6 +28,7 @@ class PriceRule:
     length_min: float | None
     length_max: float | None
     price_ore: int
+    destination: str | None = None
 
     @property
     def is_catch_all(self) -> bool:
@@ -49,6 +50,10 @@ def _in_range(group: str, low: float | None, high: float | None) -> bool:
     return (low is None or value >= low) and (high is None or value < high)
 
 
+def _destination(value: object) -> str | None:
+    return None if pd.isna(value) or str(value).strip() == "" else str(value).strip()
+
+
 def _bound(value: object) -> float | None:
     return None if pd.isna(value) or str(value).strip() == "" else float(str(value).replace(",", "."))
 
@@ -58,6 +63,7 @@ class PriceList:
 
     A rule without limits is a catch-all that only applies where nothing more
     specific does. Other overlaps are errors, since the price would be a guess.
+    Rules with a `destination` replace the general rules for that destination.
     """
 
     def __init__(self, rules: list[PriceRule]):
@@ -84,6 +90,7 @@ class PriceList:
                     _bound(row["langd_min"]),
                     _bound(row["langd_max"]),
                     int((price * 100).to_integral_value()),
+                    _destination(row.get(DEST)),
                 )
             )
         return cls(rules)
@@ -92,9 +99,12 @@ class PriceList:
     def read(cls, path: Path) -> PriceList:
         return cls.from_frame(read_csv(path))
 
-    def price_ore(self, sortiment: str, diameter: str, length: str) -> int | None:
+    def price_ore(self, sortiment: str, diameter: str, length: str, destination: str | None = None) -> int | None:
         """Price in öre per m3fub, or None if the product has no price."""
-        hits = [r for r in self.rules.get(sortiment, []) if r.matches(diameter, length)]
+        rules = self.rules.get(sortiment, [])
+        own = [r for r in rules if r.destination == destination and destination is not None]
+        general = [r for r in rules if r.destination is None]
+        hits = [r for r in (own or general) if r.matches(diameter, length)]
         specific = [r for r in hits if not r.is_catch_all]
         if len(specific) > 1:
             raise ValueError(f"Prislista: överlappande regler för {sortiment} d={diameter} l={length}")
@@ -116,16 +126,17 @@ def round_to_total(volumes: pd.Series) -> pd.Series:
 
 def _lines(volumes: pd.DataFrame, prices: PriceList, line_type: str) -> pd.DataFrame:
     rows = []
-    for sortiment, block in volumes.groupby(SORT, sort=True):
+    for (destination, sortiment), block in volumes.groupby([DEST, SORT], sort=True):
         litres = round_to_total(block.set_index([DIA, LEN])[VOL])
         for (diameter, length), amount in litres.items():
             if amount == 0:
                 continue
-            price = prices.price_ore(sortiment, diameter, length)
+            price = prices.price_ore(sortiment, diameter, length, destination)
             value = None if price is None else _amount_ore(int(amount), price)
             rows.append(
                 {
                     "radtyp": line_type,
+                    DEST: destination,
                     SORT: sortiment,
                     DIA: diameter,
                     LEN: length,
@@ -146,11 +157,11 @@ def _amount_ore(litres: int, price_ore: int) -> int:
 
 def build_invoice(step: MonthStep, prices: PriceList) -> pd.DataFrame:
     """Invoice lines for the month: delivered products, then corrections."""
-    delivered = step.allocation.groupby([SORT, DIA, LEN], as_index=False)[VOL].sum()
+    delivered = step.allocation.groupby([DEST, SORT, DIA, LEN], as_index=False)[VOL].sum()
     lines = [_lines(delivered, prices, "LEVERANS")]
 
     if len(step.corrections):
-        corrections = step.corrections.groupby([SORT, DIA, LEN], as_index=False)[VOL].sum()
+        corrections = step.corrections.groupby([DEST, SORT, DIA, LEN], as_index=False)[VOL].sum()
         corrections = corrections[corrections[VOL].abs() >= 0.0005]
         if len(corrections):
             lines.append(_lines(corrections, prices, "KORRIGERING"))
@@ -158,28 +169,28 @@ def build_invoice(step: MonthStep, prices: PriceList) -> pd.DataFrame:
     invoice = pd.concat([l for l in lines if len(l)], ignore_index=True) if any(len(l) for l in lines) else pd.DataFrame()
     if invoice.empty:
         return pd.DataFrame(
-            columns=["radtyp", SORT, DIA, LEN, "volym_m3fub", "pris_kr", "belopp_kr", "prissatt", *_share_columns()]
+            columns=["radtyp", DEST, SORT, DIA, LEN, "volym_m3fub", "pris_kr", "belopp_kr", "prissatt", *_share_columns()]
         )
 
     tiers = step.allocation.pivot_table(
-        index=[SORT, DIA, LEN], columns=TIER, values=VOL, aggfunc="sum", fill_value=0.0
+        index=[DEST, SORT, DIA, LEN], columns=TIER, values=VOL, aggfunc="sum", fill_value=0.0
     ).reindex(columns=list(CERTAINTY_TIERS), fill_value=0.0)
     shares = tiers.div(tiers.sum(axis=1), axis=0)
     shares.columns = _share_columns()
-    invoice = invoice.join(shares, on=[SORT, DIA, LEN])
+    invoice = invoice.join(shares, on=[DEST, SORT, DIA, LEN])
     # Corrections concern earlier months' deliveries, not this month's certainty.
     invoice.loc[invoice["radtyp"] != "LEVERANS", _share_columns()] = float("nan")
 
     order = invoice.assign(
         _d=invoice[DIA].map(group_sort_key), _l=invoice[LEN].map(group_sort_key), _t=invoice["radtyp"] != "LEVERANS"
-    ).sort_values(["_t", SORT, "_d", "_l"], kind="stable")
+    ).sort_values([DEST, "_t", SORT, "_d", "_l"], kind="stable")
     invoice = invoice.loc[order.index].reset_index(drop=True)
 
     invoice["volym_m3fub"] = invoice["volym_liter"] / 1000
     invoice["pris_kr"] = invoice["pris_ore"] / 100
     invoice["prissatt"] = invoice["pris_ore"].notna()
     invoice["belopp_kr"] = invoice["belopp_ore"].fillna(0) / 100
-    return invoice[["radtyp", SORT, DIA, LEN, "volym_m3fub", "pris_kr", "belopp_kr", "prissatt", *_share_columns()]]
+    return invoice[["radtyp", DEST, SORT, DIA, LEN, "volym_m3fub", "pris_kr", "belopp_kr", "prissatt", *_share_columns()]]
 
 
 def _share_columns() -> list[str]:

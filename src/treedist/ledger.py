@@ -16,15 +16,16 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
-from .schema import AO, DIA, LEN, LOGS, SORT, VINTAGE, VOL
+from .schema import AO, DEST, DIA, LEN, LOGS, SORT, VINTAGE, VOL
 
 STOCK_COLUMNS = [AO, SORT, DIA, LEN, VINTAGE, VOL, LOGS]
 HISTORY_COLUMNS = [AO, SORT, DIA, LEN, VOL]
-DEFICIT_COLUMNS = [AO, SORT, DIA, LEN, VOL]
+DEFICIT_COLUMNS = [AO, SORT, DEST, DIA, LEN, VOL]
 
-_TEXT_COLUMNS = {c: str for c in (AO, SORT, DIA, LEN, VINTAGE)}
+_TEXT_COLUMNS = {c: str for c in (AO, SORT, DEST, DIA, LEN, VINTAGE)}
 _PERIOD_DIR = re.compile(r"^\d{4}-\d{2}$")
 
 
@@ -85,41 +86,28 @@ def load_for_period(state_dir: Path, period: str) -> Ledger:
 
 
 def merge(frames: list[pd.DataFrame], keys: list[str], columns: list[str]) -> pd.DataFrame:
-    """Concatenate and sum volumes per key. NaN log counts stay NaN."""
+    """Concatenate and sum volumes per key."""
     frames = [f for f in frames if len(f)]
     if not frames:
         return _empty(columns)
     combined = pd.concat(frames, ignore_index=True)
-    aggregations = {VOL: "sum"}
+    grouped = combined.groupby(keys, sort=False)
+    summed = grouped[VOL].sum().to_frame()
     if LOGS in columns:
-        aggregations[LOGS] = lambda s: s.sum(min_count=len(s))
-    summed = combined.groupby(keys, sort=False, as_index=False).agg(aggregations)
-    return summed[columns]
+        summed[LOGS] = grouped[LOGS].sum(min_count=1)
+    return summed.reset_index()[columns]
 
 
-def take(block: pd.DataFrame, volume: float, policy: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Remove `volume` from a stock block, returning (taken, remaining).
-
-    Harvester data cannot say which logs left the landing. `proportional` takes
-    the same share of every class. `fifo` empties the oldest harvest month
-    first and is proportional within a month.
-    """
+def take(block: pd.DataFrame, volume: float) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Remove `volume` pro rata from a stock block, returning (taken, remaining)."""
     total = block[VOL].sum()
     if volume >= total:
         return block, block.iloc[0:0]
+    return split(block, np.full(len(block), volume / total))
 
-    if policy == "proportional":
-        fraction = pd.Series(volume / total, index=block.index)
-    else:
-        per_vintage = block.groupby(VINTAGE, sort=True)[VOL].sum()
-        fractions = {}
-        left = volume
-        for vintage, amount in per_vintage.items():
-            used = min(left, amount)
-            fractions[vintage] = used / amount
-            left -= used
-        fraction = block[VINTAGE].map(fractions).astype(float)
 
+def split(block: pd.DataFrame, fraction: np.ndarray) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Divide each row of a stock block into (taken, remaining) by `fraction`."""
     taken = block.assign(**{VOL: block[VOL] * fraction, LOGS: block[LOGS] * fraction})
     remaining = block.assign(**{VOL: block[VOL] * (1 - fraction), LOGS: block[LOGS] * (1 - fraction)})
     return taken[taken[VOL] > 0], remaining[remaining[VOL] > 0]

@@ -7,6 +7,9 @@ from dataclasses import dataclass, field, fields
 from pathlib import Path
 
 
+DRAW_POLICIES = ("dated", "proportional")
+
+
 @dataclass(frozen=True)
 class VolumeMethod:
     """Error model for one delivery measurement method.
@@ -36,20 +39,28 @@ class Config:
     harvester_bias: float = 0.009
     handling_loss: float = 0.01
     coverage_tolerance: float = 0.03
-    draw_policy: str = "proportional"
-    design_effect: float = 10.0
+    draw_policy: str = "dated"
+    min_forwarding_days: int = 2
+    stock_block_days: int = 5
+    cluster_volume: float = 2400.0
+    mixture_min_concentration: float = 0.25
+    design_effect: float = 20.0
     default_log_volume: float = 0.25
     history_concentration: float = 50.0
     pool_concentration_default: float = 20.0
     pool_min_donors: int = 5
+    pool_min_pairs: int = 3
+    donor_destination_weight: float = 16.0
+    donor_group_weight: float = 4.0
+    donor_sibling_cm: float = 1.5
     diameter_bias_sd_mm: float = 2.0
     mc_draws: int = 2000
     seed: int = 20261102
     volume_methods: dict[str, VolumeMethod] = field(default_factory=default_volume_methods)
 
     def __post_init__(self) -> None:
-        if self.draw_policy not in ("proportional", "fifo"):
-            raise ValueError(f"draw_policy måste vara proportional eller fifo, inte {self.draw_policy!r}")
+        if self.draw_policy not in DRAW_POLICIES:
+            raise ValueError(f"draw_policy måste vara en av {DRAW_POLICIES}, inte {self.draw_policy!r}")
         if not 0 <= self.harvester_bias < 1 or not 0 <= self.handling_loss < 1:
             raise ValueError("harvester_bias och handling_loss måste ligga i [0, 1)")
         if self.mc_draws < 100:

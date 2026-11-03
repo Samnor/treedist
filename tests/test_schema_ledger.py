@@ -4,7 +4,8 @@ from conftest import delivery_frame, harvest_frame
 
 from treedist.allocate import close_month
 from treedist.ledger import Ledger, load_for_period
-from treedist.schema import sorted_groups, validate_deliveries, validate_harvest
+from treedist.config import Config
+from treedist.schema import WorkOrders, sorted_groups, validate_deliveries, validate_harvest
 
 
 def harvest_row(**overrides):
@@ -60,12 +61,17 @@ def test_harvest_dated_after_period_is_rejected():
 
 def test_harvest_month_follows_the_date_not_the_report():
     harvest = validate_harvest(harvest_row(avverkningsdatum="2025-11-20"), "2026-01")
-    assert harvest["avverkningsmanad"].iloc[0] == "2025-11"
+    assert harvest["avverkningsdatum"].iloc[0] == "2025-11-20"
 
 
-def test_delivery_outside_period_is_rejected(cfg):
-    with pytest.raises(ValueError, match="utanför perioden"):
+def test_delivery_after_period_is_rejected(cfg):
+    with pytest.raises(ValueError, match="efter perioden"):
         validate_deliveries(delivery_row(leveransdatum="2026-02-01"), "2026-01", cfg)
+
+
+def test_delivery_transported_before_the_accounting_month_is_kept(cfg):
+    out = validate_deliveries(delivery_row(leveransdatum="2025-12-31"), "2026-01", cfg)
+    assert out["leveransdatum"].iloc[0] == pd.Timestamp("2025-12-31")
 
 
 def test_duplicate_delivery_is_rejected(cfg):
@@ -73,15 +79,48 @@ def test_duplicate_delivery_is_rejected(cfg):
         validate_deliveries(pd.concat([delivery_row(), delivery_row()]), "2026-01", cfg)
 
 
+def test_one_truck_may_carry_several_assortments(cfg):
+    mixed = pd.concat([delivery_row(), delivery_row(handelssortiment="GRAN")])
+    assert len(validate_deliveries(mixed, "2026-01", cfg)) == 2
+
+
 def test_delivery_with_class_columns_is_rejected(cfg):
     with pytest.raises(ValueError, match="klassinformation"):
         validate_deliveries(delivery_row(diametergrupp="14"), "2026-01", cfg)
 
 
-def test_several_mills_are_rejected(cfg):
-    frame = pd.concat([delivery_row(mottagningsplats="X"), delivery_row(leverans_id="L2", mottagningsplats="Y")])
-    with pytest.raises(ValueError, match="mottagningsplatser"):
-        validate_deliveries(frame, "2026-01", cfg)
+def test_net_above_gross_is_rejected(cfg):
+    with pytest.raises(ValueError, match="större än bruttovolym"):
+        validate_deliveries(delivery_row(brutto_m3fub="29"), "2026-01", cfg)
+
+
+def test_deliveries_summed_per_work_order_need_no_id_or_date(cfg):
+    summed = delivery_row().drop(columns=["leverans_id", "leveransdatum"])
+    out = validate_deliveries(summed, "2026-01", cfg)
+    assert out["leveransdatum"].iloc[0] == pd.Timestamp("2026-01-31")
+    assert out["brutto_m3fub"].iloc[0] == 30.0
+
+
+def test_delivery_goes_to_planned_destination():
+    out = validate_deliveries(delivery_row(), "2026-01", Config(), WorkOrders({"A": "SAG1"}))
+    assert out["destination"].iloc[0] == "SAG1"
+
+
+def test_actual_destination_overrides_the_plan():
+    frame = delivery_row(mottagningsplats="SAG2")
+    out = validate_deliveries(frame, "2026-01", Config(), WorkOrders({"A": "SAG1"}))
+    assert out["destination"].iloc[0] == "SAG2"
+
+
+def test_blank_actual_destination_falls_back_on_the_plan():
+    frame = delivery_row(mottagningsplats=" ")
+    out = validate_deliveries(frame, "2026-01", Config(), WorkOrders({"A": "SAG1"}))
+    assert out["destination"].iloc[0] == "SAG1"
+
+
+def test_work_order_without_destination_is_rejected():
+    with pytest.raises(ValueError, match="destination saknas"):
+        validate_deliveries(delivery_row(), "2026-01", Config(), WorkOrders({"B": "SAG1"}))
 
 
 def test_unknown_measurement_method_is_rejected(cfg):

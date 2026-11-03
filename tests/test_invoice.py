@@ -6,6 +6,7 @@ from treedist.allocate import close_month
 from treedist.invoice import PriceList, build_invoice, invoice_total_kr, round_to_total
 from treedist.ledger import Ledger
 from treedist.pipeline import run_month
+from treedist.schema import WorkOrders
 
 
 def rule_frame(rows):
@@ -79,6 +80,25 @@ def test_overlapping_rules_are_rejected():
     prices = PriceList.from_frame(rule_frame([("X", 14, 20, None, None, "600"), ("X", 18, 24, None, None, "700")]))
     with pytest.raises(ValueError, match="överlappande"):
         prices.price_ore("X", "18", "340")
+
+
+def test_each_destination_is_billed_its_own_measured_volume(cfg, prices):
+    harvest = harvest_frame("2026-01", [("A", "TALL", "14", "340", 100.0), ("B", "TALL", "26", "340", 100.0)])
+    known = WorkOrders({"A": "X", "B": "Y"})
+    deliveries = delivery_frame("2026-01", [("A", "TALL", 33.333), ("B", "TALL", 22.222)], cfg, work_orders=known)
+    output = run_month(Ledger.empty(), harvest, deliveries, prices, "2026-01", set(), cfg, known)
+    billed = output.invoice.groupby("destination")["volym_m3fub"].sum()
+    assert billed["X"] == pytest.approx(33.333, abs=1e-9)
+    assert billed["Y"] == pytest.approx(22.222, abs=1e-9)
+    assert set(output.matrices) == {("X", "TALL"), ("Y", "TALL")}
+
+
+def test_destination_price_replaces_the_general_price():
+    frame = rule_frame([("X", 14, None, None, None, "600"), ("X", 14, None, None, None, "700")])
+    frame["destination"] = [None, "SAG2"]
+    prices = PriceList.from_frame(frame)
+    assert prices.price_ore("X", "20", "340", "SAG1") == 60000
+    assert prices.price_ore("X", "20", "340", "SAG2") == 70000
 
 
 def test_length_rules_split_a_diameter_class():

@@ -19,13 +19,13 @@ def harvest_frame(period, rows):
     return validate_harvest(df, period)
 
 
-def delivery_frame(period, rows, cfg, method="travmatning"):
+def delivery_frame(period, rows, cfg, method="travmatning", work_orders=None):
     """rows: (ao, sortiment, volume)"""
     df = pd.DataFrame(rows, columns=["arbetsorder", "handelssortiment", "volym_m3fub"])
     df["leverans_id"] = [f"{period}-{i}" for i in range(len(df))]
     df["leveransdatum"] = f"{period}-15"
     df["matmetod"] = method
-    return validate_deliveries(df, period, cfg)
+    return validate_deliveries(df, period, cfg, work_orders)
 
 
 @pytest.fixture

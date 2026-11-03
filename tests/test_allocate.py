@@ -6,7 +6,7 @@ from conftest import delivery_frame, harvest_frame
 
 from treedist.allocate import close_month
 from treedist.ledger import Ledger
-from treedist.schema import DIA, SORT, TIER, VOL, validate_harvest
+from treedist.schema import DEST, DIA, SORT, TIER, VOL, WorkOrders, validate_harvest
 
 NO_HARVEST = [("X", "X", "14", "340", 0.0)]
 
@@ -98,13 +98,90 @@ def test_closing_a_work_order_writes_off_stock(cfg):
     assert step.ledger.stock.empty
 
 
-def test_fifo_draws_oldest_harvest_month_first(cfg):
-    fifo = replace(cfg, draw_policy="fifo")
-    january = harvest_frame("2026-01", [("A", "TALL", "14", "340", 50.0)])
-    first = close_month(Ledger.empty(), january, delivery_frame("2026-01", [], cfg), "2026-01", set(), fifo)
-    february = harvest_frame("2026-02", [("A", "TALL", "20", "340", 50.0)])
-    second = close_month(first.ledger, february, delivery_frame("2026-02", [("A", "TALL", 40.0)], cfg), "2026-02", set(), fifo)
-    assert by_class(second) == pytest.approx({"14": 40.0})
+def test_wood_cannot_leave_before_it_was_harvested(cfg):
+    df = pd.DataFrame(
+        {
+            "arbetsorder": ["A", "A"],
+            "handelssortiment": ["TALL", "TALL"],
+            "diametergrupp": ["14", "20"],
+            "langdgrupp": ["340", "340"],
+            "volym_m3fub": [100.0, 100.0],
+            "avverkningsdatum": ["2026-01-02", "2026-01-25"],
+        }
+    )
+    harvest = validate_harvest(df, "2026-01")
+    deliveries = delivery_frame("2026-01", [("A", "TALL", 40.0)], cfg)
+    step = close_month(Ledger.empty(), harvest, deliveries, "2026-01", set(), cfg)
+    assert by_class(step) == pytest.approx({"14": 40.0})
+
+
+def test_gross_leaves_stock_and_net_is_allocated(cfg):
+    harvest = harvest_frame("2026-01", [("A", "TALL", "14", "340", 100.0)])
+    deliveries = delivery_frame("2026-01", [("A", "TALL", 18.0)], cfg).assign(brutto_m3fub=20.0)
+    step = close_month(Ledger.empty(), harvest, deliveries, "2026-01", set(), cfg)
+    assert step.allocation[VOL].sum() == pytest.approx(18.0)
+    assert step.ledger.stock[VOL].sum() == pytest.approx(80.0)
+
+
+def test_groups_choose_comparable_work_orders(cfg):
+    rows = [(f"N{i}", "TALL", "14", "340", 100.0) for i in range(5)]
+    rows += [(f"S{i}", "TALL", "30", "340", 100.0) for i in range(5)]
+    groups = {**{f"N{i}": "norra" for i in range(5)}, **{f"S{i}": "sodra" for i in range(5)}, "NY": "sodra"}
+    deliveries = delivery_frame("2026-01", [("NY", "TALL", 10.0)], cfg)
+    known = WorkOrders(groups=groups)
+    step = close_month(Ledger.empty(), harvest_frame("2026-01", rows), deliveries, "2026-01", set(), cfg, known)
+    assert by_class(step)["30"] == pytest.approx(10.0 * 4 / 5)
+
+
+def test_destination_chooses_comparable_work_orders(cfg):
+    rows = [(f"K{i}", "TALL", "14", "340", 100.0) for i in range(5)]
+    rows += [(f"G{i}", "TALL", "30", "340", 100.0) for i in range(5)]
+    planned = {**{f"K{i}": "KLEN" for i in range(5)}, **{f"G{i}": "GROV" for i in range(5)}, "NY": "GROV"}
+    known = WorkOrders(destinations=planned)
+    deliveries = delivery_frame("2026-01", [("NY", "TALL", 10.0)], cfg, work_orders=known)
+    step = close_month(Ledger.empty(), harvest_frame("2026-01", rows), deliveries, "2026-01", set(), cfg, known)
+    assert by_class(step)["30"] == pytest.approx(10.0 * 16 / 17)
+    assert set(step.allocation[DEST]) == {"GROV"}
+
+
+def test_other_assortment_of_the_work_order_chooses_donors(cfg):
+    rows = []
+    for i, diameter in enumerate(["14", "20", "26", "32", "38", "14", "20", "26", "32", "38"]):
+        rows.append((f"D{i}", "TALL", diameter, "340", 100.0))
+        rows.append((f"D{i}", "GRAN", diameter, "340", 100.0))
+    rows.append(("NY", "GRAN", "32", "340", 100.0))
+    deliveries = delivery_frame("2026-01", [("NY", "TALL", 10.0)], cfg)
+    step = close_month(Ledger.empty(), harvest_frame("2026-01", rows), deliveries, "2026-01", set(), cfg)
+    assert by_class(step)["32"] == pytest.approx(10.0, abs=0.1)
+
+
+def test_one_work_order_split_between_destinations_shares_its_stock(cfg):
+    harvest = harvest_frame("2026-01", [("A", "TALL", "14", "340", 60.0), ("A", "TALL", "20", "340", 40.0)])
+    deliveries = delivery_frame("2026-01", [("A", "TALL", 30.0), ("A", "TALL", 10.0)], cfg)
+    deliveries[DEST] = ["X", "Y"]
+    step = close_month(Ledger.empty(), harvest, deliveries, "2026-01", set(), cfg)
+    per_destination = step.allocation.groupby(DEST)[VOL].sum()
+    assert per_destination["X"] == pytest.approx(30.0)
+    assert per_destination["Y"] == pytest.approx(10.0)
+    assert step.ledger.stock[VOL].sum() == pytest.approx(60.0)
+
+
+def test_correction_follows_the_destination_of_the_delivery(cfg):
+    january = harvest_frame("2026-01", [("B", "TALL", "20", "340", 100.0)])
+    deliveries = delivery_frame("2026-01", [("A", "TALL", 10.0)], cfg)
+    deliveries[DEST] = "X"
+    first = close_month(Ledger.empty(), january, deliveries, "2026-01", set(), cfg)
+    february = harvest_frame("2026-02", [("A", "TALL", "30", "340", 50.0)])
+    second = close_month(first.ledger, february, delivery_frame("2026-02", [], cfg), "2026-02", set(), cfg)
+    assert set(second.corrections[DEST]) == {"X"}
+
+
+def test_fully_rejected_delivery_only_empties_stock(cfg):
+    harvest = harvest_frame("2026-01", [("A", "TALL", "14", "340", 100.0)])
+    deliveries = delivery_frame("2026-01", [("A", "TALL", 0.0)], cfg).assign(brutto_m3fub=20.0)
+    step = close_month(Ledger.empty(), harvest, deliveries, "2026-01", set(), cfg)
+    assert step.allocation.empty
+    assert step.ledger.stock[VOL].sum() == pytest.approx(80.0)
 
 
 def test_month_cannot_be_closed_twice(cfg):

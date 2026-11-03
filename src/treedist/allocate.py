@@ -21,8 +21,22 @@ import numpy as np
 import pandas as pd
 
 from .config import Config
-from .ledger import DEFICIT_COLUMNS, HISTORY_COLUMNS, STOCK_COLUMNS, Ledger, merge, take
-from .schema import AO, DIA, LEN, LOGS, SORT, TIER, UNKNOWN_CLASS, VINTAGE, VOL
+from .ledger import DEFICIT_COLUMNS, HISTORY_COLUMNS, STOCK_COLUMNS, Ledger, merge, split, take
+from .schema import (
+    AO,
+    BRUTTO,
+    DEST,
+    DIA,
+    LEN,
+    LOGS,
+    NO_DESTINATION,
+    SORT,
+    TIER,
+    UNKNOWN_CLASS,
+    VINTAGE,
+    VOL,
+    WorkOrders,
+)
 
 CERTAINTY_TIERS = ("S1", "S2", "S3", "S4")
 TIER_NAMES = {
@@ -37,11 +51,14 @@ TIER_NAMES = {
 class Component:
     """One allocated volume with its composition, input to the Monte Carlo.
 
-    The composition is drawn from Dirichlet(concentration * q), where an
-    infinite concentration means it is known (the whole stock was delivered).
-    With `donors`, one row per similar work order, a draw is instead a whole
-    donor's composition: stands differ by shifting the entire distribution, so
-    neighbouring classes move together in a way a Dirichlet cannot express.
+    A draw first picks a mean composition, then adds Dirichlet noise with
+    `concentration` around it (infinite when the composition is known).
+
+    Without `mixture` the mean is `q`. With it, the mean is built from rows of
+    whole compositions, because neighbouring classes move together: within a
+    work order the rows are parts of the harvest, weighted by Dirichlet with
+    `mixture_concentration`. Among work orders, where that is None, a draw is
+    one donor's composition.
     """
 
     ao: str
@@ -53,17 +70,20 @@ class Component:
     q: np.ndarray
     concentration: float
     harvester_based: bool
-    donors: np.ndarray | None = None
-    donor_weights: np.ndarray | None = None
+    mixture: np.ndarray | None = None
+    mixture_weights: np.ndarray | None = None
+    mixture_concentration: float | None = None
+    destination: str = NO_DESTINATION
 
 
 @dataclass(frozen=True)
 class Pool:
-    """Harvest history of one assortment, all work orders on the same cells."""
+    """Harvest history of comparable work orders, all on the same cells."""
 
-    shares: pd.Series
+    cells: pd.MultiIndex
     donors: np.ndarray
     donor_weights: np.ndarray
+    work_orders: tuple[str, ...] = ()
 
 
 @dataclass
@@ -75,6 +95,7 @@ class MonthStep:
     reconciliation: pd.DataFrame
     components: list[Component]
     ledger: Ledger
+    work_orders: WorkOrders
 
 
 def _composition(block: pd.DataFrame) -> pd.Series:
@@ -87,12 +108,38 @@ def _build_pool(history: pd.DataFrame) -> Pool:
     per_ao = history.pivot_table(index=AO, columns=[DIA, LEN], values=VOL, aggfunc="sum", fill_value=0.0)
     per_ao.columns.names = [DIA, LEN]
     totals = per_ao.sum(axis=1).to_numpy()
-    shares = per_ao.sum(axis=0) / totals.sum()
-    return Pool(shares, per_ao.to_numpy() / totals[:, None], totals / totals.sum())
+    return Pool(per_ao.columns, per_ao.to_numpy() / totals[:, None], totals / totals.sum(), tuple(per_ao.index))
 
 
-def _calibrated_harvest(harvest: pd.DataFrame, cfg: Config) -> pd.DataFrame:
-    return harvest.assign(**{VOL: harvest[VOL] * cfg.calibration})
+def _draw_fractions(block: pd.DataFrame, dated: pd.DataFrame, volume: float, cfg: Config) -> np.ndarray:
+    """Share of each stock row taken by the month's deliveries.
+
+    Wood cannot leave before it is harvested and forwarded, so each delivery
+    draws pro rata from what existed on its date. What dates cannot place, for
+    instance because a harvest date is off, is taken pro rata from the rest.
+    """
+    stock = block[VOL].to_numpy(dtype=float)
+    if cfg.draw_policy == "proportional":
+        return np.full(len(stock), min(volume / stock.sum(), 1.0))
+
+    left = stock.copy()
+    harvested = pd.to_datetime(block[VINTAGE]).to_numpy("datetime64[D]").astype(np.int64)
+    days = dated["leveransdatum"].to_numpy("datetime64[D]").astype(np.int64)
+    amounts = dated[BRUTTO].to_numpy(dtype=float) * volume / float(dated[BRUTTO].sum())
+
+    unplaced = 0.0
+    for j in np.argsort(days, kind="stable"):
+        weight = left * (harvested <= days[j] - cfg.min_forwarding_days)
+        available = weight.sum()
+        used = min(amounts[j], available)
+        if available > 0:
+            left -= weight * used / available
+        unplaced += amounts[j] - used
+
+    remaining = left.sum()
+    if unplaced > 1e-12 and remaining > 0:
+        left *= max(1 - unplaced / remaining, 0.0)
+    return np.clip(1 - left / stock, 0.0, 1.0)
 
 
 def _component(
@@ -111,25 +158,111 @@ def _component(
     )
 
 
-def _own_stock_concentration(taken: pd.DataFrame, delivered: float, available: float, cfg: Config) -> float:
-    """Precision of a draw from the stock, a cluster sample without replacement.
+def _stock_component(
+    key: tuple[str, str], taken: pd.DataFrame, volume: float, harvested: float, cfg: Config
+) -> Component:
+    """How well a draw from the stock is known.
 
-    Logs travel in piles, hence the design effect. The finite population
-    correction makes the composition certain once the whole stock is delivered.
+    What the month's deliveries leave out of the whole harvest is the finite
+    population correction, so sampling uncertainty disappears only if all of it
+    leaves in one month. Emptying a stock in a second month does not count: that
+    remainder is the harvest minus an uncertain first part. The harvester's
+    classing of each log stays uncertain, which caps the precision at one
+    independent error per log. Logs travel in piles and piles come from one
+    part of the stand, so sampling has two levels: which parts of the harvest
+    left, measured as compositions of harvest date blocks, and noise within them.
     """
-    remaining_share = 1 - delivered / available
+    shares = _composition(taken)
+    logs = taken[LOGS].sum(min_count=1)
+    log_count = logs if logs > 0 else volume / cfg.default_log_volume
+    remaining_share = max(1 - volume / harvested, 0.0)
     if remaining_share <= 1e-9:
-        return float("inf")
+        return _component(key, "S1", volume, shares, float(log_count), True)
 
-    logs = taken[LOGS].sum(min_count=len(taken))
-    mean_log = delivered / logs if logs > 0 else cfg.default_log_volume
-    effective = max(delivered / mean_log / cfg.design_effect, 1.0)
-    return max(effective / remaining_share - 1, 1.0)
+    effective = max(log_count / cfg.design_effect, 1.0)
+    concentration = min(max(effective / remaining_share - 1, 1.0), float(log_count))
+    part = _component(key, "S1", volume, shares, concentration, True)
+
+    days = pd.to_datetime(taken[VINTAGE]).to_numpy("datetime64[D]").astype(np.int64)
+    blocks = taken.assign(_block=days // cfg.stock_block_days)
+    if blocks["_block"].nunique() < 2:
+        return part
+    matrix = blocks.pivot_table(index="_block", columns=[DIA, LEN], values=VOL, aggfunc="sum", fill_value=0.0)
+    matrix = matrix.reindex(columns=shares.index, fill_value=0.0)
+    totals = matrix.sum(axis=1).to_numpy()
+    clusters = max(volume / cfg.cluster_volume, 1.0)
+    return replace(
+        part,
+        mixture=matrix.to_numpy() / totals[:, None],
+        mixture_weights=totals / totals.sum(),
+        mixture_concentration=max(clusters / remaining_share - 1, cfg.mixture_min_concentration),
+    )
 
 
 def _unknown_shares() -> pd.Series:
     index = pd.MultiIndex.from_tuples([(UNKNOWN_CLASS, UNKNOWN_CLASS)], names=[DIA, LEN])
     return pd.Series([1.0], index=index)
+
+
+def _mean_diameters(history: pd.DataFrame) -> dict[tuple[str, str], float]:
+    """Volume weighted mean diameter class per work order and assortment."""
+    diameters = pd.to_numeric(history[DIA], errors="coerce")
+    known = history.assign(_volume_cm=diameters * history[VOL])[diameters.notna()]
+    summed = known.groupby([AO, SORT], sort=False)[["_volume_cm", VOL]].sum()
+    return (summed["_volume_cm"] / summed[VOL]).to_dict()
+
+
+def _donor_weights(
+    key: tuple[str, str],
+    destination: str,
+    pool: Pool,
+    work_orders: WorkOrders,
+    mean_diameters: dict[tuple[str, str], float],
+    cfg: Config,
+) -> np.ndarray:
+    """How much each work order counts as a donor: soft nearest neighbours.
+
+    All donors take part, weighted by volume and by what is known to resemble
+    the work order. Its other assortments say most: a stand with thick spruce
+    tends to have thick pine, so the difference between the assortments on
+    other work orders predicts the missing one.
+    """
+    group = work_orders.groups.get(key[0])
+    same_destination = np.array([work_orders.destinations.get(a) == destination for a in pool.work_orders])
+    same_group = np.array([group is not None and work_orders.groups.get(a) == group for a in pool.work_orders])
+    weights = pool.donor_weights.copy()
+    weights *= np.where(same_destination, cfg.donor_destination_weight, 1.0)
+    weights *= np.where(same_group, cfg.donor_group_weight, 1.0)
+
+    siblings = sorted(s for a, s in mean_diameters if a == key[0] and s != key[1])
+    if siblings and cfg.donor_sibling_cm > 0:
+        sibling = siblings[0]
+        own = np.array([mean_diameters.get((a, key[1]), np.nan) for a in pool.work_orders])
+        other = np.array([mean_diameters.get((a, sibling), np.nan) for a in pool.work_orders])
+        both = ~np.isnan(own) & ~np.isnan(other)
+        if both.sum() >= cfg.pool_min_pairs:
+            expected = mean_diameters[(key[0], sibling)] + float((own[both] - other[both]).mean())
+            known = ~np.isnan(own)
+            weights[known] *= np.exp(-0.5 * ((own[known] - expected) / cfg.donor_sibling_cm) ** 2)
+    total = weights.sum()
+    return weights / total if total > 0 else pool.donor_weights
+
+
+def _pool_component(
+    key: tuple[str, str], volume: float, pool: Pool, weights: np.ndarray, cfg: Config
+) -> tuple[pd.Series, Component]:
+    """Distribution of wood without harvester data, from comparable work orders."""
+    shares = pd.Series(weights @ pool.donors, index=pool.cells)
+    shares = shares[shares > 0]
+    part = _component(key, "S3", volume, shares, cfg.pool_concentration_default, False)
+    if len(pool.donors) < cfg.pool_min_donors:
+        return shares, part
+    return shares, replace(
+        part,
+        concentration=float("inf"),
+        mixture=pool.donors[:, pool.cells.get_indexer(shares.index)],
+        mixture_weights=weights,
+    )
 
 
 def close_month(
@@ -139,24 +272,42 @@ def close_month(
     period: str,
     closed_aos: set[str],
     cfg: Config,
+    work_orders: WorkOrders | None = None,
 ) -> MonthStep:
-    """Roll the ledger through one month and allocate its deliveries."""
+    """Roll the ledger through one month and allocate its deliveries.
+
+    The ledger is shared by all destinations: a work order's stock is one pile
+    of wood wherever it goes. Volume delivered to several destinations from one
+    work order is split by net volume.
+
+    Wood without harvester data borrows from comparable work orders, see
+    `_donor_weights`.
+    """
     if ledger.period is not None and ledger.period >= period:
         raise ValueError(f"Liggaren är redan stängd för {ledger.period}, kan inte stänga {period}")
+    work_orders = work_orders or WorkOrders()
 
-    calibrated = _calibrated_harvest(harvest, cfg)
+    calibrated = harvest.assign(**{VOL: harvest[VOL] * cfg.calibration})
     stock_keys = [AO, SORT, DIA, LEN, VINTAGE]
     history_keys = [AO, SORT, DIA, LEN]
     stock = merge([ledger.stock, calibrated[STOCK_COLUMNS]], stock_keys, STOCK_COLUMNS)
     history = merge([ledger.history, calibrated[HISTORY_COLUMNS]], history_keys, HISTORY_COLUMNS)
 
     pools = {s: _build_pool(block) for s, block in history.groupby(SORT, sort=False)}
+    mean_diameters = _mean_diameters(history)
 
     stock_by_key = dict(tuple(stock.groupby([AO, SORT], sort=False)))
     history_by_key = dict(tuple(history.groupby([AO, SORT], sort=False)))
     deficit_by_key = dict(tuple(ledger.deficit.groupby([AO, SORT], sort=False)))
     harvested = calibrated.groupby([AO, SORT], sort=False)[VOL].sum()
     delivered = deliveries.groupby([AO, SORT], sort=False)[VOL].sum()
+    physical = deliveries.groupby([AO, SORT], sort=False)[BRUTTO].sum()
+    dated_by_key = dict(tuple(deliveries.groupby([AO, SORT], sort=False)))
+    split_by_key = {
+        key: block.groupby(DEST, sort=True)[VOL].sum() / block[VOL].sum()
+        for key, block in dated_by_key.items()
+        if block[VOL].sum() > 0
+    }
 
     empty_stock = stock.iloc[0:0]
     empty_deficit = ledger.deficit.iloc[0:0]
@@ -169,10 +320,16 @@ def close_month(
     components: list[Component] = []
     reconciliation: list[dict] = []
 
-    def book(key: tuple[str, str], tier: str, volume: float, shares: pd.Series) -> pd.DataFrame:
-        cells = (volume * shares).rename(VOL).reset_index()
-        allocations.append(cells.assign(**{AO: key[0], SORT: key[1], TIER: tier}))
-        return cells.assign(**{AO: key[0], SORT: key[1]})
+    def book(key: tuple[str, str], part: Component, shares: pd.Series) -> pd.DataFrame:
+        """Record a volume per destination, returning what was booked."""
+        booked = []
+        for destination, share in split_by_key[key].items():
+            cells = (part.volume * share * shares).rename(VOL).rename_axis([DIA, LEN]).reset_index()
+            booked.append(cells.assign(**{AO: key[0], SORT: key[1], DEST: destination}))
+            components.append(replace(part, destination=destination, volume=part.volume * share))
+        rows = pd.concat(booked, ignore_index=True)
+        allocations.append(rows.assign(**{TIER: part.tier}))
+        return rows
 
     for key in keys:
         block = stock_by_key.get(key, empty_stock)
@@ -184,53 +341,52 @@ def close_month(
         if len(owed) and len(block):
             owed_total = float(owed[VOL].sum())
             corrected = min(owed_total, float(block[VOL].sum()))
-            taken, block = take(block, corrected, cfg.draw_policy)
+            taken, block = take(block, corrected)
             actual = taken.groupby([DIA, LEN], sort=False, as_index=False)[VOL].sum()
             fraction = corrected / owed_total
-            released = owed.assign(**{VOL: -owed[VOL] * fraction})[[DIA, LEN, VOL]]
-            net = pd.concat([actual, released]).groupby([DIA, LEN], sort=False, as_index=False)[VOL].sum()
-            corrections.append(net.assign(**{AO: key[0], SORT: key[1]}))
+            released = owed.assign(**{VOL: -owed[VOL] * fraction})[[DEST, DIA, LEN, VOL]]
+            for destination, unsettled in released.groupby(DEST, sort=False):
+                earned = actual.assign(**{VOL: actual[VOL] * unsettled[VOL].sum() / released[VOL].sum()})
+                changes = pd.concat([earned, unsettled[[DIA, LEN, VOL]]])
+                net_change = changes.groupby([DIA, LEN], sort=False, as_index=False)[VOL].sum()
+                corrections.append(net_change.assign(**{AO: key[0], SORT: key[1], DEST: destination}))
             owed = owed.assign(**{VOL: owed[VOL] * (1 - fraction)})
             owed = owed[owed[VOL] > 1e-9]
 
-        volume = float(delivered.get(key, 0.0))
+        # Gross volume left the stock. Net volume is what is measured for payment.
+        net = float(delivered.get(key, 0.0))
+        volume = float(physical.get(key, 0.0))
+        net_share = net / volume if volume > 0 else 1.0
         available = float(block[VOL].sum())
         covered = 0.0
         if volume > 0:
-            if available > 0 and volume <= available * (1 + cfg.coverage_tolerance):
-                taken, block = take(block, min(volume, available), cfg.draw_policy)
-                shares = _composition(taken)
-                concentration = _own_stock_concentration(taken, min(volume, available), available, cfg)
-                book(key, "S1", volume, shares)
-                components.append(_component(key, "S1", volume, shares, concentration, True))
-                covered = volume
-            else:
-                if available > 0:
-                    taken, block = take(block, available, cfg.draw_policy)
-                    shares = _composition(taken)
-                    book(key, "S1", available, shares)
-                    components.append(_component(key, "S1", available, shares, float("inf"), True))
-                    covered = available
+            if available > 0:
+                drawn = min(volume, available)
+                fraction = _draw_fractions(block, dated_by_key[key], drawn, cfg)
+                taken, block = split(block, fraction)
+                covered = volume if volume <= available * (1 + cfg.coverage_tolerance) else available
+                if net > 0:
+                    harvested_total = max(float(history_by_key[key][VOL].sum()), drawn)
+                    part = _stock_component(key, taken, drawn, harvested_total, cfg)
+                    book(key, replace(part, volume=covered * net_share), _composition(taken))
 
-                shortfall = volume - available
-                donors = None
+            shortfall = volume - covered
+            if shortfall > 0 and net > 0:
+                billed = shortfall * net_share
                 if key in history_by_key:
-                    tier, shares = "S2", _composition(history_by_key[key])
-                    concentration, harvester_based = cfg.history_concentration, True
+                    shares = _composition(history_by_key[key])
+                    part = _component(key, "S2", billed, shares, cfg.history_concentration, True)
                 elif key[1] in pools:
+                    destination = work_orders.destinations.get(key[0], split_by_key[key].index[0])
                     pool = pools[key[1]]
-                    tier, shares = "S3", pool.shares
-                    concentration, harvester_based = cfg.pool_concentration_default, False
-                    donors = pool if len(pool.donors) >= cfg.pool_min_donors else None
+                    weights = _donor_weights(key, destination, pool, work_orders, mean_diameters, cfg)
+                    shares, part = _pool_component(key, billed, pool, weights, cfg)
                 else:
-                    tier, shares = "S4", _unknown_shares()
-                    concentration, harvester_based = float("inf"), False
-                provisional = book(key, tier, shortfall, shares)
-                part = _component(key, tier, shortfall, shares, concentration, harvester_based)
-                if donors is not None:
-                    part = replace(part, donors=donors.donors, donor_weights=donors.donor_weights)
-                components.append(part)
-                owed = merge([owed, provisional[DEFICIT_COLUMNS]], [AO, SORT, DIA, LEN], DEFICIT_COLUMNS)
+                    shares = _unknown_shares()
+                    part = _component(key, "S4", billed, shares, float("inf"), False)
+                provisional = book(key, part, shares)
+                unsettled = provisional.assign(**{VOL: provisional[VOL] / net_share})
+                owed = merge([owed, unsettled[DEFICIT_COLUMNS]], [AO, SORT, DEST, DIA, LEN], DEFICIT_COLUMNS)
 
         written_off = 0.0
         if key[0] in closed_aos:
@@ -246,7 +402,8 @@ def close_month(
                 SORT: key[1],
                 "ingaende_lager": opening,
                 "skordat_kalibrerat": float(harvested.get(key, 0.0)),
-                "levererat": volume,
+                "levererat": net,
+                "levererat_brutto": volume,
                 "tackning_s1": covered / volume if volume > 0 else np.nan,
                 "korrigerat": corrected,
                 "utgaende_lager": float(block[VOL].sum()),
@@ -255,8 +412,8 @@ def close_month(
             }
         )
 
-    allocation_columns = [AO, SORT, DIA, LEN, TIER, VOL]
-    correction_columns = [AO, SORT, DIA, LEN, VOL]
+    allocation_columns = [AO, SORT, DEST, DIA, LEN, TIER, VOL]
+    correction_columns = [AO, SORT, DEST, DIA, LEN, VOL]
     allocation = (
         pd.concat(allocations, ignore_index=True)[allocation_columns]
         if allocations
@@ -279,6 +436,7 @@ def close_month(
             period,
             merge(closing_stock, stock_keys, STOCK_COLUMNS),
             history,
-            merge(closing_deficit, history_keys, DEFICIT_COLUMNS),
+            merge(closing_deficit, [AO, SORT, DEST, DIA, LEN], DEFICIT_COLUMNS),
         ),
+        work_orders=work_orders,
     )

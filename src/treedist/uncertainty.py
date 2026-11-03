@@ -2,8 +2,8 @@
 
 Each draw re-samples what is not known:
 
-    composition    Dirichlet around each component's distribution, or a whole
-                   donor work order where none of its own data exists
+    composition    which parts of the harvest left, or a whole donor work order
+                   where none of its own data exists, plus sampling noise
     diameter bias  a work order's harvester reads systematically high or low,
                    moving volume between neighbouring diameter classes
     volume         delivery measurement error, independent per delivery plus an
@@ -24,7 +24,9 @@ import pandas as pd
 
 from .allocate import Component
 from .config import Config
-from .schema import AO, SORT, VOL
+from .schema import AO, DEST, SORT, VOL
+
+MatrixKey = tuple[str, str]
 
 
 @dataclass(frozen=True)
@@ -56,19 +58,31 @@ class Grid:
 
 @dataclass
 class Draws:
-    fixed: dict[str, np.ndarray]
-    total: dict[str, np.ndarray]
+    """Monte Carlo draws per (destination, assortment)."""
+
+    fixed: dict[MatrixKey, np.ndarray]
+    total: dict[MatrixKey, np.ndarray]
+
+
+def _sample_mean(rng: np.random.Generator, c: Component, n: int) -> np.ndarray:
+    if c.mixture is None:
+        return np.tile(c.q, (n, 1))
+    if c.mixture_concentration is None:
+        return c.mixture[rng.choice(len(c.mixture), size=n, p=c.mixture_weights)]
+    gamma = rng.standard_gamma(c.mixture_weights * c.mixture_concentration, size=(n, len(c.mixture)))
+    totals = gamma.sum(axis=1, keepdims=True)
+    weights = np.where(totals > 0, gamma / np.where(totals > 0, totals, 1.0), c.mixture_weights)
+    return weights @ c.mixture
 
 
 def _sample_composition(rng: np.random.Generator, c: Component, n: int) -> np.ndarray:
-    if c.donors is not None:
-        return c.donors[rng.choice(len(c.donors), size=n, p=c.donor_weights)]
+    mean = _sample_mean(rng, c, n)
     if np.isinf(c.concentration) or len(c.q) == 1:
-        return np.tile(c.q, (n, 1))
-    gamma = rng.standard_gamma(c.q * c.concentration, size=(n, len(c.q)))
+        return mean
+    gamma = rng.standard_gamma(mean * c.concentration)
     totals = gamma.sum(axis=1, keepdims=True)
     # A tiny concentration can underflow every cell; fall back to the mean.
-    return np.where(totals > 0, gamma / np.where(totals > 0, totals, 1.0), c.q)
+    return np.where(totals > 0, gamma / np.where(totals > 0, totals, 1.0), mean)
 
 
 def _shift_diameters(x: np.ndarray, widths_mm: np.ndarray, bias_mm: np.ndarray) -> np.ndarray:
@@ -96,12 +110,12 @@ def _shift_diameters(x: np.ndarray, widths_mm: np.ndarray, bias_mm: np.ndarray) 
 
 def _volume_errors(
     deliveries: pd.DataFrame, n: int, rng: np.random.Generator, cfg: Config
-) -> dict[tuple[str, str], np.ndarray]:
-    """Relative volume error per (work order, assortment) and draw."""
+) -> dict[tuple[str, str, str], np.ndarray]:
+    """Relative volume error per (work order, assortment, destination) and draw."""
     shared = {m: rng.normal(0, vm.systematic_sd, n) for m, vm in cfg.volume_methods.items()}
 
     errors = {}
-    for key, block in deliveries.groupby([AO, SORT], sort=False):
+    for key, block in deliveries.groupby([AO, SORT, DEST], sort=False):
         volume = float(block[VOL].sum())
         if volume <= 0:
             continue
@@ -112,19 +126,22 @@ def _volume_errors(
     return errors
 
 
-def monte_carlo(components: list[Component], deliveries: pd.DataFrame, grids: dict[str, Grid], cfg: Config) -> Draws:
+def monte_carlo(
+    components: list[Component], deliveries: pd.DataFrame, grids: dict[MatrixKey, Grid], cfg: Config
+) -> Draws:
     rng = np.random.default_rng(cfg.seed)
     n = cfg.mc_draws
-    fixed = {s: np.zeros((n, *g.shape)) for s, g in grids.items()}
-    total = {s: np.zeros((n, *g.shape)) for s, g in grids.items()}
+    fixed = {k: np.zeros((n, *g.shape)) for k, g in grids.items()}
+    total = {k: np.zeros((n, *g.shape)) for k, g in grids.items()}
     volume_errors = _volume_errors(deliveries, n, rng, cfg)
 
-    grouped: dict[tuple[str, str], list[Component]] = defaultdict(list)
+    grouped: dict[tuple[str, str, str], list[Component]] = defaultdict(list)
     for c in components:
-        grouped[(c.ao, c.sortiment)].append(c)
+        grouped[(c.ao, c.sortiment, c.destination)].append(c)
 
-    for (ao, sortiment), parts in sorted(grouped.items()):
-        grid = grids[sortiment]
+    for (ao, sortiment, destination), parts in sorted(grouped.items()):
+        key = (destination, sortiment)
+        grid = grids[key]
         d_index = {d: i for i, d in enumerate(grid.diameters)}
         l_index = {l: i for i, l in enumerate(grid.lengths)}
         harvester = np.zeros((n, *grid.shape))
@@ -138,7 +155,7 @@ def monte_carlo(components: list[Component], deliveries: pd.DataFrame, grids: di
 
         bias_mm = rng.normal(0, cfg.diameter_bias_sd_mm, n)
         x = _shift_diameters(harvester, grid.diameter_widths_mm(), bias_mm) + other
-        fixed[sortiment] += x
-        total[sortiment] += x * (1 + volume_errors[(ao, sortiment)])[:, None, None]
+        fixed[key] += x
+        total[key] += x * (1 + volume_errors[(ao, sortiment, destination)])[:, None, None]
 
     return Draws(fixed, total)

@@ -12,7 +12,7 @@ from .invoice import PriceList
 from .ledger import Ledger
 from .matrices import SortimentMatrices
 from .pipeline import run_month
-from .schema import DIA, LEN, SORT, VOL, sorted_groups, validate_deliveries, validate_harvest
+from .schema import DEST, DIA, LEN, SORT, VOL, WorkOrders, sorted_groups, validate_deliveries, validate_harvest
 from .simulate import SimMonth, SimParams, example_price_list, simulate
 
 
@@ -37,7 +37,7 @@ def _shares(values: np.ndarray) -> np.ndarray:
 def _score(
     month: SimMonth, m: SortimentMatrices, prices: PriceList, naive: np.ndarray | None
 ) -> dict[str, float | str]:
-    truth_block = month.truth[month.truth[SORT] == m.sortiment]
+    truth_block = month.truth[(month.truth[SORT] == m.sortiment) & (month.truth[DEST] == m.destination)]
     diameters = sorted_groups([*m.grid.diameters, *truth_block[DIA]])
     lengths = sorted_groups([*m.grid.lengths, *truth_block[LEN]])
 
@@ -48,7 +48,7 @@ def _score(
     estimate = on_axes(m.delivered)
     low, high = on_axes(m.p05), on_axes(m.p95)
     price = np.array(
-        [[(prices.price_ore(m.sortiment, d, l) or 0) / 100 for l in lengths] for d in diameters]
+        [[(prices.price_ore(m.sortiment, d, l, m.destination) or 0) / 100 for l in lengths] for d in diameters]
     )
 
     true_price = float((_shares(truth) * price).sum())
@@ -61,6 +61,7 @@ def _score(
 
     row = {
         "period": month.period,
+        DEST: m.destination,
         SORT: m.sortiment,
         "levererat_facit": float(truth.sum()),
         "levererat_matt": float(estimate.sum()),
@@ -77,14 +78,18 @@ def _score(
     return row
 
 
-def run_backtest(params: SimParams, cfg: Config, burn_in: int = 2) -> BacktestResult:
+def run_backtest(
+    params: SimParams, cfg: Config, burn_in: int = 2, use_groups: bool = True, use_actual_destination: bool = True
+) -> BacktestResult:
     prices = PriceList.from_frame(example_price_list())
     ledger = Ledger.empty()
     rows = []
     for month in simulate(params):
         harvest = validate_harvest(month.harvest, month.period)
-        deliveries = validate_deliveries(month.deliveries, month.period, cfg)
-        output = run_month(ledger, harvest, deliveries, prices, month.period, month.closed_aos, cfg)
+        known = WorkOrders(month.work_orders.destinations, month.work_orders.groups if use_groups else {})
+        reported = month.deliveries if use_actual_destination else month.deliveries.drop(columns="mottagningsplats")
+        deliveries = validate_deliveries(reported, month.period, cfg, known)
+        output = run_month(ledger, harvest, deliveries, prices, month.period, month.closed_aos, cfg, known)
         ledger = output.step.ledger
 
         for m in output.matrices.values():
