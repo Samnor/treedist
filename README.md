@@ -3,8 +3,8 @@
 Tar fram matriser per destination och handelssortiment som beskriver hur månadens levererade virke fördelar sig över
 diameter och längd, utifrån mätningar av olika säkerhet, och ett fakturaunderlag per destination.
 
-Skördarmätningen vet fördelningen men mäter vid avverkning. Leveransmätningen vet volymen, brutto och netto, men inget om
-dimensioner. Leveransen kommer dessutom efter skörden, så månadens skörd beskriver inte månadens leveranser. Därför
+Skördardatan, skördarens produktionsrapportering, vet fördelningen men mäter vid avverkning. Inmätningen vid industri
+vet volymen, brutto och netto, men inget om dimensioner. Leveransen kommer dessutom efter skörden, så månadens skörd beskriver inte månadens leveranser. Därför
 håller `treedist` en liggare över skördat men olevererat virke per arbetsorder och fördelar leveransvolymen utifrån den.
 
 - [Metod](docs/metod.md): hur det fungerar, parametrar och begränsningar
@@ -50,7 +50,7 @@ uv run pytest
 
 CSV med en rad per observation. Decimalkomma och decimalpunkt fungerar båda.
 
-**Skördarmätningar.** Månadens nya rader ur en tabell utan dubbletter. En rad får bara förekomma i en månad.
+**Skördardata** (`--skordning`). Månadens nya rader ur en tabell utan dubbletter. En rad får bara förekomma i en månad.
 
 | Kolumn | Krav | Beskrivning |
 |---|---|---|
@@ -62,7 +62,7 @@ CSV med en rad per observation. Decimalkomma och decimalpunkt fungerar båda.
 | `antal_stockar` | Nej | Ger bättre osäkerhetsskattning |
 | `avverkningsdatum` | Nej | Får vara tidigare än perioden, annars antas perioden |
 
-**Leveransmätningar.** Per lastbil eller summerat per arbetsorder och sortiment. Får inte innehålla diameter- eller
+**Inmätning vid industri** (`--leverans`). Per lastbil eller summerat per arbetsorder och sortiment. Får inte innehålla diameter- eller
 längdgrupp.
 
 | Kolumn | Krav | Beskrivning |
@@ -138,7 +138,7 @@ Matriserna per destination och sortiment:
 | S3 | Andra arbetsordrar i samma sortiment | Preliminär |
 | S4 | Inget, bokas på `OKÄND` | Preliminär, debiteras bara med uttrycklig prisregel |
 
-Fakturans volym är alltid leveransmätningens. När skördardata kommer in i efterhand rättas den preliminära fördelningen
+Fakturans volym är alltid inmätningens. När skördardata kommer in i efterhand rättas den preliminära fördelningen
 med `KORRIGERING`-rader på nästa faktura. Deras volym går jämnt ut medan värdet kan bli plus eller minus.
 
 ## Viktigt att veta

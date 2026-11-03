@@ -84,7 +84,7 @@ i simulatorn.
 anges inte; simulatorn antar 90 %.
 
 **Dimensioner vid leverans finns inte i vårt fall.** Biometrias stocklista innehåller diameter och längd per stock, men
-de uppgifterna ingår inte i projektets indata. Fördelningen måste därför skattas ur skördarmätningarna. Metoden kan inte
+de uppgifterna ingår inte i projektets indata. Fördelningen måste därför skattas ur skördardatan. Metoden kan inte
 heller kalibreras mot stocknotor, utan bara mot sådant som går att räkna ut ur skördardata och leveransvolymer.
 
 **Säkerheten har redan en officiell skala.** Varje mätt kvantitet får en måttslagskvalitet:

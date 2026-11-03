@@ -96,7 +96,7 @@ def period_bounds(period: str) -> tuple[pd.Timestamp, pd.Timestamp]:
 
 def validate_harvest(df: pd.DataFrame, period: str) -> pd.DataFrame:
     """Harvest rows reported in `period`; they may be dated earlier, never later."""
-    name = "Skördarmätningar"
+    name = "Skördardata"
     _require_columns(df, HARVEST_REQUIRED, name)
     _require_keys(df, [AO, SORT], name)
 
@@ -136,7 +136,7 @@ def validate_deliveries(
     the end of the month. `mottagningsplats` is where the wood actually went;
     without it a delivery counts as going to the work order's planned destination.
     """
-    name = "Leveransmätningar"
+    name = "Inmätning"
     _require_columns(df, DELIVERY_REQUIRED, name)
     _require_keys(df, [AO, SORT], name)
 

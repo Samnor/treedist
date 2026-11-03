@@ -4,8 +4,8 @@ Granskning av vad simulatorn och metoden antar om vägen från skördare till s�
 [exempelresorna](exempelresor.md), mätningar på det simulerade flödet och publicerade källor. Där en källa saknas står
 det. **Härlett** betyder egen beräkning ur källor.
 
-**Sammanfattning.** Granskningen hittade två antaganden som inte höll: lagringstiden var för lång, och sommartimmer låg
-lika länge som vintertimmer trots att köparna kräver leverans inom två veckor. Simulatorn är rättad och följer nu
+**Sammanfattning.** Granskningen hittade två antaganden som inte höll: lagringstiden var för lång, och sommaravverkat
+timmer låg lika länge som vinteravverkat trots att köparna kräver leverans inom två veckor. Simulatorn är rättad och följer nu
 säsongen. De övriga antagandena är rimliga eller går inte att pröva utan egna data. Känslighetsproven visar att metod C
 har lägst fel i alla sju varianter, med prisfel 6,3–10,3 kr/m3fub. Det som mest påverkar resultatet i verkligheten är
 hur stor andel som saknar skördardata, och i vilken ordning avläggen körs.
@@ -33,9 +33,9 @@ lass kom från skulle ta bort det felet; se sista avsnittet.
 | Antagande | Simulatorn | Verkligheten | Bedömning |
 |---|---|---|---|
 | Tid från fällning till leverans | Median 18 dagar, medel 18–21 | Sågtimmerlagret i landet är 2,6–3,5 miljoner m3fub, mot knappt 34 miljoner m3fub avverkat per år: 28–37 dagar från fällning till förbrukning (härlett). 4–6 % av årsavverkningen ligger vid industrin, alltså 15–22 dagar där. Kvar blir cirka 6–22 dagar i skog, vid väg och på terminal | Rimligt efter rättningen. Var 31 dagar. Statistiken täcker bara de största aktörerna, så den verkliga tiden är troligen något längre än beräkningen |
-| Sommartimmer | Median 12 dagar, 72 % inom 14 dagar. På sommaren börjar 90 % av arbetsordrarna leverera medan skörden pågår | Holmen: timmer fällt 1/6–31/8 ska vara vid sågverket inom två veckor. Mellanskog och Sveaskog: anmält vid väg inom två veckor. Blånad ger avdrag och kan stoppa partier | Rimligt efter rättningen. Var 30 dagar och inget inom 14 |
-| Vintertimmer | Median 24 dagar | Vinterfällt får ligga till 15 april (Mellanskog) eller 15 juni (Holmen) | Rimligt. Väntan genom tjällossningen syns i exemplet ovan |
-| Skörd sedan leverans, 1–3 veckor var | Skördetid median 15 dagar, kampanj 15 dagar. Vintertid separata perioder, sommartid överlappande | Projektets egen beskrivning, och köparnas regler för sommartimmer | Rimligt |
+| Sommaravverkat timmer | Median 12 dagar, 72 % inom 14 dagar. På sommaren börjar 90 % av arbetsordrarna leverera medan skörden pågår | Holmen: timmer fällt 1/6–31/8 ska vara vid sågverket inom två veckor. Mellanskog och Sveaskog: anmält vid väg inom två veckor. Blånad ger avdrag och kan stoppa partier | Rimligt efter rättningen. Var 30 dagar och inget inom 14 |
+| Vinteravverkat timmer | Median 24 dagar | Vinterfällt får ligga till 15 april (Mellanskog) eller 15 juni (Holmen) | Rimligt. Väntan genom tjällossningen syns i exemplet ovan |
+| Skörd sedan leverans, 1–3 veckor var | Skördetid median 15 dagar, kampanj 15 dagar. Vintertid separata perioder, sommartid överlappande | Projektets egen beskrivning, och köparnas regler för sommaravverkat timmer | Rimligt |
 | Storlek per arbetsorder | Median 721 m3fub sågtimmer per sortiment vid slutavverkning, 188 vid gallring | Medelanmälan för föryngringsavverkning var 3,8 ha 2021, knappt 5 ha för andra ägare än enskilda. Med antagna 250 m3sk/ha och knappt hälften sågtimmer blir det 350–500 m3fub sågtimmer per trakt (härlett, volym per hektar antagen) | **Troligen för stora**, kanske upp till dubbelt. Ett bolags arbetsorder kan dock omfatta flera anmälningar. Prövat nedan |
 | Lass | Median 44,5 m3fub | 64 ton totalvikt ger cirka 45 m3fub (härlett), 74-tonsbilar mer | Rimligt |
 | Andel stockmätt | 90 % | En stor majoritet av sågtimret stockmäts (Skogforsk) | Rimligt, exakt andel okänd |
@@ -55,7 +55,7 @@ Ej med i simulatorn: massaved, kvalitetsklasser, samlast, terminaler, stormvirke
 | Antagande | Bedömning |
 |---|---|
 | Skördarens fördelning beskriver det som levereras, efter 0,9 % kalibrering och 1 % svinn | Rimligt. Skördaren mäter ungefär lika bra som mätramen |
-| Leveransmätningens volym är exakt på fakturan | Rimligt, den är avtalsmässigt det som betalas |
+| Inmätningens volym är exakt på fakturan | Rimligt, den är avtalsmässigt det som betalas |
 | Ett lass drar pro rata ur arbetsorderns lager, bland virke fällt minst 2 dagar innan | Rimligt utan uppgift om avlägg. Ger felet vid månadsskiftet ovan |
 | Virke utan skördardata liknar arbetsordrar med samma destination och grupp | Rimligt om sågverk tar emot en viss grovlek. Prövat nedan |
 | En arbetsorder utan skördardata levererar halva skörden samma månad | Antagande. Påverkar bara intervallets bredd |

@@ -42,8 +42,8 @@ from .schema import (
 
 CERTAINTY_TIERS = ("S1", "S2", "S3", "S4")
 TIER_NAMES = {
-    "S1": "Skördarmätt, eget lager",
-    "S2": "Skördarmätt, AO-historik",
+    "S1": "Skördardata, eget lager",
+    "S2": "Skördardata, AO-historik",
     "S3": "Sortimentspool",
     "S4": "Okänd fördelning",
 }

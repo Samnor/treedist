@@ -2,9 +2,10 @@
 
 ## Problemet
 
-Under en månad finns två mätningar av virket till sågverket:
+Under en månad finns två datakällor om virket till sågverket. Skördardata är skördarens produktionsrapportering, inte
+ersättningsgrundande skördarmätning. Inmätningen vid industri är den mätning som senare affärsled betalar efter.
 
-| | Skördarmätning | Leveransmätning |
+| | Skördardata | Inmätning vid industri |
 |---|---|---|
 | Nyckel | arbetsorder, handelssortiment, diametergrupp, längdgrupp | arbetsorder, handelssortiment, ibland lastbil |
 | Styrka | Fördelningen över dimensioner och antal stockar | Volymen som kom fram, brutto och netto, som fakturan bygger på |
@@ -14,8 +15,8 @@ Det svåra är tiden. Varje arbetsorder skördas under 1–3 veckor och leverera
 skörd beskriver inte månadens leveranser. Arbetsordrar som töms inom månaden får sin fördelning känd. Felet uppstår
 för dem som korsar ett månadsskifte och för virke utan skördardata.
 
-Metoden låter därför de två mätningarna svara på var sin fråga. Leveransmätningen avgör **hur mycket**.
-Skördarmätningen avgör **hur det fördelar sig**, via en liggare som bär med sig oleverat virke mellan månaderna.
+Metoden låter därför de två källorna svara på var sin fråga. Inmätningen avgör **hur mycket**. Skördardatan avgör
+**hur det fördelar sig**, via en liggare som bär med sig oleverat virke mellan månaderna.
 
 ## Månadsstängning
 
@@ -50,7 +51,7 @@ S4 får bara ett pris om prislistan har en uttrycklig regel för det, annars fla
 
 ### Varför volymen på fakturan alltid stämmer
 
-Nettovolymen fördelas, den ändras aldrig. Summan av alla rader per sortiment är exakt leveransmätningen, och
+Nettovolymen fördelas, den ändras aldrig. Summan av alla rader per sortiment är exakt inmätningen, och
 körningen avbryts om den inte är det. Volymer räknas i hela liter och belopp i hela ören, så att raderna går jämnt
 upp. Osäkerheten flyttar alltså värde mellan produkter men aldrig volym in eller ut ur fakturan.
 

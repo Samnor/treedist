@@ -48,4 +48,4 @@ def _check_invoice_volume(invoice: pd.DataFrame, deliveries: pd.DataFrame) -> No
     measured = deliveries.groupby([DEST, SORT])[VOL].sum()
     difference = billed.reindex(measured.index, fill_value=0.0) - measured
     if (difference.abs() > 0.001).any():
-        raise ValueError(f"Fakturerad volym avviker från leveransmätningen: {difference.to_dict()}")
+        raise ValueError(f"Fakturerad volym avviker från inmätningen: {difference.to_dict()}")

@@ -1,8 +1,8 @@
 # Jämförelse av metoder
 
 Uppgiften: skatta en matris över diameter och längd per destination och handelssortiment för en månads leveranser. Vid
-leverans finns bara inmätt brutto- och nettovolym per arbetsorder eller lastbil. Skördarmätningen ger stockar, diameter
-och längd. Varje arbetsorder har en planerad destination, och skörd och leverans är var sin kampanj om 1–3 veckor. På sommaren
+leverans finns bara inmätt brutto- och nettovolym per arbetsorder eller lastbil. Skördardatan ger stockar, diameter och
+längd. Varje arbetsorder har en planerad destination, och skörd och leverans är var sin kampanj om 1–3 veckor. På sommaren
 börjar leveranserna medan skördaren är kvar, se [antaganden](antaganden.md).
 
 **Slutsats: metod C, lagerliggare med mjuk matchning, är standard i `treedist`.** Den ger lägst fel i alla scenarier. I
