@@ -46,6 +46,9 @@ class Config:
     oldest_first: bool = True
     draw_gross: bool = True
     history_fallback: bool = True
+    finite_population: bool = True
+    donor_draws: bool = True
+    volume_error: bool = True
     intervals: bool = True
     mc_draws: int = 2000
     seed: int = 20261102

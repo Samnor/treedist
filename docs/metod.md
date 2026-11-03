@@ -105,6 +105,9 @@ Två spridningar redovisas. `std_fordelning` håller volymen fast och är osäke
 | `oldest_first` | på | Av: varje klass ger alltid samma andel. Används av den sparade modellen `enkel` |
 | `draw_gross` | på | Av: nettovolymen lämnar lagret, bruttovolymen används inte |
 | `history_fallback` | på | Av: leverans utöver lagret lånar som S3 i stället för AO:ns historik (S2) |
+| `finite_population` | på | Av: ingen ändlighetskorrektion, bruset följer bara effektivt antal stockar. Lätta intervall i modellen `halv` |
+| `donor_draws` | på | Av: S3 får brus kring givarnas medel i stället för en hel givare per dragning |
+| `volume_error` | på | Av: inget volymfel i Monte Carlo, så `std` blir lika med `std_fordelning` |
 | `intervals` | på | Av ger profilen enkel: samma faktura och matriser, utan Monte Carlo-intervall |
 | `stockmatning` | `unit_cv` 0,043 | Biometria 2025, tabell 1. Systematiskt fel härlett ur KI ±0,1 % |
 | `travmatning` | `unit_cv` 0,051 | Biometria 2025, tabell 1, sågbara. Systematiskt fel härlett ur KI ±0,3 % |

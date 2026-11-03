@@ -72,7 +72,7 @@ def monte_carlo(
     n = cfg.mc_draws
     fixed = {k: np.zeros((n, *g.shape)) for k, g in grids.items()}
     total = {k: np.zeros((n, *g.shape)) for k, g in grids.items()}
-    volume_errors = _volume_errors(deliveries, n, rng, cfg)
+    volume_errors = _volume_errors(deliveries, n, rng, cfg) if cfg.volume_error else {}
 
     grouped: dict[tuple[str, str, str], list[Component]] = defaultdict(list)
     for c in components:

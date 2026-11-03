@@ -81,3 +81,14 @@ def test_remainder_of_a_split_work_order_stays_uncertain(cfg):
     february = delivery_frame("2026-02", [("A", "TALL", 500.0)], cfg)
     second = close_month(first.ledger, two_class_harvest().iloc[0:0], february, "2026-02", set(), cfg)
     assert first.components[0].concentration == pytest.approx(second.components[0].concentration)
+
+
+def test_light_intervals_leave_out_volume_error_and_the_finite_population_correction(cfg, prices):
+    light = replace(cfg, volume_error=False, finite_population=False)
+    deliveries = delivery_frame("2026-01", [("A", "TALL", 1000.0)], cfg)
+    step = close_month(Ledger.empty(), two_class_harvest(), deliveries, "2026-01", set(), light)
+    (component,) = step.components
+    draws = monte_carlo(step.components, deliveries, build_grids(step), light)
+    assert np.allclose(draws.total[KEY], draws.fixed[KEY])
+    # The whole stock left, yet without the correction the noise is as for any part of it.
+    assert component.concentration < 1000.0

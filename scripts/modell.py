@@ -45,6 +45,18 @@ def _intervals(c: Config) -> bool:
     return c.intervals
 
 
+def _finite(c: Config) -> bool:
+    return c.intervals and c.finite_population
+
+
+def _donors(c: Config) -> bool:
+    return c.intervals and c.donor_draws
+
+
+def _volume(c: Config) -> bool:
+    return c.intervals and c.volume_error
+
+
 # Name, kind, what it does, whether a config uses it.
 PARTS = [
     ("liggare", "regel", "Lager per arbetsorder och sortiment förs mellan månaderna och leveransen dras ur det",
@@ -64,14 +76,14 @@ PARTS = [
     ("S4", "regel", "Sortiment helt utan skördardata bokas på OKÄND", lambda c: True),
     ("dirichlet", "regel", "Intervall: brus kring fördelningen efter effektivt antal stockar", _intervals),
     ("design_effect", "parameter", "Stockar per oberoende stock", _intervals),
-    ("andlighet", "regel", "Bruset minskar ju större del av skörden som levererats", _intervals),
-    ("pool_remaining_share", "parameter", "Antagen kvarvarande andel för S2 och S3", _intervals),
+    ("andlighet", "regel", "Bruset minskar ju större del av skörden som levererats", _finite),
+    ("pool_remaining_share", "parameter", "Antagen kvarvarande andel för S2 och S3", _finite),
     ("default_log_volume", "parameter", "Medelstockvolym när antal saknas", _intervals),
-    ("hel_givare", "regel", "S3 i Monte Carlo: en hel givare per dragning", _intervals),
-    ("volymfel", "regel", "Volymens mätfel per leverans och metod", _intervals),
-    ("unit_cv", "parameter", "Mätfel per enhet, per metod", _intervals),
-    ("systematic_sd", "parameter", "Systematiskt fel per metod", _intervals),
-    ("default_units", "parameter", "Antal enheter när det saknas, per metod", _intervals),
+    ("hel_givare", "regel", "S3 i Monte Carlo: en hel givare per dragning", _donors),
+    ("volymfel", "regel", "Volymens mätfel per leverans och metod", _volume),
+    ("unit_cv", "parameter", "Mätfel per enhet, per metod", _volume),
+    ("systematic_sd", "parameter", "Systematiskt fel per metod", _volume),
+    ("default_units", "parameter", "Antal enheter när det saknas, per metod", _volume),
 ]
 
 # Everything that can be left out, and the settings that leave it out. The search adds groups back.
@@ -95,7 +107,13 @@ GROUPS = {
     "grupp": ["donor_group_weight"],
     "syskon": ["donor_sibling_cm"],
     "intervall": ["intervals"],
+    # Only meaningful with intervals on: the parts that a light interval model leaves out.
+    "andlighet": ["finite_population"],
+    "hel_givare": ["donor_draws"],
+    "volymfel": ["volume_error"],
 }
+# Intervals from the noise around the composition alone: three parts instead of ten.
+LIGHT_INTERVALS = {"intervals": True, "finite_population": False, "donor_draws": False, "volume_error": False}
 
 
 def parts(cfg: Config) -> list[str]:
@@ -127,6 +145,7 @@ def performance(results: list[pd.DataFrame]) -> list[dict]:
             "prestanda": round(float(closed.mean() / gain), 3),
             "prestanda_per_scenario": per_scenario.round(3).to_dict(),
             "varde_90": None if result["varde_90"].isna().all() else round(float(result["varde_90"].mean()), 3),
+            "poang": None if result["poang"].isna().all() else round(float(result["poang"].mean()), 3),
         })
     return rows
 
@@ -183,6 +202,7 @@ def command_save(args: argparse.Namespace) -> None:
         with ProcessPoolExecutor() as pool:
             _, control = performance(evaluate(pool, [{}, _overrides(cfg)], HOLDOUT_SEEDS))
         results |= {"kontroll_prisfel": control["prisfel"], "kontroll_prestanda": control["prestanda"],
+                    "kontroll_varde_90": control["varde_90"],
                     "kontroll_prestanda_per_scenario": control["prestanda_per_scenario"]}
     path = save(args.namn, cfg, args.beskrivning, results)
     print(f"Sparad: {path.relative_to(ROOT)}, {len(parts(cfg))} av {len(PARTS)} delar")
@@ -210,8 +230,11 @@ def command_list(args: argparse.Namespace) -> None:
 def command_search(args: argparse.Namespace) -> None:
     """Forward selection from the smallest model: add the group that gains most per part, within the budget."""
     budget = args.delar * len(PARTS)
-    chosen = dict(MINIMAL)
-    remaining = dict(GROUPS)
+    chosen = {**MINIMAL, **(LIGHT_INTERVALS if args.intervall else {}), **_parse(args.start)}
+    # With intervals the climb's score ranks the additions, so that calibration counts as well as price.
+    measure = "poang" if chosen.get("intervals") else "prisfel"
+    remaining = {name: group for name, group in GROUPS.items()
+                 if any(chosen.get(f, getattr(DEFAULT, f)) != getattr(DEFAULT, f) for f in group)}
     trail = []
     while True:
         # Every group is measured, so the cost of leaving out each one is known; only those within budget can be taken.
@@ -223,14 +246,18 @@ def command_search(args: argparse.Namespace) -> None:
         trail.append({"modell": dict(chosen), "delar": size, **current})
         log({"typ": "modell", "kandidat": chosen, "delar": size, **current})
         print(f"\n{size} delar ({size / len(PARTS):.0%}): prisfel {current['prisfel']} mot standard "
-              f"{standard['prisfel']} och naivt {current['prisfel_naiv']}, prestanda {current['prestanda']:.1%}"
+              f"{standard['prisfel']} och naivt {current['prisfel_naiv']}, prestanda {current['prestanda']:.1%}, "
+              f"poäng {current['poang']} mot {standard['poang']}, värde inom 90 % {current['varde_90']}"
               f"  {current['prestanda_per_scenario']}")
         for name, result in zip(names, added):
             extra = len(parts(_config(candidates[name]))) - size
             log({"typ": "modell", "kandidat": candidates[name], "delar": size + extra, **result})
-            print(f"  + {name:12s} {extra} delar: prisfel {result['prisfel']}, prestanda {result['prestanda']:.1%}"
-                  f"  {result['prestanda_per_scenario']}")
-        rate = {n: (r["prestanda"] - current["prestanda"]) / (len(parts(_config(candidates[n]))) - size)
+            print(f"  + {name:12s} {extra} delar: prisfel {result['prisfel']}, prestanda {result['prestanda']:.1%}, "
+                  f"poäng {result['poang']}, värde inom 90 % {result['varde_90']}  {result['prestanda_per_scenario']}")
+        # Gain per part: lower score or price error, or the extra performance share.
+        sign = -1 if measure == "poang" else 1
+        key = "poang" if measure == "poang" else "prestanda"
+        rate = {n: sign * (r[key] - current[key]) / max(len(parts(_config(candidates[n]))) - size, 1)
                 for n, r in zip(names, added) if len(parts(_config(candidates[n]))) <= budget}
         # Every scenario must reach the target: an average can hide one we are unsure of in reality.
         if min(current["prestanda_per_scenario"].values()) >= args.prestanda or not rate:
@@ -243,7 +270,7 @@ def command_search(args: argparse.Namespace) -> None:
         del remaining[best]
     print(f"\nResultat: {len(parts(_config(chosen)))} av {len(PARTS)} delar, prestanda {trail[-1]['prestanda']:.1%}, "
           f"ändringar mot standard: {_overrides(_config(chosen))}")
-    (ROOT / "climb" / "sok_modell.json").write_text(json.dumps(trail, indent=2, ensure_ascii=False) + "\n",
+    (ROOT / "climb" / f"{args.ut}.json").write_text(json.dumps(trail, indent=2, ensure_ascii=False) + "\n",
                                                      encoding="utf-8")
 
 
@@ -263,6 +290,9 @@ def main() -> None:
     search = commands.add_parser("sok", help="Minsta modellen som når en andel av standardens prestanda")
     search.add_argument("--delar", type=float, default=0.2, help="Högst denna andel av delarna")
     search.add_argument("--prestanda", type=float, default=0.8, help="Minst denna andel av prestandan i varje scenario")
+    search.add_argument("--intervall", action="store_true", help="Börja med lätta intervall, tre delar, och rangordna efter poäng")
+    search.add_argument("--start", action="append", default=[], metavar="NYCKEL=VÄRDE", help="Ändra startmodellen")
+    search.add_argument("--ut", default="sok_modell", help="Filnamn i climb/ för sökvägen")
     args = parser.parse_args()
     {"spara": command_save, "delar": command_parts, "lista": command_list, "sok": command_search}[args.command](args)
 

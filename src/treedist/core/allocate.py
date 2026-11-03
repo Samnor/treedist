@@ -131,6 +131,8 @@ def _concentration(log_count: float, remaining_share: float, cfg: Config) -> flo
     of each log caps the precision at one independent error per log.
     """
     effective = max(log_count / cfg.design_effect, 1.0)
+    if not cfg.finite_population:
+        return min(effective, float(log_count))
     return min(max(effective / remaining_share - 1, 1.0), float(log_count))
 
 
@@ -178,7 +180,7 @@ def _stock_component(
     logs = taken[LOGS].sum(min_count=1)
     log_count = logs if logs > 0 else volume / cfg.default_log_volume
     remaining_share = max(1 - volume / harvested, 0.0)
-    if remaining_share <= 1e-9:
+    if remaining_share <= 1e-9 and cfg.finite_population:
         return _component(key, "S1", volume, shares, float(log_count))
     return _component(key, "S1", volume, shares, _concentration(log_count, remaining_share, cfg))
 
@@ -257,6 +259,8 @@ def _pool_component(
     columns = pool.cells.get_indexer(shares.index)
     concentration = _concentration(volume / cfg.default_log_volume, cfg.pool_remaining_share, cfg)
     part = _component(key, "S3", volume, shares, concentration)
+    if not cfg.donor_draws:
+        return shares, part
     return shares, replace(part, donors=pool.donors[:, columns], donor_weights=weights)
 
 

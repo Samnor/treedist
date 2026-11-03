@@ -76,7 +76,8 @@ uv run python scripts/climb.py forenkla donor_group_weight=1 'design_effect=100,
 Sparade modeller ligger i [modeller/](modeller), en TOML-fil per modell som `--config` läser direkt, med kod,
 antal delar och resultat i tabellen `[modell]`. Byt modell genom att ange en annan fil, till exempel
 `--config modeller/enkel.toml`: 4 av 23 delar och 92 % av standardmodellens förbättring mot den naiva skattningen,
-men utan intervall, se [metodjämförelsen](docs/metodjamforelse.md#en-femtedel-av-delarna).
+men utan intervall. `modeller/halv.toml` har 9 av 23 delar, 99 % av förbättringen och lätta intervall, se
+[metodjämförelsen](docs/metodjamforelse.md#en-femtedel-av-delarna).
 
 ```bash
 uv run python scripts/modell.py lista

@@ -148,6 +148,44 @@ Allt är prövat mot simulatorn. Att destinationen säger så mycket om grovleke
 sågverk och dimension; i scenariot där destinationen är oberoende av grovlek ger `enkel` ändå 91 %.
 [Flödesrapporten för enkel](flodesrapport_enkel.html) visar demots månader med modellen.
 
+### Hälften av delarna, med intervall
+
+Med högst halva delarna, 11 av 23, ryms intervall om de görs lättare. Standardmodellens intervall kostar tio delar.
+Lätta intervall är tre: Dirichletbrus kring fördelningen efter effektivt antal stockar (`design_effect`, och
+`default_log_volume` där antal saknas). Ändlighetskorrektionen, en hel givare per dragning i S3 och volymens mätfel
+lämnas ute, med brytarna `finite_population`, `donor_draws` och `volume_error`. Med samma `design_effect`, 200, träffar
+de lätta intervallen 89 % ensamma och 92 % i den färdiga modellen, så ingen ny parameter behövdes.
+
+`modell.py sok --delar 0.5 --intervall` började från den minsta modellen med lätta intervall, sex delar, och lade till
+den grupp som sänkte poängen mest per del. Poängen är klättringens, prisfel plus 0,3 per procentenhet som
+värdetäckningen avviker från 90 %, så att intervallens kalibrering räknas. Standardmodellen har 12,11.
+
+| Steg | Delar | Prisfel | Täckning | Poäng | Prestanda |
+|---|---|---|---|---|---|
+| Minsta med lätta intervall | 6 (26 %) | 16,5 | 85 % | 18,70 | 83 % |
+| + destinationsvikten | 7 | 13,5 | 89 % | 14,80 | 92 % |
+| + äldsta först | 8 | 12,0 | 91 % | 13,17 | 97 % |
+| **+ gruppvikten: `halv`** | **9 (39 %)** | **11,4** | **92 %** | **12,55** | **99 %** |
+| + AO-historik (S2) | 10 | 11,3 | 92 % | 12,54 | 99 % |
+| + bruttovolym | 11 (48 %) | 11,2 | 92 % | 12,44 | 99 % |
+
+De två sista stegen slår inte bruset mellan fröna: elva delar är −0,11 ± 0,08 bättre i poäng än nio. Därför sparades
+nio delar. **[halv](../modeller/halv.toml) har 9 av 23 delar och stänger 99 % av avståndet** till den naiva
+skattningen, minst 97,9 % i varje scenario. På kontrollfröna är prisfelet 12,0 mot standardens 11,3, prestandan 98 % och
+värdetäckningen 90,8 %. Den är `enkel` med äldsta först, gruppvikten och lätta intervall.
+
+Vad de övriga delarna gör, sett från `halv`:
+
+- **Syskonsortimentet** är det enda som når standardens nivå, poäng 12,16, men kostar tre delar och spräcker budgeten.
+- **Ändlighetskorrektionen** ensam gör intervallen för smala, täckning 81 %. Den hör ihop med volymfelet och
+  `design_effect` 200 i standardmodellen; utan de andra är det bättre att lämna den.
+- **En hel givare per dragning** gör intervallen för breda, täckning 97 %.
+- **Volymfelet** ändrar täckningen mindre än en procentenhet. Fakturans intervall, `std_fordelning`, påverkas inte
+  av det alls, eftersom fakturans volym är inmätningens.
+- **Kalibreringen och bruttovolymen** påverkar fortfarande nästan bara hur länge lagret räcker.
+
+[Flödesrapporten för halv](flodesrapport_halv.html) visar demots månader med modellen.
+
 ## För- och nackdelar
 
 | | Fördelar | Nackdelar |

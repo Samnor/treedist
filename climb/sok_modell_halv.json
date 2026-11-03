@@ -1,0 +1,170 @@
+[
+  {
+    "modell": {
+      "draw_gross": false,
+      "harvester_bias": 0.0,
+      "handling_loss": 0.0,
+      "oldest_first": false,
+      "history_fallback": false,
+      "donor_destination_weight": 1.0,
+      "donor_group_weight": 1.0,
+      "donor_sibling_cm": 0.0,
+      "intervals": true,
+      "finite_population": false,
+      "donor_draws": false,
+      "volume_error": false
+    },
+    "delar": 6,
+    "prisfel": 16.54,
+    "prisfel_naiv": 43.96,
+    "prestanda": 0.829,
+    "prestanda_per_scenario": {
+      "30 % utan skördardata": 0.663,
+      "bas": 0.793,
+      "destination oberoende av grovlek": 0.917,
+      "stora skillnader inom AO": 0.887
+    },
+    "varde_90": 0.853,
+    "poang": 18.701
+  },
+  {
+    "modell": {
+      "draw_gross": false,
+      "harvester_bias": 0.0,
+      "handling_loss": 0.0,
+      "oldest_first": false,
+      "history_fallback": false,
+      "donor_destination_weight": 16.0,
+      "donor_group_weight": 1.0,
+      "donor_sibling_cm": 0.0,
+      "intervals": true,
+      "finite_population": false,
+      "donor_draws": false,
+      "volume_error": false
+    },
+    "delar": 7,
+    "prisfel": 13.45,
+    "prisfel_naiv": 43.96,
+    "prestanda": 0.922,
+    "prestanda_per_scenario": {
+      "30 % utan skördardata": 0.905,
+      "bas": 0.904,
+      "destination oberoende av grovlek": 0.912,
+      "stora skillnader inom AO": 0.964
+    },
+    "varde_90": 0.893,
+    "poang": 14.796
+  },
+  {
+    "modell": {
+      "draw_gross": false,
+      "harvester_bias": 0.0,
+      "handling_loss": 0.0,
+      "oldest_first": true,
+      "history_fallback": false,
+      "donor_destination_weight": 16.0,
+      "donor_group_weight": 1.0,
+      "donor_sibling_cm": 0.0,
+      "intervals": true,
+      "finite_population": false,
+      "donor_draws": false,
+      "volume_error": false
+    },
+    "delar": 8,
+    "prisfel": 11.96,
+    "prisfel_naiv": 43.96,
+    "prestanda": 0.968,
+    "prestanda_per_scenario": {
+      "30 % utan skördardata": 0.952,
+      "bas": 0.969,
+      "destination oberoende av grovlek": 0.948,
+      "stora skillnader inom AO": 1.002
+    },
+    "varde_90": 0.905,
+    "poang": 13.17
+  },
+  {
+    "modell": {
+      "draw_gross": false,
+      "harvester_bias": 0.0,
+      "handling_loss": 0.0,
+      "oldest_first": true,
+      "history_fallback": false,
+      "donor_destination_weight": 16.0,
+      "donor_group_weight": 4.0,
+      "donor_sibling_cm": 0.0,
+      "intervals": true,
+      "finite_population": false,
+      "donor_draws": false,
+      "volume_error": false
+    },
+    "delar": 9,
+    "prisfel": 11.36,
+    "prisfel_naiv": 43.96,
+    "prestanda": 0.986,
+    "prestanda_per_scenario": {
+      "30 % utan skördardata": 0.981,
+      "bas": 0.984,
+      "destination oberoende av grovlek": 0.979,
+      "stora skillnader inom AO": 1.0
+    },
+    "varde_90": 0.917,
+    "poang": 12.553
+  },
+  {
+    "modell": {
+      "draw_gross": false,
+      "harvester_bias": 0.0,
+      "handling_loss": 0.0,
+      "oldest_first": true,
+      "history_fallback": true,
+      "donor_destination_weight": 16.0,
+      "donor_group_weight": 4.0,
+      "donor_sibling_cm": 0.0,
+      "intervals": true,
+      "finite_population": false,
+      "donor_draws": false,
+      "volume_error": false
+    },
+    "delar": 10,
+    "prisfel": 11.27,
+    "prisfel_naiv": 43.96,
+    "prestanda": 0.989,
+    "prestanda_per_scenario": {
+      "30 % utan skördardata": 0.983,
+      "bas": 0.986,
+      "destination oberoende av grovlek": 0.983,
+      "stora skillnader inom AO": 1.002
+    },
+    "varde_90": 0.919,
+    "poang": 12.536
+  },
+  {
+    "modell": {
+      "draw_gross": true,
+      "harvester_bias": 0.0,
+      "handling_loss": 0.0,
+      "oldest_first": true,
+      "history_fallback": true,
+      "donor_destination_weight": 16.0,
+      "donor_group_weight": 4.0,
+      "donor_sibling_cm": 0.0,
+      "intervals": true,
+      "finite_population": false,
+      "donor_draws": false,
+      "volume_error": false
+    },
+    "delar": 11,
+    "prisfel": 11.24,
+    "prisfel_naiv": 43.96,
+    "prestanda": 0.989,
+    "prestanda_per_scenario": {
+      "30 % utan skördardata": 0.984,
+      "bas": 0.986,
+      "destination oberoende av grovlek": 0.983,
+      "stora skillnader inom AO": 1.004
+    },
+    "varde_90": 0.918,
+    "poang": 12.439
+  }
+]

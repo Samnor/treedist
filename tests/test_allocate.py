@@ -100,6 +100,9 @@ def test_borrowed_distribution_draws_whole_donors(cfg):
     assert component.tier == "S3"
     assert component.donors is not None and len(component.donors) == 6
     assert np.isfinite(component.concentration)
+    step = close_month(Ledger.empty(), harvest, delivery_frame("2026-01", [("A", "TALL", 10.0)], cfg), "2026-01", set(),
+                       replace(cfg, donor_draws=False))
+    assert step.components[0].donors is None
 
 
 def reclassified(period, rows, cfg):
