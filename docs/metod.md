@@ -30,8 +30,11 @@ För varje kombination av arbetsorder och handelssortiment (AO × sortiment):
 4. **Destination.** Alla destinationer delar liggare, eftersom en arbetsorders lager är samma virke vart det än går.
    Levererad volym hamnar hos mottagningsplatsen om den finns, annars hos den planerade destinationen. Går en arbetsorder
    till flera destinationer delas fördelningen efter nettovolym.
-5. **Säkerhetsklass.** Volymen får en klass efter var fördelningen kommer ifrån, se nedan.
-6. **Avslut.** För avslutade arbetsordrar skrivs kvarvarande lager av och underskott blir slutgiltiga.
+5. **Omklassning.** Lagret förs på det sortiment skördaren producerade. Virke som mätts in som ett annat sortiment dras
+   ur det producerade sortimentets lager men bokas och faktureras som inmätt, med samma fördelning. Ett underskott
+   minns vilket sortiment det fakturerades som, så att korrigeringen hamnar där.
+6. **Säkerhetsklass.** Volymen får en klass efter var fördelningen kommer ifrån, se nedan.
+7. **Avslut.** För avslutade arbetsordrar skrivs kvarvarande lager av och underskott blir slutgiltiga.
 
 ### Säkerhetsklasser
 
@@ -116,8 +119,9 @@ volymbalansen när arbetsordrar avslutas. Inget av detta är prövat på verklig
   bara innehålla rader som inte varit med tidigare. Ett uttag av hela tabellen varje månad skulle dubbelräknas.
 - **Kallstart.** Virke skördat före första körda månaden finns inte i liggaren och blir S3 eller S4. Kör in historiska
   månader först.
-- **Sortimentsvandring modelleras inte.** Timmer som hamnar i massaveden syns bara som över- och underskott per sortiment
-  i `avstamning_ao.csv`.
+- **Omklassat virke antas vara ett slumpmässigt urval av lagret.** I verkligheten är det troligen de klenaste eller
+  sämsta stockarna som klassas ned, så timmerfakturan blir något för klen och den nedklassade volymen för grov. Utan
+  `producerat_handelssortiment` syns omklassning bara som över- och underskott per sortiment i `avstamning_ao.csv`.
 - **Kvalitetsklasser ingår inte.** En produkt är sortiment, diameter och längd. Kvalitet måste ligga i sortimentet.
 - **Bara m3fub och inga krediterade leveranser.** Negativa leveransrader avvisas. Moms ingår inte i beloppen.
 - **Korrigeringar räknas i bruttoskala.** Skillnaden mot netto är liten och volymen på korrigeringsrader går jämnt ut.

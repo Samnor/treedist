@@ -67,7 +67,8 @@ kontrollfrågor för antagandena bakom uttaget.
 | Kolumn | Krav | Beskrivning |
 |---|---|---|
 | `arbetsorder` | Ja | |
-| `handelssortiment` | Ja | |
+| `handelssortiment` | Ja | Inmätt sortiment, det som faktureras |
+| `producerat_handelssortiment` | Nej | Sortimentet i skördardatan, om virket klassats om vid inmätningen. Annars samma som inmätt |
 | `volym_m3fub` | Ja | Nettovolym, det som faktureras |
 | `brutto_m3fub` | Nej | Används för lagret. Annars antas samma som netto |
 | `mottagningsplats` | Nej | Faktisk destination. Annars används den planerade |

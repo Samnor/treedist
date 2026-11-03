@@ -5,8 +5,13 @@ Källa: DMSKOGSRORELSEN.dbo.fLeveransaggregatVolym. Nycklarna är surrogatnyckla
 fungerar som de är så länge skördardatan använder samma nycklar för arbetsorder och
 handelssortiment; annars behöver de översättas via dimensionstabellerna.
 
+Handelssortimentet är det inmätta, som faktureras. Producerat sortiment är det skördaren
+apterade och som skördardatan förs på; virke som klassats om vid inmätningen dras ur det
+producerade sortimentets lager men faktureras som inmätt.
+
+Månaden bestäms av RedovisningDatum. Transportdatum får ligga tidigare.
+
 Antaganden att bekräfta med kontrollfrågorna längst ned:
-  - Månaden bestäms av RedovisningDatum. Transportdatum får ligga tidigare.
   - ÄrVederlagsgrundande = 'J' betyder att raden ligger till grund för betalning.
   - Netto- och bruttokolumnerna är vederlagsmätt volym. Virke som bara är ankomstmätt
     tas med först den månad det vederlagsmäts och ligger kvar i lagret till dess.
@@ -23,6 +28,7 @@ SELECT
     CONCAT(LeveransnummerSN, '')               AS leverans_id,
     CONCAT(ArbetsorderSN, '')                  AS arbetsorder,
     CONCAT(InmättHandelssortimentSN, '')       AS handelssortiment,
+    CONCAT(ProduceratHandelssortimentSN, '')   AS producerat_handelssortiment,
     CONCAT(MottagningsplatsSN, '')             AS mottagningsplats,
     MIN(TransporteratDatum)                    AS leveransdatum,
     SUM(ISNULL(NettoLeveransaggregatM3FUB, 0)) AS volym_m3fub,
@@ -32,14 +38,18 @@ WHERE RedovisningDatum >= @Start
   AND RedovisningDatum < @Slut
   AND ÄrVederlagsgrundande = N'J'
   AND BruttoLeveransaggregatM3FUB > 0
-GROUP BY LeveransnummerSN, ArbetsorderSN, InmättHandelssortimentSN, MottagningsplatsSN
+GROUP BY LeveransnummerSN, ArbetsorderSN, InmättHandelssortimentSN, ProduceratHandelssortimentSN,
+         MottagningsplatsSN
 ORDER BY leverans_id, arbetsorder, handelssortiment;
 
 
 /*
-Arbetsordrar för `--arbetsordrar`. Grupp är produktionsområdet. Den planerade destinationen
-finns inte i leveranstabellen; hämta den helst från arbetsordertabellen. I nödfall går
-arbetsorderns största mottagningsplats att använda, som här.
+Arbetsordrar för `--arbetsordrar`. Grupp är produktionsområdet.
+
+ERSÄTT destinationen: den planerade destinationen finns i arbetsordertabellen och ska hämtas
+därifrån, med samma nyckel som MottagningsplatsSN. Frågan nedan tar arbetsorderns största
+mottagningsplats i väntan på det. Den saknar arbetsordrar som ännu inte levererat något, och
+deras skörd redovisas då utan destination.
 */
 
 WITH Volym AS (

@@ -15,6 +15,8 @@ from .config import Config
 
 AO = "arbetsorder"
 SORT = "handelssortiment"
+PRODUCED = "producerat_handelssortiment"
+BILLED = "fakturerat_handelssortiment"
 DIA = "diametergrupp"
 LEN = "langdgrupp"
 VOL = "volym_m3fub"
@@ -145,6 +147,12 @@ def validate_deliveries(
     out = df[DELIVERY_REQUIRED].copy()
     for column in (AO, SORT):
         out[column] = out[column].astype(str).str.strip()
+    # Wood reclassified at the mill is invoiced as measured but leaves the
+    # stock of the assortment the harvester produced.
+    out[PRODUCED] = out[SORT]
+    if PRODUCED in df.columns:
+        produced = df[PRODUCED].astype(object).str.strip()
+        out[PRODUCED] = produced.where(produced.notna() & (produced != ""), out[SORT])
     out[VOL] = _numeric(df, VOL, name)
 
     out[BRUTTO] = _numeric(df, BRUTTO, name) if BRUTTO in df.columns else out[VOL]
@@ -154,7 +162,7 @@ def validate_deliveries(
     if "leverans_id" in df.columns:
         out["leverans_id"] = df["leverans_id"].astype(str).str.strip()
         # A truck may carry several assortments, or wood from several work orders.
-        duplicated = out.duplicated(["leverans_id", AO, SORT])
+        duplicated = out.duplicated(["leverans_id", AO, SORT, PRODUCED])
         if duplicated.any():
             raise ValueError(f"{name}: dubblerat leverans_id: {out.loc[duplicated, 'leverans_id'].iloc[0]}")
 

@@ -19,13 +19,17 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .schema import AO, DEST, DIA, LEN, LOGS, SORT, VINTAGE, VOL
+from .schema import AO, BILLED, DEST, DIA, LEN, LOGS, SORT, VINTAGE, VOL
 
+# `handelssortiment` is the assortment the harvester produced throughout the
+# ledger. A deficit also keeps the assortment it was invoiced as, which differs
+# when the mill reclassified the wood, so that its correction lands there.
 STOCK_COLUMNS = [AO, SORT, DIA, LEN, VINTAGE, VOL, LOGS]
 HISTORY_COLUMNS = [AO, SORT, DIA, LEN, VOL]
-DEFICIT_COLUMNS = [AO, SORT, DEST, DIA, LEN, VOL]
+DEFICIT_COLUMNS = [AO, SORT, BILLED, DEST, DIA, LEN, VOL]
+DEFICIT_KEYS = DEFICIT_COLUMNS[:-1]
 
-_TEXT_COLUMNS = {c: str for c in (AO, SORT, DEST, DIA, LEN, VINTAGE)}
+_TEXT_COLUMNS = {c: str for c in (AO, SORT, BILLED, DEST, DIA, LEN, VINTAGE)}
 _PERIOD_DIR = re.compile(r"^\d{4}-\d{2}$")
 
 
@@ -59,8 +63,11 @@ class Ledger:
             pd.read_csv(source / name, dtype=_TEXT_COLUMNS, keep_default_na=False, na_values=[""])
             for name in ("lager.csv", "historik.csv", "underskott.csv")
         ]
+        if BILLED not in frames[2].columns:
+            # Snapshots from before reclassification was supported.
+            frames[2][BILLED] = frames[2][SORT]
         columns = (STOCK_COLUMNS, HISTORY_COLUMNS, DEFICIT_COLUMNS)
-        stock, history, deficit = (f if len(f) else _empty(c) for f, c in zip(frames, columns))
+        stock, history, deficit = (f[c] if len(f) else _empty(c) for f, c in zip(frames, columns))
         return cls(period, stock, history, deficit)
 
 

@@ -91,6 +91,36 @@ def test_late_harvester_data_corrects_provisional_distribution(cfg):
     assert stock_a == pytest.approx(40.0)
 
 
+def reclassified(period, rows, cfg):
+    """rows: (ao, measured assortment, produced assortment, volume)"""
+    deliveries = delivery_frame(period, [(ao, measured, volume) for ao, measured, _, volume in rows], cfg)
+    return deliveries.assign(producerat_handelssortiment=[produced for _, _, produced, _ in rows])
+
+
+def test_reclassified_wood_leaves_the_produced_stock_and_is_billed_as_measured(cfg):
+    harvest = harvest_frame("2026-01", [("A", "TALL", "14", "340", 75.0), ("A", "TALL", "20", "340", 25.0)])
+    deliveries = reclassified("2026-01", [("A", "TALL", "TALL", 20.0), ("A", "MASSA", "TALL", 20.0)], cfg)
+    step = close_month(Ledger.empty(), harvest, deliveries, "2026-01", set(), cfg)
+
+    billed = step.allocation.groupby(SORT)[VOL].sum()
+    assert billed.to_dict() == pytest.approx({"TALL": 20.0, "MASSA": 20.0})
+    assert set(step.allocation[TIER]) == {"S1"}
+    assert step.ledger.stock[VOL].sum() == pytest.approx(60.0)
+    assert {c.sortiment for c in step.components} == {"TALL", "MASSA"}
+
+
+def test_correction_of_reclassified_wood_lands_on_the_measured_assortment(cfg):
+    january = harvest_frame("2026-01", [("B", "TALL", "20", "340", 100.0)])
+    deliveries = reclassified("2026-01", [("A", "MASSA", "TALL", 10.0)], cfg)
+    first = close_month(Ledger.empty(), january, deliveries, "2026-01", set(), cfg)
+    assert set(first.ledger.deficit["fakturerat_handelssortiment"]) == {"MASSA"}
+
+    february = harvest_frame("2026-02", [("A", "TALL", "30", "340", 50.0)])
+    second = close_month(first.ledger, february, delivery_frame("2026-02", [], cfg), "2026-02", set(), cfg)
+    assert set(second.corrections[SORT]) == {"MASSA"}
+    assert second.corrections.set_index(DIA)[VOL]["30"] == pytest.approx(10.0)
+
+
 def test_closing_a_work_order_writes_off_stock(cfg):
     harvest = harvest_frame("2026-01", [("A", "TALL", "14", "340", 100.0)])
     step = close_month(Ledger.empty(), harvest, delivery_frame("2026-01", [("A", "TALL", 90.0)], cfg), "2026-01", {"A"}, cfg)

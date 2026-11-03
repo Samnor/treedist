@@ -21,15 +21,17 @@ import numpy as np
 import pandas as pd
 
 from .config import Config
-from .ledger import DEFICIT_COLUMNS, HISTORY_COLUMNS, STOCK_COLUMNS, Ledger, merge, split, take
+from .ledger import DEFICIT_COLUMNS, DEFICIT_KEYS, HISTORY_COLUMNS, STOCK_COLUMNS, Ledger, merge, split, take
 from .schema import (
     AO,
+    BILLED,
     BRUTTO,
     DEST,
     DIA,
     LEN,
     LOGS,
     NO_DESTINATION,
+    PRODUCED,
     SORT,
     TIER,
     UNKNOWN_CLASS,
@@ -278,7 +280,9 @@ def close_month(
 
     The ledger is shared by all destinations: a work order's stock is one pile
     of wood wherever it goes. Volume delivered to several destinations from one
-    work order is split by net volume.
+    work order is split by net volume. So is volume the mill measured in as
+    another assortment than the harvester produced: it leaves the produced
+    assortment's stock and is booked on the assortment it was measured as.
 
     Wood without harvester data borrows from comparable work orders, see
     `_donor_weights`.
@@ -300,11 +304,13 @@ def close_month(
     history_by_key = dict(tuple(history.groupby([AO, SORT], sort=False)))
     deficit_by_key = dict(tuple(ledger.deficit.groupby([AO, SORT], sort=False)))
     harvested = calibrated.groupby([AO, SORT], sort=False)[VOL].sum()
-    delivered = deliveries.groupby([AO, SORT], sort=False)[VOL].sum()
-    physical = deliveries.groupby([AO, SORT], sort=False)[BRUTTO].sum()
-    dated_by_key = dict(tuple(deliveries.groupby([AO, SORT], sort=False)))
+    if PRODUCED not in deliveries.columns:
+        deliveries = deliveries.assign(**{PRODUCED: deliveries[SORT]})
+    delivered = deliveries.groupby([AO, PRODUCED], sort=False)[VOL].sum()
+    physical = deliveries.groupby([AO, PRODUCED], sort=False)[BRUTTO].sum()
+    dated_by_key = dict(tuple(deliveries.groupby([AO, PRODUCED], sort=False)))
     split_by_key = {
-        key: block.groupby(DEST, sort=True)[VOL].sum() / block[VOL].sum()
+        key: block.groupby([DEST, SORT], sort=True)[VOL].sum() / block[VOL].sum()
         for key, block in dated_by_key.items()
         if block[VOL].sum() > 0
     }
@@ -321,12 +327,12 @@ def close_month(
     reconciliation: list[dict] = []
 
     def book(key: tuple[str, str], part: Component, shares: pd.Series) -> pd.DataFrame:
-        """Record a volume per destination, returning what was booked."""
+        """Record a volume per destination and measured assortment, returning what was booked."""
         booked = []
-        for destination, share in split_by_key[key].items():
+        for (destination, billed), share in split_by_key[key].items():
             cells = (part.volume * share * shares).rename(VOL).rename_axis([DIA, LEN]).reset_index()
-            booked.append(cells.assign(**{AO: key[0], SORT: key[1], DEST: destination}))
-            components.append(replace(part, destination=destination, volume=part.volume * share))
+            booked.append(cells.assign(**{AO: key[0], SORT: billed, DEST: destination}))
+            components.append(replace(part, sortiment=billed, destination=destination, volume=part.volume * share))
         rows = pd.concat(booked, ignore_index=True)
         allocations.append(rows.assign(**{TIER: part.tier}))
         return rows
@@ -344,12 +350,12 @@ def close_month(
             taken, block = take(block, corrected)
             actual = taken.groupby([DIA, LEN], sort=False, as_index=False)[VOL].sum()
             fraction = corrected / owed_total
-            released = owed.assign(**{VOL: -owed[VOL] * fraction})[[DEST, DIA, LEN, VOL]]
-            for destination, unsettled in released.groupby(DEST, sort=False):
+            released = owed.assign(**{VOL: -owed[VOL] * fraction})[[BILLED, DEST, DIA, LEN, VOL]]
+            for (billed, destination), unsettled in released.groupby([BILLED, DEST], sort=False):
                 earned = actual.assign(**{VOL: actual[VOL] * unsettled[VOL].sum() / released[VOL].sum()})
                 changes = pd.concat([earned, unsettled[[DIA, LEN, VOL]]])
                 net_change = changes.groupby([DIA, LEN], sort=False, as_index=False)[VOL].sum()
-                corrections.append(net_change.assign(**{AO: key[0], SORT: key[1], DEST: destination}))
+                corrections.append(net_change.assign(**{AO: key[0], SORT: billed, DEST: destination}))
             owed = owed.assign(**{VOL: owed[VOL] * (1 - fraction)})
             owed = owed[owed[VOL] > 1e-9]
 
@@ -377,7 +383,7 @@ def close_month(
                     shares = _composition(history_by_key[key])
                     part = _component(key, "S2", billed, shares, cfg.history_concentration, True)
                 elif key[1] in pools:
-                    destination = work_orders.destinations.get(key[0], split_by_key[key].index[0])
+                    destination = work_orders.destinations.get(key[0], split_by_key[key].index[0][0])
                     pool = pools[key[1]]
                     weights = _donor_weights(key, destination, pool, work_orders, mean_diameters, cfg)
                     shares, part = _pool_component(key, billed, pool, weights, cfg)
@@ -385,8 +391,10 @@ def close_month(
                     shares = _unknown_shares()
                     part = _component(key, "S4", billed, shares, float("inf"), False)
                 provisional = book(key, part, shares)
-                unsettled = provisional.assign(**{VOL: provisional[VOL] / net_share})
-                owed = merge([owed, unsettled[DEFICIT_COLUMNS]], [AO, SORT, DEST, DIA, LEN], DEFICIT_COLUMNS)
+                unsettled = provisional.assign(
+                    **{VOL: provisional[VOL] / net_share, BILLED: provisional[SORT], SORT: key[1]}
+                )
+                owed = merge([owed, unsettled[DEFICIT_COLUMNS]], DEFICIT_KEYS, DEFICIT_COLUMNS)
 
         written_off = 0.0
         if key[0] in closed_aos:
@@ -436,7 +444,7 @@ def close_month(
             period,
             merge(closing_stock, stock_keys, STOCK_COLUMNS),
             history,
-            merge(closing_deficit, [AO, SORT, DEST, DIA, LEN], DEFICIT_COLUMNS),
+            merge(closing_deficit, DEFICIT_KEYS, DEFICIT_COLUMNS),
         ),
         work_orders=work_orders,
     )

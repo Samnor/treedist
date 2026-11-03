@@ -79,6 +79,26 @@ def test_duplicate_delivery_is_rejected(cfg):
         validate_deliveries(pd.concat([delivery_row(), delivery_row()]), "2026-01", cfg)
 
 
+def test_produced_assortment_defaults_to_the_measured_one(cfg):
+    rows = pd.concat([delivery_row(), delivery_row(leverans_id="L2", producerat_handelssortiment="GRAN")])
+    out = validate_deliveries(rows, "2026-01", cfg)
+    assert list(out["producerat_handelssortiment"]) == ["TALL", "GRAN"]
+
+
+def test_ledger_snapshot_without_billed_assortment_still_loads(tmp_path):
+    state = tmp_path / "2026-01"
+    state.mkdir()
+    (state / "lager.csv").write_text(
+        "arbetsorder,handelssortiment,diametergrupp,langdgrupp,avverkningsdatum,volym_m3fub,antal_stockar\n"
+    )
+    (state / "historik.csv").write_text("arbetsorder,handelssortiment,diametergrupp,langdgrupp,volym_m3fub\n")
+    (state / "underskott.csv").write_text(
+        "arbetsorder,handelssortiment,destination,diametergrupp,langdgrupp,volym_m3fub\nA,TALL,-,20,340,5.0\n"
+    )
+    deficit = Ledger.load(tmp_path, "2026-01").deficit
+    assert deficit["fakturerat_handelssortiment"].tolist() == ["TALL"]
+
+
 def test_one_truck_may_carry_several_assortments(cfg):
     mixed = pd.concat([delivery_row(), delivery_row(handelssortiment="GRAN")])
     assert len(validate_deliveries(mixed, "2026-01", cfg)) == 2
