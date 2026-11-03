@@ -1,0 +1,29 @@
+# Modell fore-forenkling: standard före förenklingen 2026-11-03, kod 4a3b0d1.
+# Den koden har parametrar som senare tagits bort, så modellen körs bara i en checkout av 4a3b0d1:
+#   git worktree add ../treedist-4a3b0d1 4a3b0d1
+#   cd ../treedist-4a3b0d1 && uv run treedist run ... --config ../TreeDistributionSimulator/modeller/fore-forenkling.toml
+# Koden i 4a3b0d1 känner inte tabellen [modell], så uppgifterna om modellen står här som kommentarer.
+# Utvecklingsfrön enligt climb/logg.jsonl: prisfel 10,89 kr/m3fub, poäng 11,975, värde inom 90 % 92,1 %.
+
+harvester_bias = 0.009
+handling_loss = 0.01
+coverage_tolerance = 0.03
+draw_policy = "dated"
+min_forwarding_days = 2
+overlap_fifo = true
+stock_block_days = 5
+cluster_volume = 2400.0
+mixture_min_concentration = 0.25
+design_effect = 40.0
+default_log_volume = 0.25
+pool_concentration_default = 20.0
+pool_min_donors = 5
+pool_remaining_share = 0.5
+pool_min_pairs = 3
+donor_destination_weight = 16.0
+donor_group_weight = 4.0
+donor_sibling_cm = 1.5
+diameter_bias_sd_mm = 2.0
+intervals = true
+mc_draws = 2000
+seed = 20261102

@@ -1,0 +1,70 @@
+# Modell standard-2026-11-03. Kör med --config modeller/standard-2026-11-03.toml; se scripts/modell.py.
+
+harvester_bias = 0.009
+handling_loss = 0.01
+donor_destination_weight = 16.0
+donor_group_weight = 4.0
+donor_sibling_cm = 1.5
+pool_min_pairs = 3
+design_effect = 200.0
+default_log_volume = 0.25
+pool_remaining_share = 0.5
+oldest_first = true
+draw_gross = true
+history_fallback = true
+intervals = true
+mc_draws = 2000
+seed = 20261102
+
+[volume_methods.stockmatning]
+unit_cv = 0.043
+default_units = 150
+systematic_sd = 0.0005
+
+[volume_methods.travmatning]
+unit_cv = 0.051
+default_units = 3
+systematic_sd = 0.0015
+
+[volume_methods.vagning]
+unit_cv = 0.069
+default_units = 3
+systematic_sd = 0.005
+
+[volume_methods.skordarmatning]
+unit_cv = 0.05
+default_units = 150
+systematic_sd = 0.005
+
+[volume_methods.okand]
+unit_cv = 0.08
+default_units = 1
+systematic_sd = 0.02
+
+[modell]
+namn = "standard-2026-11-03"
+beskrivning = "Standard efter förenklingen 2026-11-03: alla delar"
+kod = "d6b812b"
+sparad = "2026-11-03"
+delar = 23
+delar_av = 23
+anvanda_delar = ["liggare", "brutto", "harvester_bias", "handling_loss", "aldst_forst", "S2", "S3", "donor_destination_weight", "donor_group_weight", "syskon", "donor_sibling_cm", "pool_min_pairs", "S4", "dirichlet", "design_effect", "andlighet", "pool_remaining_share", "default_log_volume", "hel_givare", "volymfel", "unit_cv", "systematic_sd", "default_units"]
+prisfel = 10.89
+prisfel_naiv = 43.96
+prestanda = 1.0
+varde_90 = 0.908
+standardens_prisfel = 10.89
+kontroll_prisfel = 11.26
+kontroll_prestanda = 1.0
+
+[modell.prestanda_per_scenario]
+"30 % utan skördardata" = 1.0
+"bas" = 1.0
+"destination oberoende av grovlek" = 1.0
+"stora skillnader inom AO" = 1.0
+
+[modell.kontroll_prestanda_per_scenario]
+"30 % utan skördardata" = 1.0
+"bas" = 1.0
+"destination oberoende av grovlek" = 1.0
+"stora skillnader inom AO" = 1.0
