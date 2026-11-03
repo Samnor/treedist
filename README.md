@@ -73,6 +73,14 @@ borttagningar mot samma baslinje; varje steg får kosta högst 0,25 i poäng och
 uv run python scripts/climb.py forenkla donor_group_weight=1 'design_effect=100,pool_min_pairs=5'
 ```
 
+[Flödesrapporten](docs/flodesrapport.html) visar demons månader steg för steg som en graf, från indata via liggaren,
+dragningen och säkerhetsklasserna till matriser, faktura och facit. Klicka på ett steg för detaljerna. Skapa den på
+nytt efter en ändring i metoden, eller för annan data med `--data` eller `--kalla` och `--perioder`:
+
+```bash
+uv run python scripts/flodesrapport.py
+```
+
 Kör testerna:
 
 ```bash
