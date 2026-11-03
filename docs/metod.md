@@ -115,8 +115,8 @@ Två spridningar redovisas. `std_fordelning` håller volymen fast och är osäke
 Metoden får bara det verkliga system skulle se. [Underlaget](simuleringsunderlag.md) beskriver vad simulatorn bygger på.
 Resultat, tre metoder och jämförelse med forskningen finns i [metodjämförelsen](metodjamforelse.md).
 
-I korthet, i basscenariot: 5,8 % av volymen hamnar i fel cell mot 17,1 % om man bara använder månadens skörd, och
-medelpriset fel med 9,1 mot 41,7 kr/m3fub. Över tolv månader är prisfelet 4,8 kr/m3fub. Värdeintervallet täcker 87–92 %
+I korthet, i basscenariot: 5,5 % av volymen hamnar i fel cell mot 17,1 % om man bara använder månadens skörd, och
+medelpriset fel med 8,6 mot 41,7 kr/m3fub. Över tolv månader är prisfelet 4,8 kr/m3fub. Värdeintervallet täcker 87–93 %
 mot nominellt 90 %. Simulatorns lagringstider följer säsongen, se [antaganden](antaganden.md).
 
 Eftersom leveranser saknar diameter och längd finns inget direkt facit i verklig drift. Det som går att följa upp är

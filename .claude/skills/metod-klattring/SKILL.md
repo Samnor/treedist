@@ -47,8 +47,10 @@ The best set is written to `climb/basta.json` and `climb/basta.toml`; it does no
 
 After every three taken steps, and always before moving parameters into the defaults:
 `uv run python scripts/climb.py holdout`. It compares the best against today's defaults on
-eight control seeds that no decision has used. If the gain does not hold there, say so and
-undo the steps since the last check that held.
+eight control seeds that no decision has used. A structural step changes the defaults
+themselves, so check it against the settings that switch it off:
+`holdout --mot overlap_fifo=false`, one `--mot` per step since the last check. If the gain
+does not hold there, say so and undo the steps since the last check that held.
 
 ## Rules
 
@@ -68,11 +70,20 @@ undo the steps since the last check that held.
 - A comparison takes about a minute and a parameter round about fifteen; run long climbs in the
   background and do not poll.
 
+## Where the error is (2026-11-03, after `overlap_fifo`)
+
+Swapping one part of the allocation for the truth, base scenario, development seeds: knowing
+exactly which logs left, in harvester classes, only takes the price error from 7.3 to 6.1. The
+rest of S1's error is the harvester's own diameter error, which no method can remove without
+dimensions at the mill. S3 is about 11 % of the volume but about 3 kr/m3fub of the error, and
+most of it when 30 % lacks harvester data. S2 is under 1 % of the volume. Aim at S3 and at the
+uncertainty model before anything else.
+
 ## Ideas not yet tried
 
-- Weight donors by how close their harvest dates are to the work order's, as stands felled in
-  the same season resemble each other.
-- Use every sibling assortment, not only the first, when predicting a missing one.
-- Draw the remainder after a month end from the latest harvest blocks first when delivery
-  overlaps the harvest (summer), and pro rata otherwise.
-- Shrink a small work order's own stock composition toward its donors' when it has few logs.
+- Weight donors by how close their harvest dates are to the work order's. The simulator has
+  no seasonal difference in size, so it cannot judge this; it needs real data.
+- Use every sibling assortment, not only the first. The simulator has two assortments, so
+  this is a no-op here.
+- Shrink a small work order's history toward its donors' (S2). Under 1 % of the volume in the
+  simulator, so hardly worth a step.

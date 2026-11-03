@@ -214,15 +214,20 @@ def climb_params(budget: int) -> None:
     print(f"Slut efter {used} kandidater: {summary(base)}  {best}")
 
 
-def compare(sets: list[str], note: str, take: bool) -> None:
-    best = load_best()["overrides"]
+def _parse(sets: list[str]) -> dict:
     change = {}
-    known = {f.name: f for f in fields(Config)}
+    known = {f.name for f in fields(Config)}
     for item in sets:
         key, _, raw = item.partition("=")
         if key not in known:
             raise SystemExit(f"Okänd parameter: {key}")
         change[key] = json.loads(raw) if raw not in ("true", "false") else raw == "true"
+    return change
+
+
+def compare(sets: list[str], note: str, take: bool) -> None:
+    best = load_best()["overrides"]
+    change = _parse(sets)
     candidate = {**best, **change}
     with ProcessPoolExecutor() as pool:
         base, result = evaluate(pool, [best, candidate], DEV_SEEDS)
@@ -238,13 +243,16 @@ def compare(sets: list[str], note: str, take: bool) -> None:
         print("Sparad som bäst.")
 
 
-def holdout() -> None:
+def holdout(against: list[str]) -> None:
+    """The best against the defaults, or against `against`: the settings that undo the steps to check."""
     best = load_best()["overrides"]
+    reference = _parse(against)
     with ProcessPoolExecutor() as pool:
-        default, result = evaluate(pool, [{}, best], HOLDOUT_SEEDS)
+        default, result = evaluate(pool, [reference, best], HOLDOUT_SEEDS)
     verdict = judge(default, result)
-    log({"typ": "kontroll", "kandidat": best, "standard": summary(default), **summary(result), **verdict})
-    print(f"Standardvärden: {summary(default)}")
+    log({"typ": "kontroll", "kandidat": best, "mot": reference, "standard": summary(default), **summary(result),
+         **verdict})
+    print(f"Jämförelse:     {summary(default)}  {reference or 'standardvärden'}")
     print(f"Bästa:          {summary(result)}  {best}")
     print(f"Skillnad {verdict['diff']:+.3f} ± {verdict['se']:.3f} -> {'håller' if verdict['battre'] else 'håller inte'}")
     print(f"Prisfel per scenario, ändring: {verdict['per_scenario']}")
@@ -268,7 +276,9 @@ def main() -> None:
     comp.add_argument("--set", action="append", default=[], metavar="NYCKEL=VÄRDE")
     comp.add_argument("--note", default="")
     comp.add_argument("--take", action="store_true", help="Spara som bäst om den är bättre")
-    commands.add_parser("holdout", help="Bästa mot standardvärden på kontrollfrön")
+    hold = commands.add_parser("holdout", help="Bästa mot standardvärden på kontrollfrön")
+    hold.add_argument("--mot", action="append", default=[], metavar="NYCKEL=VÄRDE",
+                      help="Jämför i stället mot detta, t.ex. strukturella steg avstängda")
     commands.add_parser("status", help="Visa bästa och senaste försöken")
     args = parser.parse_args()
 
@@ -277,7 +287,7 @@ def main() -> None:
     elif args.command == "compare":
         compare(args.set, args.note, args.take)
     elif args.command == "holdout":
-        holdout()
+        holdout(args.mot)
     else:
         status()
 

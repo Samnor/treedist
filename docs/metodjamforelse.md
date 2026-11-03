@@ -30,16 +30,16 @@ andelen volym i fel cell per månad, destination och sortiment. Kumulativt är s
 |---|---|---|---|---|---|---|
 | Bas | Naiv (månadens skörd) | 17,1 % | 41,7 | – | – | – |
 | | B Faltning | 11,7 % | 26,7 | – | – | – |
-| | A Liggare | 6,6 % | 12,1 | 8,2 | 90 % | 98 % |
-| | **C Mjuk matchning** | **5,8 %** | **9,1** | **4,8** | 92 % | 98 % |
+| | A Liggare | 6,4 % | 11,7 | 8,2 | 91 % | 98 % |
+| | **C Mjuk matchning** | **5,5 %** | **8,6** | **4,8** | 93 % | 98 % |
 | 30 % utan skördardata | Naiv | 18,8 % | 44,8 | – | – | – |
 | | B Faltning | 13,8 % | 30,6 | – | – | – |
-| | A Liggare | 11,3 % | 26,6 | 22,2 | 84 % | 96 % |
-| | **C Mjuk matchning** | **8,9 %** | **16,8** | **8,6** | 87 % | 97 % |
+| | A Liggare | 11,2 % | 26,5 | 22,2 | 85 % | 96 % |
+| | **C Mjuk matchning** | **8,8 %** | **16,5** | **8,6** | 87 % | 97 % |
 | Stora skillnader inom arbetsorder | Naiv | 22,2 % | 52,8 | – | – | – |
 | | B Faltning | 16,0 % | 37,2 | – | – | – |
-| | A Liggare | 9,3 % | 16,8 | 9,0 | 89 % | 95 % |
-| | **C Mjuk matchning** | **9,0 %** | **15,8** | **6,8** | 88 % | 94 % |
+| | A Liggare | 8,8 % | 15,6 | 9,1 | 91 % | 95 % |
+| | **C Mjuk matchning** | **8,5 %** | **14,5** | **6,9** | 88 % | 95 % |
 
 Värdetäckning är hur ofta månadens värde låg inom 90 %-intervallet, och celltäckning motsvarande per cell. Fröna 81–88
 är nya för den här körningen, som också är den första med säsongens lagringstider. Med kortare lagring blir den naiva
@@ -73,7 +73,10 @@ Alla idéer prövades på egna utvecklingsfrön innan slutkontrollen. Prisfel i 
 | Designeffekt 40 i stället för 20 efter säsongsbasen | Värdetäckning 88 → 90 %, 86 → 86 % och 88 → 91 %, prisfel oförändrat | Behållen |
 | Stockantal per leverans | 7,7 → 2,1 i tidigare simulering | Uppgiften finns inte |
 | Klättring: givare viktade efter inmätt medelstockvolym | Poäng −4,96 ± 0,57 | Förkastad, kräver stockantal som inmätningen saknar |
-| Klättring: äldsta virket först när leveranserna började under skörden | Poäng −1,05 ± 0,20, prisfel 11,9 → 10,9 och bättre i alla fyra scenarier | Behållen. Till skillnad från FIFO ovan gäller den bara när lastbilarna följer skördaren |
+| Klättring: destinations- och gruppvikt skattade varje månad ur givarnas egna medeldiametrar | Hela vägen −0,06 ± 0,28, halvvägs −0,20 ± 0,18. Prisfel −1,0 och −0,9 när destinationen är oberoende av grovlek, men +0,1 till +0,6 i övriga | Förkastad. Visar att vikten 16 för destination bara stämmer om sågverken verkligen väljs efter grovlek; kontrollera det i verklig data |
+| Klättring: äldsta virket först när leveranserna började under skörden | Poäng −1,05 ± 0,20, prisfel 11,9 → 10,9 och bättre i alla fyra scenarier. Håller på kontrollfröna: −0,71 ± 0,20 | Behållen. Till skillnad från FIFO ovan gäller den bara när lastbilarna följer skördaren |
+| Klättring: smalare blandning av skördeblock när lastbilarna följde skördaren | Poäng −0,02 ± 0,07, värdetäckning 92,1 → 91,5 % | Förkastad |
+| Parameterklättring efter föregående steg, 24 kandidater | Inget steg slog bruset | Parametrarna ligger kvar i ett lokalt optimum |
 
 ## För- och nackdelar
 
@@ -110,7 +113,7 @@ Ja i riktning, men siffrorna går bara delvis att jämföra.
 | Noordermeer m.fl. 2023 | k-NN med laserdata och skördardata som referens, 49 bestånd | 0,13 för diameter, 0,10 för sågad volym |
 | Maltamo m.fl. 2019 | Samma ansats, 47 bestånd | Under 0,2 |
 | Vårt virke utan skördardata | Mjuk matchning, utan laserdata, simulerat | 0,21–0,31 |
-| Vårt virke med eget lager | Egna skördardata, simulerat | 0,04–0,06 |
+| Vårt virke med eget lager | Egna skördardata, simulerat | 0,03–0,05 |
 | Vår månadsmatris | Per destination och sortiment | 0,06–0,09 |
 
 **Det stämmer överens:**
@@ -130,7 +133,7 @@ medan deras är verkliga. Jämförelsen visar storleksordning, inte att vi är b
 ## Kvarstående svagheter
 
 - **Värdeintervallet är något smalt när mycket virke saknar skördardata.** Månadens värde låg inom 90 %-intervallet i
-  87–92 % av fallen, lägst med 30 % utan skördardata. Det som återstår är enstaka stora missar när mer levererats än
+  87–93 % av fallen, lägst med 30 % utan skördardata. Det som återstår är enstaka stora missar när mer levererats än
   skördardatan visar: den del av beståndet som inte rapporterats kan vara helt olik resten. Per cell är intervallen i
   stället något breda, 94–98 %.
 - **Inget verkligt facit.** Eftersom dimensioner saknas vid leverans går metoden inte att validera direkt i drift.
