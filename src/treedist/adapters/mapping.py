@@ -20,6 +20,10 @@
     [leverans.filter]                       # keep rows where the source column has the value
     Status = ["Godkänd", "Klar"]
 
+Decimal commas are read as decimal points everywhere, so `enheter` is only for
+converting units. Each table is one file read as it is: joining files, mapping
+codes to names or changing ids needs a `.py` adapter instead.
+
 Every error names what is allowed, so that whoever writes the mapping can fix it
 from the message alone.
 """

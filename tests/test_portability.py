@@ -1,6 +1,7 @@
 """Moving to new data: the golden demo, the adapters, the contract and `check`."""
 
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -150,3 +151,11 @@ def test_the_contract_is_what_validation_requires():
     assert DELIVERY_REQUIRED == ["arbetsorder", "handelssortiment", "volym_m3fub"]
     text = markdown()
     assert all(f"(`{key}`)" in text for key in TABLES)
+
+
+def test_check_notices_every_mistake_in_the_catalog_and_warns_about_no_correct_source():
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from portability_bench import MISTAKES, false_alarms, mistakes
+
+    assert mistakes() == len(MISTAKES)
+    assert false_alarms(None) == 0

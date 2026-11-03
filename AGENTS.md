@@ -6,8 +6,11 @@ system. Uppgiften är nästan alltid att beskriva källans format, inte att änd
 ## Vad du får ändra
 
 - **En källbeskrivning.** Helst en `.toml`-mappning, se [examples/kalla/kalla.toml](examples/kalla/kalla.toml).
-  Bara om mappningen inte räcker, till exempel när tabeller måste slås ihop, en `.py`-fil med
-  `read(period) -> dict[str, DataFrame]`. Lägg den i en egen katalog, till exempel `kallor/<system>/`.
+  Den byter kolumnnamn, räknar om enheter, sätter konstanter, filtrerar rader och läser datumformat.
+  Decimalkomma läses alltid rätt, så `enheter` behövs bara för omräkning.
+- **En `.py`-adapter** bara när mappningen inte räcker: filer som måste slås ihop, koder som ska bli namn,
+  id som skiljer mellan källorna. Den definierar `read(period) -> dict[str, DataFrame]` med tabellerna i
+  kontraktets kolumnnamn. Lägg den i en egen katalog, till exempel `kallor/<system>/`.
 - **En konfigurationsfil** till `--config`, till exempel [examples/profil_enkel.toml](examples/profil_enkel.toml).
 
 ## Vad du inte får ändra
@@ -28,8 +31,8 @@ Ett test som slutar fungera ska inte skrivas om för att passera.
    uv run treedist check --period 2026-01 --kalla kallor/system/kalla.toml
    ```
 
-   Varje `VARNING` ska antingen rättas eller förklaras för en person. Med `--state` provkörs månaden mot
-   liggaren utan att något sparas.
+   Varje `VARNING` ska antingen rättas eller förklaras för en person. `INFO` kräver inget. Med `--state`
+   provkörs månaden mot liggaren utan att något sparas.
 5. Kör månaderna i ordning, först med profilen enkel:
 
    ```bash

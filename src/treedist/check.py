@@ -7,7 +7,7 @@ comparing the data with what Swedish sawlog flows look like, and by running the
 month without saving anything to see where the volume ends up.
 
 Each finding says what to look at. FEL stops a run; VARNING needs a person to
-judge it; OK says a check passed.
+judge it; INFO is worth knowing but asks nothing; OK says a check passed.
 """
 
 from __future__ import annotations
@@ -23,9 +23,9 @@ from .config import Config
 from .contract import TABLES
 from .core.allocate import CERTAINTY_TIERS, close_month
 from .core.ledger import Ledger, previous_period
-from .schema import AO, BRUTTO, DIA, LEN, LOGS, SORT, VINTAGE, VOL
+from .schema import AO, BRUTTO, DEST, DIA, LEN, LOGS, SORT, VINTAGE, VOL
 
-FEL, VARNING, OK = "FEL", "VARNING", "OK"
+FEL, VARNING, INFO, OK = "FEL", "VARNING", "INFO", "OK"
 # More delivered volume than this without harvester data nearly doubled the price error in simulation.
 MAX_UNBACKED_SHARE = 0.30
 # A closed work order whose delivered and harvested volume differ by more than this.
@@ -64,8 +64,10 @@ def check(
     findings.append(Finding(OK, "validering", "alla tabeller följer kontraktet"))
 
     findings += _classes(inputs.harvest)
+    findings += _class_bottoms(inputs)
     findings += _harvest_logs(inputs.harvest)
     findings += _gross_and_net(raw.get("leverans"), inputs.deliveries)
+    findings += _loads(raw.get("leverans"), inputs.deliveries)
     findings += _dates(inputs.harvest, inputs.deliveries)
     findings += _prices(inputs)
 
@@ -87,7 +89,9 @@ def _form(raw: Raw) -> list[Finding]:
         extra = [c for c in frame.columns if c not in {c.name for c in table.columns}]
         if extra:
             findings.append(Finding(VARNING, key, f"kolumnerna {extra} finns inte i kontraktet och används inte"))
-        if frame.empty:
+        if frame.empty and key == "avslutade_ao":
+            findings.append(Finding(INFO, key, "inga arbetsordrar avslutades; deras lager ligger kvar till dess"))
+        elif frame.empty:
             findings.append(Finding(VARNING, key, "tabellen är tom"))
     return findings
 
@@ -121,6 +125,24 @@ def _classes(harvest: pd.DataFrame) -> list[Finding]:
     return findings
 
 
+def _class_bottoms(inputs) -> list[Finding]:
+    """Price limits sit on class bottoms, so a harvest whose classes never meet them is likely given as midpoints."""
+    findings = []
+    rules = [r for rules in inputs.prices.rules.values() for r in rules]
+    for column, low, high in ((DIA, "diameter_min", "diameter_max"), (LEN, "length_min", "length_max")):
+        classes = set(_numeric_classes(inputs.harvest[column]))
+        if len(classes) < 3:
+            continue
+        limits = {getattr(r, a) for r in rules for a in (low, high)} - {None}
+        inside = {v for v in limits if min(classes) < v <= max(classes)}
+        if inside and not inside & classes:
+            findings.append(
+                Finding(VARNING, "skordning", f"ingen {column} sammanfaller med prislistans gränser {sorted(inside)}; "
+                        "är klasserna angivna som klassmitt i stället för nedre gräns?")
+            )
+    return findings
+
+
 def _harvest_logs(harvest: pd.DataFrame) -> list[Finding]:
     counted = harvest[harvest[LOGS] > 0]
     if counted.empty:
@@ -135,9 +157,33 @@ def _gross_and_net(raw: pd.DataFrame | None, deliveries: pd.DataFrame) -> list[F
     if raw is None or BRUTTO not in raw.columns:
         return [Finding(VARNING, "leverans", "brutto_m3fub saknas; lagret minskas då med nettovolymen")]
     ratio = float(deliveries[VOL].sum() / deliveries[BRUTTO].sum())
+    if len(deliveries) >= 10 and (deliveries[VOL] == deliveries[BRUTTO]).all():
+        return [Finding(VARNING, "leverans", "brutto är lika med netto på varje rad; är brutto_m3fub mappad till nettokolumnen?")]
     if ratio < 0.85:
         return [Finding(VARNING, "leverans", f"netto är {ratio:.1%} av brutto; normalt 95–100 %. Är det fub och fub, och rätt kolumner?")]
     return [Finding(OK, "leverans", f"netto är {ratio:.1%} av brutto")]
+
+
+def _loads(raw: pd.DataFrame | None, deliveries: pd.DataFrame) -> list[Finding]:
+    """A truck carries about 40 m3fub of sawlogs; far from that the unit or the rows are wrong."""
+    if raw is None or "leverans_id" not in raw.columns:
+        return []
+    findings = []
+    per_load = deliveries.groupby("leverans_id")[BRUTTO].sum()
+    median = float(per_load.median())
+    if not 2 <= median <= 100:
+        findings.append(
+            Finding(VARNING, "leverans", f"median {median:.4g} m3fub per lass, normalt 20–60; är volymen i dm3 eller m3?")
+        )
+    # Two trucks rarely carry the same volume to the litre from the same work order on the same day.
+    same = [AO, SORT, DEST, "leveransdatum", VOL, BRUTTO]
+    copies = int(deliveries.duplicated(same).sum())
+    if copies:
+        findings.append(
+            Finding(VARNING, "leverans", f"{copies} lass är kopior av andra lass med annat id; saknas ett filter på status, "
+                    "till exempel makulerade lass?")
+        )
+    return findings or [Finding(OK, "leverans", f"median {median:.1f} m3fub per lass, inga kopior")]
 
 
 def _dates(harvest: pd.DataFrame, deliveries: pd.DataFrame) -> list[Finding]:
@@ -193,8 +239,22 @@ def _dry_run(inputs, period: str, cfg: Config, ledger) -> list[Finding]:
         level = VARNING if unbacked > MAX_UNBACKED_SHARE else OK
         hint = "; matchar arbetsorder-id och sortiment mellan skördardata och inmätning?" if level == VARNING else ""
         findings.append(Finding(level, "provkörning", f"levererad volym per säkerhetsklass: {shares}{hint}"))
+        # Which work orders lack harvester data, so that a person can ask whether that is right.
+        unbacked_keys = (
+            step.allocation[step.allocation["sakerhetsklass"].isin(["S3", "S4"])]
+            .groupby([AO, SORT])[VOL].sum().sort_values(ascending=False)
+        )
+        if len(unbacked_keys):
+            listed = ", ".join(f"{ao} {sort} {v:.0f}" for (ao, sort), v in unbacked_keys.head(5).items())
+            more = f" och {len(unbacked_keys) - 5} till" if len(unbacked_keys) > 5 else ""
+            findings.append(
+                Finding(INFO, "provkörning", f"utan skördardata, m3fub: {listed}{more}. Saknad skördardata, "
+                        "omklassning (producerat_handelssortiment) eller id som inte matchar?")
+            )
         if start.period is None:
-            findings.append(Finding(VARNING, "provkörning", "ingen liggare (--state); virke skördat före perioden blir S3/S4"))
+            findings.append(
+                Finding(INFO, "provkörning", "ingen liggare (--state): virke skördat före perioden räknas som utan skördardata")
+            )
 
     closed = step.reconciliation[step.reconciliation[AO].isin(inputs.closed_aos)]
     harvested = step.ledger.history.groupby([AO, SORT])[VOL].sum()
