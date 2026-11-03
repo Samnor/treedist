@@ -3,10 +3,10 @@ import json
 import pandas as pd
 import pytest
 
-from treedist.backtest import run_backtest
+from treedist.dev.backtest import run_backtest
 from treedist.cli import main
 from treedist.config import Config, load_config
-from treedist.simulate import SimParams, simulate
+from treedist.dev.simulate import SimParams, simulate
 
 
 def test_simulator_inputs_look_like_real_input():

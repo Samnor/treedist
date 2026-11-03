@@ -22,38 +22,10 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from .allocate import Component
-from .config import Config
-from .schema import AO, DEST, SORT, VOL
-
-MatrixKey = tuple[str, str]
-
-
-@dataclass(frozen=True)
-class Grid:
-    diameters: tuple[str, ...]
-    lengths: tuple[str, ...]
-
-    @property
-    def shape(self) -> tuple[int, int]:
-        return (len(self.diameters), len(self.lengths))
-
-    def diameter_widths_mm(self) -> np.ndarray:
-        """Width of the numeric diameter classes, which sort first on the axis.
-
-        The top class repeats its neighbour's width. Labels such as "-" and
-        OKÄND have no neighbours and stay out of the diameter shift.
-        """
-        floors = []
-        for diameter in self.diameters:
-            try:
-                floors.append(float(diameter))
-            except ValueError:
-                break
-        if len(floors) < 2:
-            return np.empty(0)
-        widths = np.diff(floors)
-        return np.append(widths, widths[-1]) * 10
+from ..config import Config
+from ..core.allocate import Component
+from ..core.matrices import Grid, MatrixKey
+from ..schema import AO, DEST, SORT, VOL
 
 
 @dataclass

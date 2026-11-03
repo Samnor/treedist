@@ -30,10 +30,10 @@ import numpy as np
 import pandas as pd
 from compare_methods import _month_scores, _run_ledger
 
-from treedist.backtest import _score
+from treedist.dev.backtest import _score
 from treedist.config import Config
-from treedist.invoice import PriceList
-from treedist.simulate import SimParams, example_price_list, simulate
+from treedist.core.invoice import PriceList
+from treedist.dev.simulate import SimParams, example_price_list, simulate
 
 ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "climb"

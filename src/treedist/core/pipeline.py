@@ -6,13 +6,12 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from ..config import Config
+from ..schema import DEST, SORT, VOL, WorkOrders
 from .allocate import MonthStep, close_month
-from .config import Config
 from .invoice import PriceList, build_invoice
 from .ledger import Ledger
-from .matrices import SortimentMatrices, build_grids, build_matrices
-from .schema import DEST, SORT, VOL, WorkOrders
-from .uncertainty import MatrixKey, monte_carlo
+from .matrices import MatrixKey, SortimentMatrices, build_grids, build_matrices
 
 
 @dataclass
@@ -35,7 +34,12 @@ def run_month(
 ) -> MonthOutput:
     step = close_month(ledger, harvest, deliveries, period, closed_aos, cfg, work_orders)
     grids = build_grids(step)
-    draws = monte_carlo(step.components, deliveries, grids, cfg)
+    draws = None
+    if cfg.intervals:
+        # Intervals are an add-on: the allocation and the invoice never depend on them.
+        from ..uncertainty.monte_carlo import monte_carlo
+
+        draws = monte_carlo(step.components, deliveries, grids, cfg)
     matrices = build_matrices(step, grids, draws, prices)
     invoice = build_invoice(step, prices)
     _check_invoice_volume(invoice, deliveries)

@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 
 from treedist.config import Config
-from treedist.invoice import PriceList
+from treedist.core.invoice import PriceList
 from treedist.schema import validate_deliveries, validate_harvest
 
 

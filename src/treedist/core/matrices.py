@@ -4,14 +4,46 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
+from ..schema import AO, DEST, DIA, LEN, NO_DESTINATION, SORT, TIER, VOL, sorted_groups
 from .allocate import CERTAINTY_TIERS, MonthStep
 from .invoice import PriceList
-from .schema import AO, DEST, DIA, LEN, NO_DESTINATION, SORT, TIER, VOL, sorted_groups
-from .uncertainty import Draws, Grid, MatrixKey
+
+if TYPE_CHECKING:
+    from ..uncertainty.monte_carlo import Draws
+
+MatrixKey = tuple[str, str]
+
+
+@dataclass(frozen=True)
+class Grid:
+    diameters: tuple[str, ...]
+    lengths: tuple[str, ...]
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        return (len(self.diameters), len(self.lengths))
+
+    def diameter_widths_mm(self) -> np.ndarray:
+        """Width of the numeric diameter classes, which sort first on the axis.
+
+        The top class repeats its neighbour's width. Labels such as "-" and
+        OKÄND have no neighbours and stay out of the diameter shift.
+        """
+        floors = []
+        for diameter in self.diameters:
+            try:
+                floors.append(float(diameter))
+            except ValueError:
+                break
+        if len(floors) < 2:
+            return np.empty(0)
+        widths = np.diff(floors)
+        return np.append(widths, widths[-1]) * 10
 
 
 @dataclass
@@ -21,17 +53,18 @@ class SortimentMatrices:
     grid: Grid
     delivered: np.ndarray
     by_tier: dict[str, np.ndarray]
-    std: np.ndarray
-    std_distribution: np.ndarray
-    p05: np.ndarray
-    p95: np.ndarray
     harvested: np.ndarray
     closing_stock: np.ndarray
     corrections: np.ndarray
     price_kr: np.ndarray
     value_kr: np.ndarray
-    value_draws_fixed: np.ndarray
-    value_draws_total: np.ndarray
+    # Only with intervals; see uncertainty/.
+    std: np.ndarray | None = None
+    std_distribution: np.ndarray | None = None
+    p05: np.ndarray | None = None
+    p95: np.ndarray | None = None
+    value_draws_fixed: np.ndarray | None = None
+    value_draws_total: np.ndarray | None = None
 
     @property
     def share(self) -> np.ndarray:
@@ -95,7 +128,7 @@ def _price_matrix(key: MatrixKey, grid: Grid, prices: PriceList) -> np.ndarray:
 
 
 def build_matrices(
-    step: MonthStep, grids: dict[MatrixKey, Grid], draws: Draws, prices: PriceList
+    step: MonthStep, grids: dict[MatrixKey, Grid], draws: Draws | None, prices: PriceList
 ) -> dict[MatrixKey, SortimentMatrices]:
     harvest = _with_destination(step.harvest, step)
     stock = _with_destination(step.ledger.stock, step)
@@ -105,27 +138,29 @@ def build_matrices(
         by_tier = {t: _dense(allocation[allocation[TIER] == t], grid) for t in CERTAINTY_TIERS}
         delivered = sum(by_tier.values())
 
-        fixed, total = draws.fixed[key], draws.total[key]
         # Unpriced products have NaN in `price_kr`, carry no value and are flagged on the invoice.
         price = _price_matrix(key, grid, prices)
         priced = np.nan_to_num(price)
 
-        result[key] = SortimentMatrices(
+        matrices = SortimentMatrices(
             destination=key[0],
             sortiment=key[1],
             grid=grid,
             delivered=delivered,
             by_tier=by_tier,
-            std=total.std(axis=0),
-            std_distribution=fixed.std(axis=0),
-            p05=np.quantile(total, 0.05, axis=0),
-            p95=np.quantile(total, 0.95, axis=0),
             harvested=_dense(_select(harvest, key), grid),
             closing_stock=_dense(_select(stock, key), grid),
             corrections=_dense(_select(step.corrections, key), grid),
             price_kr=price,
             value_kr=delivered * priced,
-            value_draws_fixed=(fixed * priced).sum(axis=(1, 2)),
-            value_draws_total=(total * priced).sum(axis=(1, 2)),
         )
+        if draws is not None:
+            fixed, total = draws.fixed[key], draws.total[key]
+            matrices.std = total.std(axis=0)
+            matrices.std_distribution = fixed.std(axis=0)
+            matrices.p05 = np.quantile(total, 0.05, axis=0)
+            matrices.p95 = np.quantile(total, 0.95, axis=0)
+            matrices.value_draws_fixed = (fixed * priced).sum(axis=(1, 2))
+            matrices.value_draws_total = (total * priced).sum(axis=(1, 2))
+        result[key] = matrices
     return result

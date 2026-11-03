@@ -11,10 +11,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .allocate import CERTAINTY_TIERS, TIER_NAMES
+from .core.allocate import CERTAINTY_TIERS, TIER_NAMES
 from .config import Config
-from .invoice import invoice_total_kr
-from .pipeline import MonthOutput
+from .core.invoice import invoice_total_kr
+from .core.pipeline import MonthOutput
 from .schema import DEST, DIA, LEN, SORT, VOL
 
 _ROUNDING = 3
@@ -42,7 +42,7 @@ def _long_matrices(output: MonthOutput) -> pd.DataFrame:
             "varde_kr": m.value_kr,
         }
         combined = pd.DataFrame(
-            {name: m.frame(values).stack(future_stack=True) for name, values in tables.items()}
+            {name: m.frame(values).stack(future_stack=True) for name, values in tables.items() if values is not None}
         ).reset_index()
         combined.insert(0, SORT, m.sortiment)
         combined.insert(0, DEST, m.destination)
@@ -69,13 +69,15 @@ def _write_matrices(output: MonthOutput, target: Path) -> None:
             **{f"levererat_{t}": m.by_tier[t] for t in CERTAINTY_TIERS},
         }
         for name, values in tables.items():
+            if values is None:
+                continue
             m.frame(values).round(4 if name == "andel" else _ROUNDING).to_csv(folder / f"{name}.csv")
 
 
 def value_interval(output: MonthOutput, destination: str) -> tuple[float, float] | None:
     """90 % interval of a destination's delivered value with volumes as measured."""
     draws = [m.value_draws_fixed for m in output.matrices.values() if m.destination == destination]
-    if not draws:
+    if not draws or any(d is None for d in draws):
         return None
     low, high = np.quantile(np.sum(draws, axis=0), [0.05, 0.95])
     return float(low), float(high)

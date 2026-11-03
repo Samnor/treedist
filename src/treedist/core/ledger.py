@@ -12,6 +12,7 @@ previous snapshot and cannot double count.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,7 +20,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .schema import AO, BILLED, DEST, DIA, LEN, LOGS, SORT, VINTAGE, VOL
+from ..contract import CONTRACT_VERSION
+from ..schema import AO, BILLED, DEST, DIA, LEN, LOGS, SORT, VINTAGE, VOL
 
 # `handelssortiment` is the assortment the harvester produced throughout the
 # ledger. A deficit also keeps the assortment it was invoiced as, which differs
@@ -54,11 +56,20 @@ class Ledger:
         self.stock.to_csv(target / "lager.csv", index=False)
         self.history.to_csv(target / "historik.csv", index=False)
         self.deficit.to_csv(target / "underskott.csv", index=False)
+        (target / "kontrakt.json").write_text(json.dumps({"kontrakt": CONTRACT_VERSION}) + "\n", encoding="utf-8")
         return target
 
     @classmethod
     def load(cls, state_dir: Path, period: str) -> Ledger:
         source = state_dir / period
+        version_file = source / "kontrakt.json"
+        # Snapshots without a version file predate it and are version 1.
+        version = json.loads(version_file.read_text(encoding="utf-8"))["kontrakt"] if version_file.exists() else 1
+        if version != CONTRACT_VERSION:
+            raise ValueError(
+                f"Liggaren för {period} har kontraktsversion {version}, koden har {CONTRACT_VERSION}. "
+                "Kör om historiken eller migrera liggaren"
+            )
         frames = [
             pd.read_csv(source / name, dtype=_TEXT_COLUMNS, keep_default_na=False, na_values=[""])
             for name in ("lager.csv", "historik.csv", "underskott.csv")

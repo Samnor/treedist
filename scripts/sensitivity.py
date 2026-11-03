@@ -15,8 +15,8 @@ import pandas as pd
 from compare_methods import evaluate
 
 from treedist.config import Config
-from treedist.invoice import PriceList
-from treedist.simulate import example_price_list
+from treedist.core.invoice import PriceList
+from treedist.dev.simulate import example_price_list
 
 SCENARIOS = {
     "bas": {},

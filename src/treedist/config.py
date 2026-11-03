@@ -55,6 +55,7 @@ class Config:
     donor_group_weight: float = 4.0
     donor_sibling_cm: float = 1.5
     diameter_bias_sd_mm: float = 2.0
+    intervals: bool = True
     mc_draws: int = 2000
     seed: int = 20261102
     volume_methods: dict[str, VolumeMethod] = field(default_factory=default_volume_methods)

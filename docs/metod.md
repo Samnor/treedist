@@ -99,6 +99,7 @@ Två spridningar redovisas. `std_fordelning` håller volymen fast och är osäke
 | `pool_remaining_share` | 0,5 | Antagande: en arbetsorder utan skördardata levererar halva skörden samma månad |
 | `stock_block_days` | 5 | Antagande |
 | `min_forwarding_days` | 2 | Antagande |
+| `intervals` | på | Av ger profilen enkel: samma faktura och matriser, utan Monte Carlo-intervall |
 | `overlap_fifo` | på | Klättring: prisfel 11,9 → 10,9 kr/m3fub i snitt över klättringens scenarier. Bygger på antagandet att lastbilar som börjar under skörden tar avläggen i skördeordning |
 | `pool_concentration_default` | 20 | Antagande |
 | `pool_min_donors` | 5 | Antagande |

@@ -2,10 +2,10 @@ import pandas as pd
 import pytest
 from conftest import delivery_frame, harvest_frame
 
-from treedist.allocate import close_month
-from treedist.invoice import PriceList, build_invoice, invoice_total_kr, round_to_total
-from treedist.ledger import Ledger
-from treedist.pipeline import run_month
+from treedist.core.allocate import close_month
+from treedist.core.invoice import PriceList, build_invoice, invoice_total_kr, round_to_total
+from treedist.core.ledger import Ledger
+from treedist.core.pipeline import run_month
 from treedist.schema import WorkOrders
 
 

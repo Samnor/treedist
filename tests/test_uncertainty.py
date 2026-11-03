@@ -5,12 +5,13 @@ import pandas as pd
 import pytest
 from conftest import delivery_frame, harvest_frame
 
-from treedist.allocate import close_month
-from treedist.ledger import Ledger
-from treedist.matrices import build_grids
-from treedist.pipeline import run_month
+from treedist.core.allocate import close_month
+from treedist.core.ledger import Ledger
+from treedist.core.matrices import build_grids
+from treedist.core.pipeline import run_month
 from treedist.schema import validate_harvest
-from treedist.uncertainty import Grid, _shift_diameters, monte_carlo
+from treedist.core.matrices import Grid
+from treedist.uncertainty.monte_carlo import _shift_diameters, monte_carlo
 
 
 KEY = ("-", "TALL")

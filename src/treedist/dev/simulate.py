@@ -13,8 +13,8 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from .invoice import PRICE_COLUMNS
-from .schema import AO, BRUTTO, DEST, DIA, LEN, LOGS, SORT, VOL, WorkOrders
+from ..core.invoice import PRICE_COLUMNS
+from ..schema import AO, BRUTTO, DEST, DIA, LEN, LOGS, SORT, VOL, WorkOrders
 
 SORTIMENT = ("GRAN_SAG", "TALL_SAG")
 DESTINATIONS = ("SAG_KLEN", "SAG_MIX", "SAG_GROV")

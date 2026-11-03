@@ -12,6 +12,7 @@ håller `treedist` en liggare över skördat men olevererat virke per arbetsorde
 - [Underlag för simulering](docs/simuleringsunderlag.md): vad årsredovisningar och Biometria säger om data
 - [Exempelresor](docs/exempelresor.md) och [antaganden](docs/antaganden.md): virkets väg från skördare till sågverk,
   och hur rimliga antagandena är
+- [AGENTS.md](AGENTS.md): hur en ny datakälla kopplas in, skrivet så att en modell kan göra det
 
 ## Kom igång
 
@@ -25,6 +26,17 @@ Stäng en månad med exempeldatat:
 
 ```bash
 uv run treedist run --period 2026-01 --skordning examples/demo/skordning_2026-01.csv --leverans examples/demo/leverans_2026-01.csv --prislista examples/demo/prislista.csv --avslutade-ao examples/demo/avslutade_ao_2026-01.csv --arbetsordrar examples/demo/arbetsordrar.csv --state state --out out/2026-01
+```
+
+Har källsystemet ett eget format beskrivs det i en TOML-fil i stället för fem filargument, och `check` prövar
+datan mot kontraktet och mot rimliga värden innan något körs:
+
+```bash
+uv run treedist check --period 2026-01 --kalla examples/kalla/kalla.toml
+```
+
+```bash
+uv run treedist run --period 2026-01 --kalla examples/kalla/kalla.toml --state state --out out/2026-01
 ```
 
 Månader körs i följd eftersom varje månad bygger vidare på föregående liggare i `state/`. Att köra om senaste månaden
@@ -59,9 +71,35 @@ Kör testerna:
 uv run pytest
 ```
 
+## Arkitektur
+
+Metoden ändras inte när den flyttas till ny data. Det som ändras är en adapter som översätter källans format till
+fem kanoniska tabeller.
+
+```
+källans export ──> adapter ──> kanoniska tabeller ──> kärna ──> matriser och faktura
+                   (ändras)    contract.py                       ▲
+                                                                 └── osäkerhet, valfri
+```
+
+| Del | Innehåll | Ändras vid flytt |
+|---|---|---|
+| `adapters/` | Kanoniska CSV-filer, TOML-mappning eller egen `.py` | Ja, genom en ny källbeskrivning |
+| `contract.py` | De fem tabellerna: kolumner, krav, enhet, rimliga värden, betydelse | Nej |
+| `check.py` | Formkontroll, rimlighetskontroller och provkörning utan att spara | Nej |
+| `core/` | Liggare, fördelning, matriser och faktura. Deterministisk | Nej |
+| `uncertainty/` | Monte Carlo-intervall. Stängs av med `intervals = false` | Nej |
+| `dev/` | Simulator och utvärdering. Behövs inte i drift | Nej |
+
+Profilen [enkel](examples/profil_enkel.toml) kör utan Monte Carlo: fakturan och matriserna blir desamma, men
+spridning och intervall saknas. Säkerhetsklasserna visar fortfarande hur säker fördelningen är. Golden-testet i
+`tests/test_portability.py` kontrollerar att demons fakturor och matriser inte ändras av omstruktureringar, och
+liggaren sparar sin kontraktsversion så att en gammal liggare inte läses med ett nytt format.
+
 ## Indata
 
-CSV med en rad per observation. Decimalkomma och decimalpunkt fungerar båda.
+CSV med en rad per observation, eller källans egna filer genom en adapter. `uv run treedist kontrakt` skriver ut
+tabellerna med enhet, rimliga värden och betydelse. Decimalkomma och decimalpunkt fungerar båda.
 
 **Skördardata** (`--skordning`). Månadens nya rader ur en tabell utan dubbletter. En rad får bara förekomma i en månad.
 
@@ -112,6 +150,7 @@ avverkningsform finns. Virke utan skördardata lånar fördelning från liknande
 grupp och arbetsorderns andra sortiment. Skörd och lager redovisas på den planerade destinationen.
 
 **Konfiguration**, valfritt: en TOML-fil till `--config` med parametrarna i [docs/metod.md](docs/metod.md).
+`intervals = false` ger profilen enkel.
 
 ## Utdata
 

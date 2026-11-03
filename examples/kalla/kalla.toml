@@ -1,0 +1,65 @@
+# Mappning från ett påhittat källsystems export till de kanoniska tabellerna.
+# Kör: uv run treedist check --period 2026-01 --kalla examples/kalla/kalla.toml
+# Kanoniska namn står till vänster, källans till höger. Se `uv run treedist kontrakt`.
+
+[skordning]
+fil = "export/produktion_{period}.csv"
+separator = ";"
+datumformat = "%Y%m%d"
+
+[skordning.kolumner]
+arbetsorder = "AO_Nr"
+handelssortiment = "Sortiment"
+diametergrupp = "DiamKlassMM"
+langdgrupp = "LangdKlassCM"
+volym_m3fub = "VolymFub"
+antal_stockar = "AntalStockar"
+avverkningsdatum = "FallDatum"
+
+[skordning.enheter]
+diametergrupp = 0.1   # mm -> cm
+
+[leverans]
+fil = "export/inmatning_{period}.csv"
+separator = ";"
+datumformat = "%Y%m%d"
+
+[leverans.kolumner]
+leverans_id = "Lassnr"
+arbetsorder = "AO_Nr"
+handelssortiment = "InmattSortiment"
+mottagningsplats = "Mottagare"
+leveransdatum = "TransportDatum"   # transportdatum, inte RedovisningDatum
+volym_m3fub = "NettoFub"
+brutto_m3fub = "BruttoFub"
+matmetod = "Matmetod"
+antal_matenheter = "AntalEnheter"
+
+[leverans.filter]
+Status = "Godkänd"
+
+[arbetsordrar]
+fil = "export/arbetsordrar.csv"
+separator = ";"
+
+[arbetsordrar.kolumner]
+arbetsorder = "AO"
+destination = "PlaneradMottagare"
+grupp = "Jamforgrupp"
+
+[prislista]
+fil = "../demo/prislista.csv"
+
+[prislista.kolumner]
+handelssortiment = "handelssortiment"
+diameter_min = "diameter_min"
+diameter_max = "diameter_max"
+langd_min = "langd_min"
+langd_max = "langd_max"
+pris_kr_per_m3fub = "pris_kr_per_m3fub"
+
+[avslutade_ao]
+fil = "../demo/avslutade_ao_{period}.csv"
+
+[avslutade_ao.kolumner]
+arbetsorder = "arbetsorder"

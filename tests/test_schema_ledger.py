@@ -2,8 +2,8 @@ import pandas as pd
 import pytest
 from conftest import delivery_frame, harvest_frame
 
-from treedist.allocate import close_month
-from treedist.ledger import Ledger, load_for_period
+from treedist.core.allocate import close_month
+from treedist.core.ledger import Ledger, load_for_period
 from treedist.config import Config
 from treedist.schema import WorkOrders, sorted_groups, validate_deliveries, validate_harvest
 

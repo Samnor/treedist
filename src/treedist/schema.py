@@ -1,7 +1,6 @@
-"""Input columns, reading and validation.
+"""Reading and validation of the canonical tables in contract.py.
 
-Column names are Swedish since they mirror the source systems. A problem in the
-input stops the run: these numbers end up on an invoice.
+A problem in the input stops the run: these numbers end up on an invoice.
 """
 
 from __future__ import annotations
@@ -12,26 +11,27 @@ from pathlib import Path
 import pandas as pd
 
 from .config import Config
+from .contract import (  # noqa: F401  re-exported for the rest of the package
+    AO,
+    BILLED,
+    BRUTTO,
+    DEST,
+    DIA,
+    LEN,
+    LOGS,
+    NO_CLASS,
+    NO_DESTINATION,
+    PRODUCED,
+    SORT,
+    TABLES,
+    TIER,
+    UNKNOWN_CLASS,
+    VINTAGE,
+    VOL,
+)
 
-AO = "arbetsorder"
-SORT = "handelssortiment"
-PRODUCED = "producerat_handelssortiment"
-BILLED = "fakturerat_handelssortiment"
-DIA = "diametergrupp"
-LEN = "langdgrupp"
-VOL = "volym_m3fub"
-BRUTTO = "brutto_m3fub"
-DEST = "destination"
-LOGS = "antal_stockar"
-VINTAGE = "avverkningsdatum"
-TIER = "sakerhetsklass"
-
-NO_CLASS = "-"
-NO_DESTINATION = "-"
-UNKNOWN_CLASS = "OKÄND"
-
-HARVEST_REQUIRED = [AO, SORT, DIA, LEN, VOL]
-DELIVERY_REQUIRED = [AO, SORT, VOL]
+HARVEST_REQUIRED = TABLES["skordning"].required
+DELIVERY_REQUIRED = TABLES["leverans"].required
 
 
 @dataclass(frozen=True)
@@ -212,11 +212,12 @@ def read_csv(path: Path) -> pd.DataFrame:
 
 def read_work_orders(path: Path | None) -> WorkOrders:
     """Planned destination per work order, and optionally a comparable group."""
-    if path is None:
-        return WorkOrders()
-    df = read_csv(path)
-    _require_columns(df, [AO, DEST], str(path))
-    _require_keys(df, [AO, DEST], str(path))
+    return WorkOrders() if path is None else validate_work_orders(read_csv(path), str(path))
+
+
+def validate_work_orders(df: pd.DataFrame, name: str = "Arbetsordrar") -> WorkOrders:
+    _require_columns(df, [AO, DEST], name)
+    _require_keys(df, [AO, DEST], name)
     keys = df[AO].astype(str).str.strip()
     groups = {}
     if "grupp" in df.columns:
@@ -226,8 +227,9 @@ def read_work_orders(path: Path | None) -> WorkOrders:
 
 
 def read_closed_aos(path: Path | None) -> set[str]:
-    if path is None:
-        return set()
-    df = read_csv(path)
-    _require_columns(df, [AO], str(path))
+    return set() if path is None else validate_closed_aos(read_csv(path), str(path))
+
+
+def validate_closed_aos(df: pd.DataFrame, name: str = "Avslutade arbetsordrar") -> set[str]:
+    _require_columns(df, [AO], name)
     return set(df[AO].astype(str).str.strip())

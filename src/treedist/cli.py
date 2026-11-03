@@ -8,14 +8,16 @@ from pathlib import Path
 
 import pandas as pd
 
-from .backtest import run_backtest
+from .dev.backtest import run_backtest
+from . import adapters, contract
+from .check import FEL, check
 from .config import load_config
-from .invoice import PriceList, invoice_total_kr
-from .ledger import load_for_period
-from .pipeline import run_month
+from .core.invoice import invoice_total_kr
+from .core.ledger import load_for_period
+from .core.pipeline import run_month
 from .report import warnings_for, write_month
-from .schema import AO, DEST, read_closed_aos, read_csv, read_work_orders, validate_deliveries, validate_harvest
-from .simulate import SimParams, example_price_list, simulate
+from .schema import AO, DEST
+from .dev.simulate import SimParams, example_price_list, simulate
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -24,20 +26,11 @@ def _run(args: argparse.Namespace) -> int:
     if ledger.period is None:
         print(f"Kallstart: ingen liggare före {args.period}. Virke skördat tidigare saknar skördardata.")
 
-    harvest = validate_harvest(read_csv(args.skordning), args.period)
-    work_orders = read_work_orders(args.arbetsordrar)
-    deliveries = validate_deliveries(read_csv(args.leverans), args.period, cfg, work_orders)
-    prices = PriceList.read(args.prislista)
-    closed = read_closed_aos(args.avslutade_ao)
-
-    output = run_month(ledger, harvest, deliveries, prices, args.period, closed, cfg, work_orders)
-
-    inputs = {"skordning": args.skordning, "leverans": args.leverans, "prislista": args.prislista}
-    if args.avslutade_ao:
-        inputs["avslutade_ao"] = args.avslutade_ao
-    if args.arbetsordrar:
-        inputs["arbetsordrar"] = args.arbetsordrar
-    write_month(output, args.out, cfg, inputs)
+    inputs = adapters.load(args.period, cfg, args.kalla, _files(args))
+    output = run_month(
+        ledger, inputs.harvest, inputs.deliveries, inputs.prices, args.period, inputs.closed_aos, cfg, inputs.work_orders
+    )
+    write_month(output, args.out, cfg, inputs.sources)
     output.step.ledger.save(args.state)
 
     print(f"{args.period}: utdata i {args.out}")
@@ -45,6 +38,30 @@ def _run(args: argparse.Namespace) -> int:
         print(f"  {destination}: att fakturera {invoice_total_kr(lines):.2f} kr exkl. moms")
     for note in warnings_for(output):
         print(f"OBS: {note}")
+    return 0
+
+
+def _files(args: argparse.Namespace) -> dict[str, Path | None]:
+    if args.kalla is None and not (args.skordning and args.leverans and args.prislista):
+        raise ValueError("Ange --kalla, eller --skordning, --leverans och --prislista")
+    return {
+        "skordning": args.skordning,
+        "leverans": args.leverans,
+        "prislista": args.prislista,
+        "arbetsordrar": args.arbetsordrar,
+        "avslutade_ao": args.avslutade_ao,
+    }
+
+
+def _check(args: argparse.Namespace) -> int:
+    findings = check(args.period, load_config(args.config), args.kalla, _files(args), args.state)
+    for finding in findings:
+        print(finding)
+    return 1 if any(f.level == FEL for f in findings) else 0
+
+
+def _contract(args: argparse.Namespace) -> int:
+    print(contract.markdown())
     return 0
 
 
@@ -78,16 +95,18 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
 
     run = commands.add_parser("run", help="Stäng en månad: matriser, faktura och ny liggare")
-    run.add_argument("--period", required=True, help="Månad, ÅÅÅÅ-MM")
-    run.add_argument("--skordning", required=True, type=Path)
-    run.add_argument("--leverans", required=True, type=Path)
-    run.add_argument("--prislista", required=True, type=Path)
+    _input_arguments(run)
     run.add_argument("--state", required=True, type=Path, help="Katalog med liggaren")
     run.add_argument("--out", required=True, type=Path)
-    run.add_argument("--avslutade-ao", type=Path)
-    run.add_argument("--arbetsordrar", type=Path, help="Planerad destination och grupp per arbetsorder")
-    run.add_argument("--config", type=Path)
     run.set_defaults(handler=_run)
+
+    checker = commands.add_parser("check", help="Pröva en källas data mot kontraktet och mot rimliga värden")
+    _input_arguments(checker)
+    checker.add_argument("--state", type=Path, help="Liggaren, för en provkörning som inget sparar")
+    checker.set_defaults(handler=_check)
+
+    printer = commands.add_parser("kontrakt", help="Skriv ut de kanoniska tabellerna")
+    printer.set_defaults(handler=_contract)
 
     sim = commands.add_parser("simulate", help="Skapa syntetisk indata med facit")
     sim.add_argument("--out", required=True, type=Path)
@@ -103,6 +122,17 @@ def build_parser() -> argparse.ArgumentParser:
     backtest.add_argument("--config", type=Path)
     backtest.set_defaults(handler=_backtest)
     return parser
+
+
+def _input_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--period", required=True, help="Månad, ÅÅÅÅ-MM")
+    parser.add_argument("--kalla", type=Path, help="Källans beskrivning: en .toml-mappning eller en .py-adapter")
+    parser.add_argument("--skordning", type=Path, help="Kanonisk CSV, om --kalla inte används")
+    parser.add_argument("--leverans", type=Path)
+    parser.add_argument("--prislista", type=Path)
+    parser.add_argument("--avslutade-ao", type=Path)
+    parser.add_argument("--arbetsordrar", type=Path, help="Planerad destination och grupp per arbetsorder")
+    parser.add_argument("--config", type=Path)
 
 
 def main(argv: list[str] | None = None) -> int:

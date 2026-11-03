@@ -7,12 +7,12 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from .config import Config
-from .invoice import PriceList
-from .ledger import Ledger
-from .matrices import SortimentMatrices
-from .pipeline import run_month
-from .schema import DEST, DIA, LEN, SORT, VOL, WorkOrders, sorted_groups, validate_deliveries, validate_harvest
+from ..config import Config
+from ..core.invoice import PriceList
+from ..core.ledger import Ledger
+from ..core.matrices import SortimentMatrices
+from ..core.pipeline import run_month
+from ..schema import DEST, DIA, LEN, SORT, VOL, WorkOrders, sorted_groups, validate_deliveries, validate_harvest
 from .simulate import SimMonth, SimParams, example_price_list, simulate
 
 
@@ -46,18 +46,23 @@ def _score(
 
     truth = _pivot(truth_block, diameters, lengths)
     estimate = on_axes(m.delivered)
-    low, high = on_axes(m.p05), on_axes(m.p95)
     price = np.array(
         [[(prices.price_ore(m.sortiment, d, l, m.destination) or 0) / 100 for l in lengths] for d in diameters]
     )
 
     true_price = float((_shares(truth) * price).sum())
     estimate_price = float((_shares(estimate) * price).sum())
-    # Half a thousandth of a cell is rounding noise, not a covered prediction.
-    active = (truth > 0) | (estimate > 0.05)
-    inside = (truth >= low - 1e-9) & (truth <= high + 1e-9)
     true_value = float((truth * price).sum())
-    value_low, value_high = np.quantile(m.value_draws_total, [0.05, 0.95])
+    cell_coverage = value_coverage = np.nan
+    if m.p05 is not None and m.p95 is not None and m.value_draws_total is not None:
+        low, high = on_axes(m.p05), on_axes(m.p95)
+        # Half a thousandth of a cell is rounding noise, not a covered prediction.
+        active = (truth > 0) | (estimate > 0.05)
+        inside = (truth >= low - 1e-9) & (truth <= high + 1e-9)
+        if truth[active].sum():
+            cell_coverage = float(truth[active & inside].sum() / truth[active].sum())
+        value_low, value_high = np.quantile(m.value_draws_total, [0.05, 0.95])
+        value_coverage = float(value_low <= true_value <= value_high)
 
     row = {
         "period": month.period,
@@ -67,8 +72,8 @@ def _score(
         "levererat_matt": float(estimate.sum()),
         "fel_placerad_andel": 0.5 * float(np.abs(_shares(estimate) - _shares(truth)).sum()),
         "prisfel_kr_m3": estimate_price - true_price,
-        "cell_tackning_90": float(truth[active & inside].sum() / truth[active].sum()) if truth[active].sum() else np.nan,
-        "varde_inom_90": float(value_low <= true_value <= value_high),
+        "cell_tackning_90": cell_coverage,
+        "varde_inom_90": value_coverage,
         "andel_s1": float(m.by_tier["S1"].sum() / estimate.sum()) if estimate.sum() > 0 else np.nan,
     }
     if naive is not None:

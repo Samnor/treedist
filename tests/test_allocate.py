@@ -5,8 +5,8 @@ import pandas as pd
 import pytest
 from conftest import delivery_frame, harvest_frame
 
-from treedist.allocate import close_month
-from treedist.ledger import Ledger
+from treedist.core.allocate import close_month
+from treedist.core.ledger import Ledger
 from treedist.schema import DEST, DIA, SORT, TIER, VOL, WorkOrders, validate_harvest
 
 NO_HARVEST = [("X", "X", "14", "340", 0.0)]

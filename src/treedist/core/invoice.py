@@ -14,10 +14,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from ..contract import TABLES
+from ..schema import DEST, DIA, LEN, SORT, TIER, VOL, group_sort_key, read_csv
 from .allocate import CERTAINTY_TIERS, MonthStep
-from .schema import DEST, DIA, LEN, SORT, TIER, VOL, group_sort_key, read_csv
 
-PRICE_COLUMNS = [SORT, "diameter_min", "diameter_max", "langd_min", "langd_max", "pris_kr_per_m3fub"]
+PRICE_COLUMNS = TABLES["prislista"].required
 
 
 @dataclass(frozen=True)

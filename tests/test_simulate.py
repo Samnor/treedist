@@ -1,4 +1,4 @@
-from treedist.simulate import SimParams, simulate_flow
+from treedist.dev.simulate import SimParams, simulate_flow
 
 
 def test_overlapping_delivery_never_leaves_before_the_landing_is_ready():
