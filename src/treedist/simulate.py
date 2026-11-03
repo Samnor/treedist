@@ -60,6 +60,10 @@ class SimParams:
     thinning_share: float = 0.20
     landings: tuple[int, int] = (1, 4)
     landing_diameter_sd: float = 0.10
+    # Share of work orders where trucks start on a landing as soon as it is felled and forwarded.
+    overlap_share: float = 0.0
+    # Noise in which mill a stand is planned for; large values make destination unrelated to size.
+    destination_noise: float = 0.08
 
 
 @dataclass
@@ -82,9 +86,9 @@ def _log_volume(diameter_cm: np.ndarray, length_cm: np.ndarray) -> np.ndarray:
     return np.pi / 4 * mid_diameter_m**2 * length_cm / 100
 
 
-def _destination_for(rng: np.random.Generator, size: float) -> str:
+def _destination_for(rng: np.random.Generator, size: float, noise: float) -> str:
     """Sawmills are set up for a dimension, so thin stands go to the thin log mill."""
-    level = size + rng.normal(0, 0.08)
+    level = size + rng.normal(0, noise)
     return DESTINATIONS[0] if level < 0.85 else DESTINATIONS[2] if level > 1.05 else DESTINATIONS[1]
 
 
@@ -115,10 +119,23 @@ def _month_of(dates: pd.Series) -> pd.Series:
     return dates.dt.strftime("%Y-%m")
 
 
+@dataclass
+class Flow:
+    """Every log from felling to measurement, and the deliveries they made up."""
+
+    periods: list[str]
+    logs: pd.DataFrame
+    deliveries: pd.DataFrame
+    work_orders: WorkOrders
+
+
 def simulate(params: SimParams) -> list[SimMonth]:
+    return monthly(simulate_flow(params))
+
+
+def simulate_flow(params: SimParams) -> Flow:
     rng = np.random.default_rng(params.seed)
     periods = [str(pd.Period(params.start, freq="M") + i) for i in range(params.months)]
-    index_of = {p: i for i, p in enumerate(periods)}
 
     log_frames = []
     delivery_rows = []
@@ -142,7 +159,9 @@ def simulate(params: SimParams) -> list[SimMonth]:
             thinning = rng.random() < params.thinning_share
             groups[ao] = f"{region}-{'gallring' if thinning else 'slutavverkning'}"
             size = scale * (0.75 if thinning else 1.0) * rng.uniform(0.81, 1.19)
-            destinations[ao] = _destination_for(rng, size)
+            destinations[ao] = _destination_for(rng, size, params.destination_noise)
+            # Drawn only when used, so that default runs repeat earlier results.
+            overlap = params.overlap_share > 0 and rng.random() < params.overlap_share
             draw = rng.random()
             produced = SORTIMENT if draw < 0.2 else (SORTIMENT[0],) if draw < 0.7 else (SORTIMENT[1],)
 
@@ -179,19 +198,26 @@ def simulate(params: SimParams) -> list[SimMonth]:
                     "" if missing else [str(pd.Period(m, freq="M") + (1 if late else 0)) for m in harvest_month]
                 )
 
-                # Delivery is one campaign of 1-3 weeks after the harvest, landing by landing.
-                last_harvest = logs["harvested"].max()
+                # Delivery is one campaign of 1-3 weeks after the harvest, landing by landing. With
+                # overlap it starts when the first landing is ready and follows the harvest.
                 gap = rng.lognormal(np.log(params.delivery_lag_median_days), params.delivery_lag_sigma) * lag_factor
-                first_delivery = last_harvest + pd.Timedelta(days=float(rng.integers(*params.forwarding_days) + gap))
+                forwarding = pd.Timedelta(days=int(rng.integers(*params.forwarding_days)))
+                ready = logs.groupby("landing")["harvested"].max() + forwarding
                 campaign_days = int(rng.integers(*params.delivery_days))
-                landing_rank = dict(zip(rng.permutation(landings), range(landings)))
+                if overlap:
+                    first_delivery = ready.min() + pd.Timedelta(days=float(gap) / 4)
+                    landing_rank = {landing: rank for rank, landing in enumerate(ready.sort_values().index)}
+                else:
+                    first_delivery = ready.max() + pd.Timedelta(days=float(gap))
+                    landing_rank = dict(zip(rng.permutation(landings), range(landings)))
                 loads = logs.groupby("load")["landing"].first()
                 order = sorted(loads.index, key=lambda load: (landing_rank[loads[load]], load))
                 delivered = {}
                 for position, load in enumerate(order):
                     progress = (position + rng.uniform(-0.5, 0.5)) / max(len(order) - 1, 1)
-                    day = round(float(np.clip(progress, 0, 1)) * campaign_days)
-                    delivered[load] = (first_delivery + pd.Timedelta(days=day)).floor("D")
+                    day = first_delivery + pd.Timedelta(days=round(float(np.clip(progress, 0, 1)) * campaign_days))
+                    # No load leaves before its landing is felled and forwarded.
+                    delivered[load] = max(day, ready[loads[load]]).floor("D")
                 logs["delivered"] = logs["load"].map(delivered)
 
                 for load, block in logs[~logs["lost"]].groupby("load"):
@@ -221,7 +247,13 @@ def simulate(params: SimParams) -> list[SimMonth]:
     logs = pd.concat(log_frames, ignore_index=True)
     deliveries = pd.DataFrame(delivery_rows)
     deliveries["period"] = deliveries["leveransdatum"].str[:7]
+    return Flow(periods, logs, deliveries, WorkOrders(destinations, groups))
 
+
+def monthly(flow: Flow) -> list[SimMonth]:
+    """What real systems would report each month, and the facit."""
+    periods, logs, deliveries = flow.periods, flow.logs, flow.deliveries
+    index_of = {p: i for i, p in enumerate(periods)}
     last_delivery = deliveries.groupby(AO)["period"].max()
     months = []
     for period in periods:
@@ -251,7 +283,7 @@ def simulate(params: SimParams) -> list[SimMonth]:
                 closed_aos=set(last_delivery[last_delivery == period].index)
                 if index_of[period] < len(periods) - 1
                 else set(),
-                work_orders=WorkOrders(destinations, groups),
+                work_orders=flow.work_orders,
             )
         )
     return months

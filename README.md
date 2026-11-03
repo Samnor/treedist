@@ -10,6 +10,8 @@ håller `treedist` en liggare över skördat men olevererat virke per arbetsorde
 - [Metod](docs/metod.md): hur det fungerar, parametrar och begränsningar
 - [Metodjämförelse](docs/metodjamforelse.md): tre metoder, akademiska begrepp och jämförelse med forskningen
 - [Underlag för simulering](docs/simuleringsunderlag.md): vad årsredovisningar och Biometria säger om data
+- [Exempelresor](docs/exempelresor.md) och [antaganden](docs/antaganden.md): virkets väg från skördare till sågverk,
+  och hur rimliga antagandena är
 
 ## Kom igång
 

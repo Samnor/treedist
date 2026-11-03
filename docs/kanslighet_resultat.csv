@@ -1,0 +1,29 @@
+scenario,metod,index_matris,prisfel,kum_prisfel,varde_90,andel_s1
+bas,A liggare,0.0614,11.6426,6.9717,0.865,0.8936
+bas,C liggare+,0.053,8.67,3.6415,0.8921,0.8936
+bas,B faltning,0.1217,28.7665,,,
+bas,Naiv,0.2115,49.9024,,,
+"kort lagring, delvis överlapp",A liggare,0.0699,13.6774,7.7048,0.8742,0.8458
+"kort lagring, delvis överlapp",C liggare+,0.0602,10.3644,4.2504,0.8842,0.8458
+"kort lagring, delvis överlapp",B faltning,0.1229,29.7136,,,
+"kort lagring, delvis överlapp",Naiv,0.1533,35.1647,,,
+leverans under pågående skörd,A liggare,0.0736,15.1303,10.9294,0.8517,0.8387
+leverans under pågående skörd,C liggare+,0.0582,9.4039,4.4117,0.8725,0.8387
+leverans under pågående skörd,B faltning,0.1131,26.9384,,,
+leverans under pågående skörd,Naiv,0.1525,31.9238,,,
+lång lagring,A liggare,0.0628,11.9541,7.2398,0.8583,0.8921
+lång lagring,C liggare+,0.0519,7.9572,3.3916,0.8912,0.8921
+lång lagring,B faltning,0.1325,31.2107,,,
+lång lagring,Naiv,0.2136,51.454,,,
+destination oberoende av grovlek,A liggare,0.0588,10.8645,5.1374,0.8683,0.8936
+destination oberoende av grovlek,C liggare+,0.055,9.3029,4.3913,0.8717,0.8936
+destination oberoende av grovlek,B faltning,0.1371,34.7189,,,
+destination oberoende av grovlek,Naiv,0.2747,76.0145,,,
+mindre arbetsordrar,A liggare,0.0609,10.3976,7.0556,0.9108,0.8845
+mindre arbetsordrar,C liggare+,0.0517,6.9621,3.0469,0.92,0.8845
+mindre arbetsordrar,B faltning,0.0906,19.3242,,,
+mindre arbetsordrar,Naiv,0.1681,36.0544,,,
+20 % omdirigerat,A liggare,0.0643,11.2782,6.4044,0.8708,0.9065
+20 % omdirigerat,C liggare+,0.0556,8.261,3.3329,0.8775,0.9065
+20 % omdirigerat,B faltning,0.1596,40.0968,,,
+20 % omdirigerat,Naiv,0.2478,62.8,,,

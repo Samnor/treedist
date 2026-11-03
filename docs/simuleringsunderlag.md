@@ -55,7 +55,8 @@ Lagringstiden är inte heller konstant:
 - Tjällossning sätter ned vägarnas bärighet och begränsar transporterna (Skogforsk 2023).
 - Skogsbolagen flyttar avverkning mellan år för att möta marknaden (Holmen).
 
-Simulatorn har samma fördröjning, median 25 dagar, hela året. Ingen källa ger själva fördelningen av lagringstider.
+Simulatorn har en säsongsfaktor, men den slår svagt: sommartimmer ligger nästan lika länge som vintertimmer. Se
+[antaganden.md](antaganden.md) för en jämförelse med lagerstatistiken.
 
 ## Störningar
 
@@ -74,13 +75,13 @@ Timmer kördes i snitt 92,7 km år 2020, från 83 km i Götaland till 107 km i N
 när avståndet överstiger cirka 100 km, vilket ger ett lagersteg till. Lastbilarna har normalt 64 tons bruttovikt, och
 70–74 ton ökar.
 
-Skogforsks siffror ger 0,90 ton per m3fub. Med antagen nyttolast 40 ton blir ett lass cirka 45 m3fub (härlett),
-mot 35 i simulatorn.
+Skogforsks siffror ger 0,90 ton per m3fub. Med antagen nyttolast 40 ton blir ett lass cirka 45 m3fub (härlett), som
+i simulatorn.
 
 ## Mätning vid leverans
 
 **Stockmätning dominerar sågtimmer.** Skogforsk skriver att en stor majoritet av sågtimret stockmäts i mätramar. Andelen
-anges inte, men simulatorns 30 % är för lågt.
+anges inte; simulatorn antar 90 %.
 
 **Dimensioner vid leverans finns inte i vårt fall.** Biometrias stocklista innehåller diameter och längd per stock, men
 de uppgifterna ingår inte i projektets indata. Fördelningen måste därför skattas ur skördarmätningarna. Metoden kan inte
