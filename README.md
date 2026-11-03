@@ -40,6 +40,19 @@ uv run treedist backtest --manader 12
 uv run treedist simulate --out examples/egen --manader 6
 ```
 
+Klättra mot en bättre metod, en bedömd ändring i taget. Varje kandidat jämförs med den bästa hittills på samma
+simuleringar och tas bara om skillnaden är större än bruset. Utvecklingsfrön används för besluten och kontrollfrön för
+att pröva resultatet. Försöken loggas i `climb/logg.jsonl`, och processen för strukturella ändringar beskrivs i
+[.claude/skills/metod-klattring](.claude/skills/metod-klattring/SKILL.md).
+
+```bash
+uv run python scripts/climb.py params --budget 30
+```
+
+```bash
+uv run python scripts/climb.py holdout
+```
+
 Kör testerna:
 
 ```bash

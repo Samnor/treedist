@@ -69,6 +69,7 @@ Alla idéer prövades på egna utvecklingsfrön innan slutkontrollen. Prisfel i 
 | Bredare blandning av skördeblock | Värdetäckning 82 → 86 % | Behållen |
 | Bandbredd efter förutsägelsens skattade fel | Spridning i värdet 1,57 → 1,39 gånger intervallets, prisfel oförändrat | Behållen |
 | S2 och S3 som en slumpad del av skörden, inte hela | Värdetäckning med C på samma frön: 88 → 89 %, 79 → 84 % och 85 → 88 % | Behållen, ersätter två fasta konstanter |
+| Automatisk parameterklättring, 30 kandidater i 10 parametrar | Inget steg slog bruset. Närmast `min_forwarding_days` 3: −0,15 ± 0,08 i poäng. `cluster_volume` från 2400 och uppåt, och `donor_sibling_cm` under 1,5, saknar effekt | Parametrarna ligger i ett lokalt optimum |
 | Designeffekt 40 i stället för 20 efter säsongsbasen | Värdetäckning 88 → 90 %, 86 → 86 % och 88 → 91 %, prisfel oförändrat | Behållen |
 | Stockantal per leverans | 7,7 → 2,1 i tidigare simulering | Uppgiften finns inte |
 
