@@ -15,7 +15,7 @@ harvester data arrives later the difference is booked as a correction.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 import pandas as pd
@@ -38,9 +38,21 @@ from ..schema import (
     VOL,
     WorkOrders,
 )
-from .ledger import DEFICIT_COLUMNS, DEFICIT_KEYS, HISTORY_COLUMNS, STOCK_COLUMNS, Ledger, merge, split, take
+from .ledger import (
+    BILLED_COLUMNS,
+    BILLED_KEYS,
+    DEFICIT_COLUMNS,
+    DEFICIT_KEYS,
+    HISTORY_COLUMNS,
+    STOCK_COLUMNS,
+    Ledger,
+    merge,
+    split,
+    take,
+)
 
 CERTAINTY_TIERS = ("S1", "S2", "S3", "S4")
+CREDIT_COLUMNS = [AO, SORT, DEST, DIA, LEN, VOL]
 TIER_NAMES = {
     "S1": "Skördardata, eget lager",
     "S2": "Skördardata, AO-historik",
@@ -104,6 +116,8 @@ class MonthStep:
     components: list[Component]
     ledger: Ledger
     work_orders: WorkOrders
+    # Loads reversed after the month they were invoiced in: negative volumes, on the invoice as KREDITERING.
+    credits: pd.DataFrame = field(default_factory=lambda: pd.DataFrame(columns=CREDIT_COLUMNS))
 
 
 def _composition(block: pd.DataFrame) -> pd.Series:
@@ -331,6 +345,69 @@ def _pool_component(
     )
 
 
+def _split_reversals(deliveries: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Net reversals against their load within the month: (deliveries, reversals of earlier months).
+
+    A load is the same delivery id, or without ids the same work order,
+    assortments and destination. What a load's negative rows do not cancel in
+    the month reverses a load invoiced earlier, and stays as one negative row.
+    """
+    reversing = (deliveries[VOL] < 0) | (deliveries[BRUTTO] < 0)
+    if not reversing.any():
+        return deliveries, deliveries.iloc[0:0]
+    load = [AO, SORT, PRODUCED, DEST]
+    if "leverans_id" in deliveries.columns:
+        load = ["leverans_id", *load]
+    touched = deliveries.groupby(load, sort=False, dropna=False)[VOL].transform(lambda v: bool((v < 0).any()))
+    untouched = deliveries[~touched.astype(bool)]
+
+    kept, reversed_ = [untouched], []
+    for _, block in deliveries[touched.astype(bool)].groupby(load, sort=False, dropna=False):
+        positive = block[block[VOL] >= 0]
+        net, gross = float(block[VOL].sum()), float(block[BRUTTO].sum())
+        if net >= 0 and len(positive) and positive[VOL].sum() > 0:
+            scaled = positive.assign(
+                **{
+                    VOL: positive[VOL] * net / positive[VOL].sum(),
+                    BRUTTO: positive[BRUTTO] * max(gross, 0.0) / max(positive[BRUTTO].sum(), 1e-12),
+                }
+            )
+            kept.append(scaled[scaled[BRUTTO] > 1e-12])
+        elif net < 0:
+            reversed_.append(block[block[VOL] < 0].head(1).assign(**{VOL: net, BRUTTO: min(gross, net)}))
+    remaining = pd.concat(kept, ignore_index=True)
+    reversals = pd.concat(reversed_, ignore_index=True) if reversed_ else deliveries.iloc[0:0]
+    return remaining, reversals
+
+
+def _credit(
+    invoiced: pd.DataFrame, pending: pd.DataFrame, net: float, gross: float
+) -> tuple[pd.Series, pd.Series, pd.Series, float]:
+    """How a reversed load is credited: (from stock, from provisional, unknown, share of the deficit settled).
+
+    The load is one of those invoiced on the work order, and which one is not
+    known, so it is credited with the work order's invoiced distribution. The
+    part still provisional is taken from the deficit in the same proportion as
+    the deficit is of what was invoiced; the rest returns to the stock. More
+    reversed than was ever invoiced is credited on the unknown class.
+    """
+    billed = invoiced.groupby([DIA, LEN], sort=False)[VOL].sum().clip(lower=0.0)
+    ratio = net / gross if gross > 0 else 1.0
+    owed = pending.groupby([DIA, LEN], sort=False)[VOL].sum() * ratio
+    total = float(billed.sum())
+    amount = min(net, total)
+    provisional = amount * min(float(owed.sum()) / total, 1.0) if total > 0 else 0.0
+    settled_shares = billed.sub(owed, fill_value=0.0).clip(lower=0.0)
+    if settled_shares.sum() <= 0:
+        settled_shares = billed
+    settled = amount - provisional
+    from_stock = settled_shares / settled_shares.sum() * settled if settled > 0 else billed.iloc[0:0]
+    from_deficit = owed / owed.sum() * provisional if provisional > 0 else billed.iloc[0:0]
+    unknown = _unknown_shares() * (net - amount) if net - amount > 1e-9 else billed.iloc[0:0]
+    settled_share = provisional / float(owed.sum()) if provisional > 0 else 0.0
+    return from_stock, from_deficit, unknown, settled_share
+
+
 def close_month(
     ledger: Ledger,
     harvest: pd.DataFrame,
@@ -370,6 +447,9 @@ def close_month(
     harvested = calibrated.groupby([AO, SORT], sort=False)[VOL].sum()
     if PRODUCED not in deliveries.columns:
         deliveries = deliveries.assign(**{PRODUCED: deliveries[SORT]})
+    deliveries, reversals = _split_reversals(deliveries)
+    reversals_by_key = dict(tuple(reversals.groupby([AO, PRODUCED], sort=False)))
+    billed_by_key = dict(tuple(ledger.billed.groupby([AO, SORT], sort=False)))
     delivered = deliveries.groupby([AO, PRODUCED], sort=False)[VOL].sum()
     physical = deliveries.groupby([AO, PRODUCED], sort=False)[BRUTTO].sum()
     dated_by_key = dict(tuple(deliveries.groupby([AO, PRODUCED], sort=False)))
@@ -381,7 +461,8 @@ def close_month(
 
     empty_stock = stock.iloc[0:0]
     empty_deficit = ledger.deficit.iloc[0:0]
-    keys = sorted(set(stock_by_key) | set(deficit_by_key) | set(delivered.index))
+    keys = sorted(set(stock_by_key) | set(deficit_by_key) | set(delivered.index) | set(reversals_by_key))
+    empty_billed = ledger.billed.iloc[0:0]
 
     allocations: list[pd.DataFrame] = []
     corrections: list[pd.DataFrame] = []
@@ -389,6 +470,8 @@ def close_month(
     closing_deficit: list[pd.DataFrame] = []
     components: list[Component] = []
     reconciliation: list[dict] = []
+    credits: list[pd.DataFrame] = []
+    invoiced: list[pd.DataFrame] = []
 
     def book(key: tuple[str, str], part: Component, shares: pd.Series) -> pd.DataFrame:
         """Record a volume per destination and measured assortment, returning what was booked."""
@@ -399,12 +482,42 @@ def close_month(
             components.append(replace(part, sortiment=billed, destination=destination, volume=part.volume * share))
         rows = pd.concat(booked, ignore_index=True)
         allocations.append(rows.assign(**{TIER: part.tier}))
+        invoiced.append(rows.assign(**{BILLED: rows[SORT], SORT: key[1]}))
         return rows
 
     for key in keys:
         block = stock_by_key.get(key, empty_stock)
         owed = deficit_by_key.get(key, empty_deficit)
         opening = float(block[VOL].sum()) - float(harvested.get(key, 0.0))
+
+        # A load reversed after it was invoiced is credited and, as far as it came from the stock, returned to it.
+        credited_net = credited_gross = 0.0
+        billed_block = billed_by_key.get(key, empty_billed)
+        for row in reversals_by_key.get(key, reversals.iloc[0:0]).itertuples(index=False):
+            net, gross = -float(getattr(row, VOL)), -float(getattr(row, BRUTTO))
+            billed_sort, destination = getattr(row, SORT), getattr(row, DEST)
+            here = (billed_block[BILLED] == billed_sort) & (billed_block[DEST] == destination)
+            pending_rows = (owed[BILLED] == billed_sort) & (owed[DEST] == destination)
+            from_stock, from_deficit, unknown, settled_share = _credit(
+                billed_block[here], owed[pending_rows], net, gross
+            )
+            ratio = net / gross if gross > 0 else 1.0
+            if len(from_stock):
+                back = from_stock.rename(VOL).rename_axis([DIA, LEN]).reset_index()
+                back = back.assign(**{AO: key[0], SORT: key[1], VINTAGE: f"{period}-01", VOL: back[VOL] / ratio, LOGS: np.nan})
+                block = merge([block, back[STOCK_COLUMNS]], stock_keys, STOCK_COLUMNS)
+            if settled_share > 0:
+                owed = pd.concat([owed[~pending_rows], owed[pending_rows].assign(**{VOL: owed.loc[pending_rows, VOL] * (1 - settled_share)})])
+                owed = owed[owed[VOL] > 1e-9]
+            for part in (from_stock, from_deficit, unknown):
+                if len(part):
+                    rows = (-part).rename(VOL).rename_axis([DIA, LEN]).reset_index()
+                    rows = rows.assign(**{AO: key[0], SORT: billed_sort, DEST: destination})
+                    credits.append(rows)
+                    if part is not unknown:
+                        invoiced.append(rows.assign(**{BILLED: billed_sort, SORT: key[1]}))
+            credited_net += net
+            credited_gross += gross
 
         # Harvester data for wood already invoiced provisionally settles that first.
         corrected = 0.0
@@ -420,6 +533,7 @@ def close_month(
                 changes = pd.concat([earned, unsettled[[DIA, LEN, VOL]]])
                 net_change = changes.groupby([DIA, LEN], sort=False, as_index=False)[VOL].sum()
                 corrections.append(net_change.assign(**{AO: key[0], SORT: billed, DEST: destination}))
+                invoiced.append(net_change.assign(**{AO: key[0], SORT: key[1], BILLED: billed, DEST: destination}))
             owed = owed.assign(**{VOL: owed[VOL] * (1 - fraction)})
             owed = owed[owed[VOL] > 1e-9]
 
@@ -474,8 +588,8 @@ def close_month(
                 SORT: key[1],
                 "ingaende_lager": opening,
                 "skordat_kalibrerat": float(harvested.get(key, 0.0)),
-                "levererat": net,
-                "levererat_brutto": volume,
+                "levererat": net - credited_net,
+                "levererat_brutto": volume - credited_gross,
                 "tackning_s1": covered / volume if volume > 0 else np.nan,
                 "korrigerat": corrected,
                 "utgaende_lager": float(block[VOL].sum()),
@@ -497,6 +611,9 @@ def close_month(
         else pd.DataFrame(columns=correction_columns)
     )
 
+    credit = pd.concat(credits, ignore_index=True)[CREDIT_COLUMNS] if credits else pd.DataFrame(columns=CREDIT_COLUMNS)
+    billed_total = merge([ledger.billed, *(f[BILLED_COLUMNS] for f in invoiced)], BILLED_KEYS, BILLED_COLUMNS)
+
     return MonthStep(
         period=period,
         harvest=harvest,
@@ -509,6 +626,8 @@ def close_month(
             merge(closing_stock, stock_keys, STOCK_COLUMNS),
             history,
             merge(closing_deficit, DEFICIT_KEYS, DEFICIT_COLUMNS),
+            billed_total[billed_total[VOL].abs() > 1e-9].reset_index(drop=True),
         ),
         work_orders=work_orders,
+        credits=credit,
     )

@@ -90,6 +90,7 @@ def build_grids(step: MonthStep) -> dict[MatrixKey, Grid]:
     frames = [
         step.allocation,
         step.corrections,
+        step.credits,
         _with_destination(step.harvest, step),
         _with_destination(step.ledger.stock, step),
     ]
@@ -150,7 +151,8 @@ def build_matrices(
             by_tier=by_tier,
             harvested=_dense(_select(harvest, key), grid),
             closing_stock=_dense(_select(stock, key), grid),
-            corrections=_dense(_select(step.corrections, key), grid),
+            # Changes to earlier months: redistributed provisional volume and credited reversals.
+            corrections=_dense(_select(step.corrections, key), grid) + _dense(_select(step.credits, key), grid),
             price_kr=price,
             value_kr=delivered * priced,
         )

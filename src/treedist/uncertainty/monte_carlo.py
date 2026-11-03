@@ -143,6 +143,8 @@ def monte_carlo(
         bias_mm = rng.normal(0, cfg.diameter_bias_sd_mm, n)
         x = _shift_diameters(harvester, grid.diameter_widths_mm(), bias_mm) + other
         fixed[key] += x
-        total[key] += x * (1 + volume_errors[(ao, sortiment, destination)])[:, None, None]
+        # A load reversed within the month leaves no measured volume, and so no volume error.
+        error = volume_errors.get((ao, sortiment, destination), np.zeros(n))
+        total[key] += x * (1 + error)[:, None, None]
 
     return Draws(fixed, total)

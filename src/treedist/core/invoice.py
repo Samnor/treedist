@@ -157,9 +157,13 @@ def _amount_ore(litres: int, price_ore: int) -> int:
 
 
 def build_invoice(step: MonthStep, prices: PriceList) -> pd.DataFrame:
-    """Invoice lines for the month: delivered products, then corrections."""
+    """Invoice lines for the month: delivered products, then credits and corrections of earlier months."""
     delivered = step.allocation.groupby([DEST, SORT, DIA, LEN], as_index=False)[VOL].sum()
     lines = [_lines(delivered, prices, "LEVERANS")]
+
+    if len(step.credits):
+        credits = step.credits.groupby([DEST, SORT, DIA, LEN], as_index=False)[VOL].sum()
+        lines.append(_lines(credits, prices, "KREDITERING"))
 
     if len(step.corrections):
         corrections = step.corrections.groupby([DEST, SORT, DIA, LEN], as_index=False)[VOL].sum()

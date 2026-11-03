@@ -5,6 +5,8 @@ does not describe one month of deliveries. The ledger keeps what has been
 harvested but not delivered (`stock`), everything ever harvested per work order
 (`history`), and delivered volume that had no harvester data behind it yet
 (`deficit`), whose provisional distribution is corrected once data arrives.
+It also keeps what has been invoiced per work order and class (`billed`), so
+that a load reversed in a later month is credited as it was invoiced.
 
 Each period is saved as its own snapshot, so re-running a month reads the
 previous snapshot and cannot double count.
@@ -14,7 +16,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -30,6 +32,9 @@ STOCK_COLUMNS = [AO, SORT, DIA, LEN, VINTAGE, VOL, LOGS]
 HISTORY_COLUMNS = [AO, SORT, DIA, LEN, VINTAGE, VOL]
 DEFICIT_COLUMNS = [AO, SORT, BILLED, DEST, DIA, LEN, VOL]
 DEFICIT_KEYS = DEFICIT_COLUMNS[:-1]
+# Net volume invoiced, deliveries and corrections less credits, on the same keys as the deficit.
+BILLED_COLUMNS = DEFICIT_COLUMNS
+BILLED_KEYS = DEFICIT_KEYS
 
 _TEXT_COLUMNS = {c: str for c in (AO, SORT, BILLED, DEST, DIA, LEN, VINTAGE)}
 _PERIOD_DIR = re.compile(r"^\d{4}-\d{2}$")
@@ -45,6 +50,7 @@ class Ledger:
     stock: pd.DataFrame
     history: pd.DataFrame
     deficit: pd.DataFrame
+    billed: pd.DataFrame = field(default_factory=lambda: _empty(BILLED_COLUMNS))
 
     @classmethod
     def empty(cls) -> Ledger:
@@ -56,6 +62,7 @@ class Ledger:
         self.stock.to_csv(target / "lager.csv", index=False)
         self.history.to_csv(target / "historik.csv", index=False)
         self.deficit.to_csv(target / "underskott.csv", index=False)
+        self.billed.to_csv(target / "fakturerat.csv", index=False)
         (target / "kontrakt.json").write_text(json.dumps({"kontrakt": CONTRACT_VERSION}) + "\n", encoding="utf-8")
         return target
 
@@ -81,7 +88,12 @@ class Ledger:
             frames[2][BILLED] = frames[2][SORT]
         columns = (STOCK_COLUMNS, HISTORY_COLUMNS, DEFICIT_COLUMNS)
         stock, history, deficit = (f[c] if len(f) else _empty(c) for f, c in zip(frames, columns))
-        return cls(period, stock, history, deficit)
+        # Snapshots from before credits were supported have no invoiced distribution to credit from.
+        billed = _empty(BILLED_COLUMNS)
+        if (source / "fakturerat.csv").exists():
+            frame = pd.read_csv(source / "fakturerat.csv", dtype=_TEXT_COLUMNS, keep_default_na=False, na_values=[""])
+            billed = frame[BILLED_COLUMNS] if len(frame) else billed
+        return cls(period, stock, history, deficit, billed)
 
 
 def previous_period(period: str) -> str:

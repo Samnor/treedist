@@ -47,8 +47,12 @@ def run_month(
 
 
 def _check_invoice_volume(invoice: pd.DataFrame, deliveries: pd.DataFrame) -> None:
-    """The invoice must bill exactly the delivery measurement, per destination and assortment."""
-    billed = invoice[invoice["radtyp"] == "LEVERANS"].groupby([DEST, SORT])["volym_m3fub"].sum()
+    """The invoice must bill exactly the delivery measurement, per destination and assortment.
+
+    Reversed loads are part of the measurement, as negative rows, and of the
+    invoice, as delivered or credited volume.
+    """
+    billed = invoice[invoice["radtyp"].isin(["LEVERANS", "KREDITERING"])].groupby([DEST, SORT])["volym_m3fub"].sum()
     measured = deliveries.groupby([DEST, SORT])[VOL].sum()
     difference = billed.reindex(measured.index, fill_value=0.0) - measured
     if (difference.abs() > 0.001).any():

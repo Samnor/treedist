@@ -23,7 +23,7 @@ from .config import Config
 from .contract import TABLES
 from .core.allocate import CERTAINTY_TIERS, close_month
 from .core.ledger import Ledger, previous_period
-from .schema import AO, BRUTTO, DEST, DIA, LEN, LOGS, SORT, VINTAGE, VOL
+from .schema import AO, BRUTTO, DEST, DIA, LEN, LOGS, SORT, UNKNOWN_CLASS, VINTAGE, VOL
 
 FEL, VARNING, INFO, OK = "FEL", "VARNING", "INFO", "OK"
 # More delivered volume than this without harvester data nearly doubled the price error in simulation.
@@ -180,6 +180,11 @@ def _loads(raw: pd.DataFrame | None, deliveries: pd.DataFrame) -> list[Finding]:
     if raw is None or "leverans_id" not in raw.columns:
         return []
     findings = []
+    # Reversed loads and what was booked again under their ids are judged in the dry run instead.
+    reversed_ids = set(deliveries.loc[deliveries[VOL] < 0, "leverans_id"])
+    deliveries = deliveries[~deliveries["leverans_id"].isin(reversed_ids)]
+    if deliveries.empty:
+        return []
     per_load = deliveries.groupby("leverans_id")[BRUTTO].sum()
     median = float(per_load.median())
     if not 2 <= median <= 100:
@@ -278,6 +283,20 @@ def _dry_run(inputs, period: str, cfg: Config, ledger) -> list[Finding]:
                 Finding(INFO, "provkörning", f"utan skördardata, m3fub: {listed}{more}. Saknad skördardata, "
                         "omklassning (producerat_handelssortiment) eller id som inte matchar?")
             )
+        if len(step.credits):
+            credited = -float(step.credits[VOL].sum())
+            unknown = -float(step.credits.loc[step.credits[DIA] == UNKNOWN_CLASS, VOL].sum())
+            reversed_rows = int((inputs.deliveries[VOL] < 0).sum())
+            findings.append(
+                Finding(INFO, "provkörning", f"{reversed_rows} negativa rader; {credited:.0f} m3fub krediteras som lass "
+                        "fakturerade tidigare månader")
+            )
+            if unknown > 0.5:
+                level = VARNING if start.period is not None else INFO
+                findings.append(
+                    Finding(level, "provkörning", f"{unknown:.0f} m3fub krediteras utan fakturerad fördelning att vända, "
+                            "på klassen OKÄND; fakturerades lassen före liggarens start, eller på annan arbetsorder?")
+                )
         if start.period is None:
             findings.append(
                 Finding(INFO, "provkörning", "ingen liggare (--state): virke skördat före perioden räknas som utan skördardata")

@@ -80,11 +80,11 @@ def _require_keys(df: pd.DataFrame, columns: list[str], name: str) -> None:
             raise ValueError(f"{name}: tomt värde i {column} på {int(bad.sum())} rader")
 
 
-def _numeric(df: pd.DataFrame, column: str, name: str) -> pd.Series:
+def _numeric(df: pd.DataFrame, column: str, name: str, signed: bool = False) -> pd.Series:
     parsed = pd.to_numeric(df[column].astype(str).str.replace(",", "."), errors="coerce")
     if parsed.isna().any():
         raise ValueError(f"{name}: icke-numeriskt värde i {column}: {df.loc[parsed.isna(), column].iloc[0]!r}")
-    if (parsed < 0).any():
+    if not signed and (parsed < 0).any():
         raise ValueError(f"{name}: negativt värde i {column}")
     return parsed
 
@@ -153,16 +153,21 @@ def validate_deliveries(
     if PRODUCED in df.columns:
         produced = df[PRODUCED].astype(object).str.strip()
         out[PRODUCED] = produced.where(produced.notna() & (produced != ""), out[SORT])
-    out[VOL] = _numeric(df, VOL, name)
+    # A negative row reverses a load, often one accounted for in an earlier month.
+    out[VOL] = _numeric(df, VOL, name, signed=True)
 
-    out[BRUTTO] = _numeric(df, BRUTTO, name) if BRUTTO in df.columns else out[VOL]
-    if (out[VOL] > out[BRUTTO] + 1e-9).any():
+    out[BRUTTO] = _numeric(df, BRUTTO, name, signed=True) if BRUTTO in df.columns else out[VOL]
+    if (out[VOL] * out[BRUTTO] < 0).any():
+        raise ValueError(f"{name}: nettovolym och bruttovolym har olika tecken")
+    if (out[VOL].abs() > out[BRUTTO].abs() + 1e-9).any():
         raise ValueError(f"{name}: nettovolym större än bruttovolym")
 
     if "leverans_id" in df.columns:
         out["leverans_id"] = df["leverans_id"].astype(str).str.strip()
-        # A truck may carry several assortments, or wood from several work orders.
-        duplicated = out.duplicated(["leverans_id", AO, SORT, PRODUCED])
+        # A truck may carry several assortments, or wood from several work orders. A load that was
+        # reversed may be booked again under its id, so only loads without a reversal must be unique.
+        reversed_ids = set(out.loc[out[VOL] < 0, "leverans_id"])
+        duplicated = out.duplicated(["leverans_id", AO, SORT, PRODUCED]) & ~out["leverans_id"].isin(reversed_ids)
         if duplicated.any():
             raise ValueError(f"{name}: dubblerat leverans_id: {out.loc[duplicated, 'leverans_id'].iloc[0]}")
 

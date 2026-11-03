@@ -47,6 +47,7 @@ Ett test som slutar fungera ska inte skrivas om för att passera.
 | Vad är `brutto_m3fub`? | Volymen som lämnade avlägget, före avdrag | Samma kolumn som netto |
 | Vad är `diametergrupp`? | Klassens nedre gräns i cm, till exempel 24 | Millimeter (240), eller klassens mitt (25) |
 | Vad är `leveransdatum`? | Dagen lasset kördes | Redovisningsdatum eller mätdatum en annan månad |
+| Vad betyder en negativ volym? | Ett lass som vänds, till exempel vid ommätning. Ta med raden; treedist nettar eller krediterar | Att filtrera bort negativa rader, så att vända lass faktureras två gånger |
 | Hur läses datum? | Ange alltid `datumformat`, till exempel `"%Y%m%d"` eller `"%d.%m.%Y"`; då ger avvikande värden `FEL` | Utan format kan dag och månad tolkas omvänt utan att något märks |
 | Vilket sortiment är `handelssortiment` i inmätningen? | Det inmätta, som faktureras | Det skördaren producerade. Det hör hemma i `producerat_handelssortiment` |
 | Vilken destination? | `mottagningsplats` är den faktiska, `arbetsordrar.destination` den planerade | Planerad destination i `mottagningsplats` |

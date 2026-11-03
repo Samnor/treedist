@@ -122,8 +122,14 @@ def _invoice_markdown(output: MonthOutput, destination: str) -> str:
 
     delivered = invoice[invoice["radtyp"] == "LEVERANS"]
     corrected = invoice[invoice["radtyp"] == "KORRIGERING"]
+    credited = invoice[invoice["radtyp"] == "KREDITERING"]
     lines.append(f"- Levererad volym: {delivered['volym_m3fub'].sum():.3f} m3fub")
     lines.append(f"- Leveransbelopp: {delivered['belopp_kr'].sum():.2f} kr")
+    if len(credited):
+        lines.append(
+            f"- Kreditering av lass från tidigare månader: {credited['volym_m3fub'].sum():.3f} m3fub, "
+            f"{credited['belopp_kr'].sum():.2f} kr"
+        )
     if len(corrected):
         lines.append(f"- Korrigering av tidigare månader: {corrected['belopp_kr'].sum():.2f} kr")
     lines.append(f"- **Att fakturera, exkl. moms: {invoice_total_kr(invoice):.2f} kr**")
@@ -170,6 +176,7 @@ def write_month(output: MonthOutput, out_dir: Path, cfg: Config, inputs: dict[st
     _long_matrices(output).round(4).to_csv(out_dir / "matriser_lang.csv", index=False)
     output.step.allocation.round(6).to_csv(out_dir / "leverans_ao_lang.csv", index=False)
     output.step.corrections.round(6).to_csv(out_dir / "korrigeringar_ao_lang.csv", index=False)
+    output.step.credits.round(6).to_csv(out_dir / "krediteringar_ao_lang.csv", index=False)
     output.step.reconciliation.round(4).to_csv(out_dir / "avstamning_ao.csv", index=False)
     output.invoice.round(4).to_csv(out_dir / "faktura_rader.csv", index=False)
     invoices = out_dir / "fakturor"

@@ -82,8 +82,9 @@ TABLES = {
         (
             Column(AO, "text", True, "Arbetsorderns id, samma som i skördardatan"),
             Column(SORT, "text", True, "Inmätt handelssortiment, det som faktureras"),
-            Column(VOL, "tal", True, "Nettovolym, den som faktureras", "m3fub", 0, None),
-            Column(BRUTTO, "tal", False, "Bruttovolym, det som lämnade lagret. Saknas den antas netto", "m3fub", 0, None),
+            Column(VOL, "tal", True, "Nettovolym, den som faktureras. Negativ på en rad som vänder ett lass", "m3fub"),
+            Column(BRUTTO, "tal", False, "Bruttovolym, det som lämnade lagret. Saknas den antas netto. Samma tecken som netto",
+                   "m3fub"),
             Column(PRODUCED, "text", False, "Sortimentet i skördardatan, om industrin klassat om virket"),
             Column("mottagningsplats", "text", False, "Faktisk destination. Saknas den används den planerade"),
             Column("leverans_id", "text", False, "Lassets nummer. Ett lass får ha flera arbetsordrar och sortiment"),

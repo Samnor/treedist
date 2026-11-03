@@ -37,7 +37,13 @@ För varje kombination av arbetsorder och handelssortiment (AO × sortiment):
    ur det producerade sortimentets lager men bokas och faktureras som inmätt, med samma fördelning. Ett underskott
    minns vilket sortiment det fakturerades som, så att korrigeringen hamnar där.
 6. **Säkerhetsklass.** Volymen får en klass efter var fördelningen kommer ifrån, se nedan.
-7. **Avslut.** För avslutade arbetsordrar skrivs kvarvarande lager av och underskott blir slutgiltiga.
+7. **Vända lass.** En negativ rad vänder ett lass. Har lasset samma id, eller utan id samma arbetsorder, sortiment
+   och destination, och finns i samma månad, nettas raderna och bara skillnaden levereras. Vänder raden ett lass
+   som fakturerats en tidigare månad krediteras det på raden `KREDITERING` med arbetsorderns fakturerade fördelning,
+   som liggaren sparar. Den del som fortfarande var preliminär tas ur underskottet, resten går tillbaka till lagret.
+   Mer än som någonsin fakturerats krediteras på klassen `OKÄND`.
+8. **Avslut.** För avslutade arbetsordrar skrivs kvarvarande lager av och underskott blir slutgiltiga. Ett lass som
+   vänds efter avslutet går tillbaka till lagret och ligger kvar där.
 
 ### Säkerhetsklasser
 
