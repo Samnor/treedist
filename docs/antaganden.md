@@ -99,7 +99,7 @@ sågverk och månader, så de ändrar inga standardvärden än.
 | Fakturamånaden kan ligga efter transporten | Transporter 14–26 oktober redovisades 2 november | Stämmer, och stöds redan |
 | Inmätningen saknar dimensioner | Bekräftat. Raderna har produktnycklar till en produktdimension, vars innehåll ännu inte är känt | Stämmer |
 | Producerat och inmätt sortiment skiljer sig ibland | De skiljer sig på nästan varje rad, som en fast koppling mellan två kodnivåer | Vanligare än antaget. `producerat_handelssortiment` behövs alltid |
-| Inmätta volymer är positiva | Negativa rader förekommer. Valideringen stoppar i dag på dem | Avviker. Innebörden utreds |
+| Inmätta volymer är positiva | 26 % av raderna med nettovolym i m3fub är negativa, 27–29 % för 2017–2022 men 18 % för 2025 och 2 % för 2026. Valideringen stoppar i dag på dem | Avviker. Mönstret tyder på rättelser som bokas i efterhand. Kopplingen till ursprungsraden utreds |
 | 10 % av levererad volym saknar skördardata | 0 % för ett sågverk en månad: alla 297 par av arbetsorder och sortiment, 43 600 m3fub, hade skördardata | Lägre än antaget, men prövat bara som att någon rad finns, oavsett när den kom |
 | Skördardata finns per klass | Skördardatan finns per stock med topp-, mitt- och rotdiameter, längd, volym och fällningsdag | Bättre än antaget. Klasserna kan räknas fram från prislistans klassindelning |
 | Skörd och lager bokas på arbetsorderns planerade destination | Varje stock har en destination den kapades för | Bättre än antaget. Lagret kan delas per destination |
