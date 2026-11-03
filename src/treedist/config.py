@@ -44,7 +44,7 @@ class Config:
     stock_block_days: int = 5
     cluster_volume: float = 2400.0
     mixture_min_concentration: float = 0.25
-    design_effect: float = 20.0
+    design_effect: float = 40.0
     default_log_volume: float = 0.25
     pool_concentration_default: float = 20.0
     pool_min_donors: int = 5

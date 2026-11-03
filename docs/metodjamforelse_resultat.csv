@@ -1,13 +1,13 @@
 scenario,metod,index_matris,index_diameter,prisfel,cell_90,varde_90,andel_s1,kum_index,kum_prisfel,ao_index_S1,ao_index_S3
-bas,A liggare,0.0631,0.0524,11.7152,0.9729,0.8823,0.8919,0.0328,7.1516,0.0382,0.3026
-bas,C liggare+,0.053,0.0415,8.1296,0.9776,0.8938,0.8919,0.0224,3.2434,0.0382,0.1763
-bas,B faltning,0.1164,0.1089,27.0836,,,,,,,
-bas,Naiv,0.2029,0.1885,46.7967,,,,,,,
-30 % utan skördardata,A liggare,0.1118,0.1034,27.0944,0.9531,0.8188,0.6734,0.0742,21.1913,0.0386,0.3057
-30 % utan skördardata,C liggare+,0.0834,0.0731,16.1218,0.9605,0.84,0.6734,0.0413,7.892,0.0386,0.2099
-30 % utan skördardata,B faltning,0.1346,0.1262,31.8708,,,,,,,
-30 % utan skördardata,Naiv,0.2151,0.1996,51.4913,,,,,,,
-stora skillnader inom AO,A liggare,0.0812,0.0716,13.9797,0.9423,0.8696,0.8934,0.0412,6.6665,0.0549,0.3481
-stora skillnader inom AO,C liggare+,0.0757,0.0656,11.8203,0.9417,0.8762,0.8934,0.0362,4.5392,0.0549,0.2931
-stora skillnader inom AO,B faltning,0.1323,0.1254,26.8941,,,,,,,
-stora skillnader inom AO,Naiv,0.2647,0.2521,61.9032,,,,,,,
+bas,A liggare,0.0662,0.0554,12.112,0.9786,0.9029,0.8734,0.0376,8.2,0.0381,0.3015
+bas,C liggare+,0.0575,0.0461,9.1412,0.9818,0.9188,0.8734,0.0278,4.843,0.0381,0.2118
+bas,B faltning,0.1171,0.1091,26.6873,,,,,,,
+bas,Naiv,0.1711,0.1585,41.6727,,,,,,,
+30 % utan skördardata,A liggare,0.1127,0.1038,26.6267,0.9595,0.84,0.6642,0.077,22.1614,0.0374,0.3035
+30 % utan skördardata,C liggare+,0.0892,0.079,16.7601,0.9674,0.8658,0.6642,0.0439,8.6192,0.0374,0.224
+30 % utan skördardata,B faltning,0.1377,0.1282,30.5995,,,,,,,
+30 % utan skördardata,Naiv,0.1878,0.1742,44.8273,,,,,,,
+stora skillnader inom AO,A liggare,0.093,0.0837,16.8101,0.9475,0.8944,0.8475,0.0502,9.016,0.0619,0.328
+stora skillnader inom AO,C liggare+,0.0902,0.0808,15.79,0.9444,0.8752,0.8475,0.0465,6.8379,0.0619,0.3079
+stora skillnader inom AO,B faltning,0.16,0.1535,37.1936,,,,,,,
+stora skillnader inom AO,Naiv,0.222,0.2125,52.7759,,,,,,,

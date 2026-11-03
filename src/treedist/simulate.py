@@ -27,8 +27,11 @@ TAPER_CM_PER_M = 1.0
 
 # Diameter scale per region, from mean stem volume 0.21/0.32/0.37 m3fub (Biometria 2025).
 REGIONS = {"norra": 0.81, "mellan": 1.0, "sodra": 1.075}
-# Delivery lag per month harvested. Assumed: slow over the spring thaw, fast in summer because of blue stain.
-SEASONAL_LAG = {1: 1.2, 2: 1.2, 3: 1.4, 4: 1.5, 5: 0.7, 6: 0.6, 7: 0.6, 8: 0.6, 9: 0.8, 10: 1.0, 11: 1.0, 12: 1.2}
+# Per month harvested. Buyers want sawlogs felled in summer at the mill within two weeks because of
+# blue stain, so trucks start while the harvester is still there. Winter-felled logs may wait until
+# spring, and the thaw slows transport. Strengths are assumed; see docs/antaganden.md.
+SEASONAL_LAG = {1: 1.5, 2: 1.5, 3: 1.6, 4: 1.5, 5: 0.6, 6: 0.4, 7: 0.4, 8: 0.4, 9: 0.6, 10: 0.9, 11: 1.0, 12: 1.3}
+SEASONAL_OVERLAP = {1: 0.1, 2: 0.1, 3: 0.1, 4: 0.3, 5: 0.6, 6: 0.9, 7: 0.9, 8: 0.9, 9: 0.6, 10: 0.3, 11: 0.1, 12: 0.1}
 # Sveaskog delivered 27 % less sawlogs in Q3 2025 than in an average quarter.
 SEASONAL_ACTIVITY = {7: 0.73, 8: 0.73, 9: 0.73}
 
@@ -44,7 +47,7 @@ class SimParams:
     harvest_days: tuple[int, int] = (7, 22)
     delivery_days: tuple[int, int] = (7, 22)
     forwarding_days: tuple[int, int] = (2, 7)
-    delivery_lag_median_days: float = 14.0
+    delivery_lag_median_days: float = 5.0
     delivery_lag_sigma: float = 0.6
     loss_rate: float = 0.01
     loss_sd: float = 0.015
@@ -60,8 +63,9 @@ class SimParams:
     thinning_share: float = 0.20
     landings: tuple[int, int] = (1, 4)
     landing_diameter_sd: float = 0.10
-    # Share of work orders where trucks start on a landing as soon as it is felled and forwarded.
-    overlap_share: float = 0.0
+    # Share of work orders where trucks start on a landing as soon as it is felled and forwarded;
+    # None follows the season.
+    overlap_share: float | None = None
     # Noise in which mill a stand is planned for; large values make destination unrelated to size.
     destination_noise: float = 0.08
 
@@ -160,8 +164,8 @@ def simulate_flow(params: SimParams) -> Flow:
             groups[ao] = f"{region}-{'gallring' if thinning else 'slutavverkning'}"
             size = scale * (0.75 if thinning else 1.0) * rng.uniform(0.81, 1.19)
             destinations[ao] = _destination_for(rng, size, params.destination_noise)
-            # Drawn only when used, so that default runs repeat earlier results.
-            overlap = params.overlap_share > 0 and rng.random() < params.overlap_share
+            overlap_share = SEASONAL_OVERLAP[month_start.month] if params.overlap_share is None else params.overlap_share
+            overlap = rng.random() < overlap_share
             draw = rng.random()
             produced = SORTIMENT if draw < 0.2 else (SORTIMENT[0],) if draw < 0.7 else (SORTIMENT[1],)
 

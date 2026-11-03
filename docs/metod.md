@@ -87,7 +87,7 @@ Två spridningar redovisas. `std_fordelning` håller volymen fast och är osäke
 | `harvester_bias` | 0,009 | Biometria 2025: skördaren överskattar 0,9 % under bark (1,2 % på bark), tabell 6–7 |
 | `handling_loss` | 0,01 | Antagande. Biometria 2026 räknar i ett exempel med 1 % färre stockar framme |
 | `coverage_tolerance` | 0,03 | Antagande, av samma storleksordning som stamvisa mätfel |
-| `design_effect` | 20 | Inställd mot simulatorn |
+| `design_effect` | 40 | Inställd mot simulatorn. Var 20 innan simulatorn fick säsongens lagringstider |
 | `cluster_volume` | 2400 | Inställd mot simulatorn: hur mycket volym som rör sig tillsammans |
 | `mixture_min_concentration` | 0,25 | Inställd mot simulatorn |
 | `donor_destination_weight` | 16 | Inställd mot simulatorn |
@@ -111,9 +111,9 @@ Två spridningar redovisas. `std_fordelning` håller volymen fast och är osäke
 Metoden får bara det verkliga system skulle se. [Underlaget](simuleringsunderlag.md) beskriver vad simulatorn bygger på.
 Resultat, tre metoder och jämförelse med forskningen finns i [metodjämförelsen](metodjamforelse.md).
 
-I korthet, i basscenariot: 5,3 % av volymen hamnar i fel cell mot 20,3 % om man bara använder månadens skörd, och
-medelpriset fel med 8,1 mot 46,8 kr/m3fub. Över tolv månader är prisfelet 3,2 kr/m3fub. Värdeintervallet täcker 84–89 %
-mot nominellt 90 %.
+I korthet, i basscenariot: 5,8 % av volymen hamnar i fel cell mot 17,1 % om man bara använder månadens skörd, och
+medelpriset fel med 9,1 mot 41,7 kr/m3fub. Över tolv månader är prisfelet 4,8 kr/m3fub. Värdeintervallet täcker 87–92 %
+mot nominellt 90 %. Simulatorns lagringstider följer säsongen, se [antaganden](antaganden.md).
 
 Eftersom leveranser saknar diameter och längd finns inget direkt facit i verklig drift. Det som går att följa upp är
 volymbalansen när arbetsordrar avslutas. Inget av detta är prövat på verkliga data.

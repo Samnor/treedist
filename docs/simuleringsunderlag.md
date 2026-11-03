@@ -55,8 +55,8 @@ Lagringstiden är inte heller konstant:
 - Tjällossning sätter ned vägarnas bärighet och begränsar transporterna (Skogforsk 2023).
 - Skogsbolagen flyttar avverkning mellan år för att möta marknaden (Holmen).
 
-Simulatorn har en säsongsfaktor, men den slår svagt: sommartimmer ligger nästan lika länge som vintertimmer. Se
-[antaganden.md](antaganden.md) för en jämförelse med lagerstatistiken.
+Simulatorn följer säsongen: på sommaren börjar leveranserna medan skördaren är kvar, och vinterfällt virke väntar
+längre. Se [antaganden.md](antaganden.md) för en jämförelse med lagerstatistiken.
 
 ## Störningar
 

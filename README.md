@@ -143,7 +143,7 @@ med `KORRIGERING`-rader på nästa faktura. Deras volym går jämnt ut medan vä
 
 ## Viktigt att veta
 
-Metoden är bara prövad mot simulerad data. Där placerar den cirka 5 % av volymen fel per månad, destination och sortiment,
-mot 20 % för att bara använda månadens skörd. Värdeintervallet träffar 84–89 % mot nominellt 90 %, och flera parametrar
+Metoden är bara prövad mot simulerad data. Där placerar den cirka 6 % av volymen fel per månad, destination och sortiment,
+mot 17 % för att bara använda månadens skörd. Värdeintervallet träffar 87–92 % mot nominellt 90 %, och flera parametrar
 bygger på antaganden. Ange `mottagningsplats` om den finns: omdirigerat virke som bokas på planerad destination nästan
 fördubblade felet i simuleringen. Se [begränsningarna](docs/metod.md#medvetna-begränsningar) innan siffrorna används skarpt.

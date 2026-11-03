@@ -20,14 +20,14 @@ from treedist.simulate import example_price_list
 
 SCENARIOS = {
     "bas": {},
-    "kort lagring, delvis överlapp": {"delivery_lag_median_days": 5.0, "overlap_share": 0.5},
-    "leverans under pågående skörd": {"overlap_share": 1.0},
-    "lång lagring": {"delivery_lag_median_days": 30.0},
+    "leverans efter skörd året runt, lång lagring": {"overlap_share": 0.0, "delivery_lag_median_days": 14.0},
+    "leverans under pågående skörd året runt": {"overlap_share": 1.0},
+    "lång lagring": {"delivery_lag_median_days": 15.0},
     "destination oberoende av grovlek": {"destination_noise": 1.0},
     "mindre arbetsordrar": {"work_order_volume": (100.0, 600.0), "work_orders_per_month": 20},
     "20 % omdirigerat": {"redirected_share": 0.20},
 }
-SEEDS = (71, 72, 73, 74)
+SEEDS = (81, 82, 83, 84)
 COLUMNS = ["index_matris", "prisfel", "kum_prisfel", "varde_90", "andel_s1"]
 
 

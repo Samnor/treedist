@@ -34,8 +34,8 @@ SCENARIOS = {
     "30 % utan skördardata": {"no_harvester_data_share": 0.30},
     "stora skillnader inom AO": {"landing_diameter_sd": 0.20},
 }
-# Fresh seeds for each final check; earlier ones were 61-68.
-SEEDS = (71, 72, 73, 74, 75, 76, 77, 78)
+# Fresh seeds for each final check; earlier ones were 61-68 and 71-78.
+SEEDS = (81, 82, 83, 84, 85, 86, 87, 88)
 BURN_IN = 2
 LAG_MEDIAN_DAYS = 32.0
 LAG_SIGMA = 0.6
