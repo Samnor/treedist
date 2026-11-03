@@ -92,3 +92,13 @@ def test_light_intervals_leave_out_volume_error_and_the_finite_population_correc
     assert np.allclose(draws.total[KEY], draws.fixed[KEY])
     # The whole stock left, yet without the correction the noise is as for any part of it.
     assert component.concentration < 1000.0
+
+
+def test_without_log_counts_the_noise_follows_the_volume(cfg):
+    volume_only = replace(cfg, log_counts=False, finite_population=False)
+    deliveries = delivery_frame("2026-01", [("A", "TALL", 400.0)], cfg)
+    few, many = (
+        close_month(Ledger.empty(), harvest, deliveries, "2026-01", set(), volume_only).components[0].concentration
+        for harvest in (two_class_harvest(), two_class_harvest().assign(antal_stockar=50000))
+    )
+    assert few == many == pytest.approx(400.0 / cfg.default_log_volume / cfg.design_effect)

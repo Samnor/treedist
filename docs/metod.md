@@ -108,6 +108,7 @@ Två spridningar redovisas. `std_fordelning` håller volymen fast och är osäke
 | `finite_population` | på | Av: ingen ändlighetskorrektion, bruset följer bara effektivt antal stockar. Lätta intervall i modellen `halv` |
 | `donor_draws` | på | Av: S3 får brus kring givarnas medel i stället för en hel givare per dragning |
 | `volume_error` | på | Av: inget volymfel i Monte Carlo, så `std` blir lika med `std_fordelning` |
+| `log_counts` | på | Av: antal stockar läses inte; bruset följer volymen genom `default_log_volume` × `design_effect`. Modellen `halv-volym` |
 | `intervals` | på | Av ger profilen enkel: samma faktura och matriser, utan Monte Carlo-intervall |
 | `stockmatning` | `unit_cv` 0,043 | Biometria 2025, tabell 1. Systematiskt fel härlett ur KI ±0,1 % |
 | `travmatning` | `unit_cv` 0,051 | Biometria 2025, tabell 1, sågbara. Systematiskt fel härlett ur KI ±0,3 % |

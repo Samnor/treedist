@@ -186,6 +186,27 @@ Vad de övriga delarna gör, sett från `halv`:
 
 [Flödesrapporten för halv](flodesrapport_halv.html) visar demots månader med modellen.
 
+### Åtta delar: bruset efter volymen
+
+Läses inte antalet stockar blir koncentrationen volym / (`default_log_volume` × `design_effect`). Då spelar bara
+produkten roll, och de två talen blir ett: 50 m3fub per oberoende enhet. Brytaren är `log_counts`. Det tar bort en del
+och dessutom ett krav på indatan, eftersom `antal_stockar` inte längre behövs för intervallen.
+
+| Modell | Delar | Prisfel | Täckning | Poäng | Prestanda | Mot `halv` |
+|---|---|---|---|---|---|---|
+| `halv` | 9 | 11,4 | 92 % | 12,55 | 99 % | |
+| **`halv` med bruset efter volymen: `halv-volym`** | **8 (35 %)** | **11,4** | **92 %** | **12,67** | **99 %** | **+0,12 ± 0,10** |
+| … med `design_effect` 400 | 8 | 11,4 | 96 % | 13,08 | 99 % | +0,53 |
+| … och utan gruppvikten | 7 (30 %) | 12,0 | 92 % | 13,22 | 97 %, minst 95 % | +0,67 ± 0,19 |
+| … och utan äldsta först | 6 | 13,5 | 90 % | 14,90 | 92 % | +2,35 |
+
+**[halv-volym](../modeller/halv-volym.toml) har 8 av 23 delar** och samma prisfel som `halv`; bara intervallen ändras,
+och det kostar 0,12 i poäng, inom de 0,25 som ett förenklingssteg får kosta. På kontrollfröna är prisfelet 12,0,
+prestandan 98 % och värdetäckningen 91,3 %. Att också ta bort gruppvikten kostar 0,55 till och klarar inte den regeln.
+Samma `design_effect`, 200, fungerar här också.
+
+[Flödesrapporten för halv-volym](flodesrapport_halv-volym.html) visar demots månader med modellen.
+
 ## För- och nackdelar
 
 | | Fördelar | Nackdelar |

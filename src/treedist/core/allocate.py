@@ -177,7 +177,7 @@ def _stock_component(
     the harvest minus an uncertain first part.
     """
     shares = _composition(taken)
-    logs = taken[LOGS].sum(min_count=1)
+    logs = taken[LOGS].sum(min_count=1) if cfg.log_counts else 0.0
     log_count = logs if logs > 0 else volume / cfg.default_log_volume
     remaining_share = max(1 - volume / harvested, 0.0)
     if remaining_share <= 1e-9 and cfg.finite_population:

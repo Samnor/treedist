@@ -49,6 +49,7 @@ class Config:
     finite_population: bool = True
     donor_draws: bool = True
     volume_error: bool = True
+    log_counts: bool = True
     intervals: bool = True
     mc_draws: int = 2000
     seed: int = 20261102

@@ -57,6 +57,11 @@ def _volume(c: Config) -> bool:
     return c.intervals and c.volume_error
 
 
+def _log_volume(c: Config) -> bool:
+    # Without log counts the noise is volume / (default_log_volume × design_effect): one number, not two.
+    return c.intervals and c.log_counts
+
+
 # Name, kind, what it does, whether a config uses it.
 PARTS = [
     ("liggare", "regel", "Lager per arbetsorder och sortiment förs mellan månaderna och leveransen dras ur det",
@@ -78,7 +83,7 @@ PARTS = [
     ("design_effect", "parameter", "Stockar per oberoende stock", _intervals),
     ("andlighet", "regel", "Bruset minskar ju större del av skörden som levererats", _finite),
     ("pool_remaining_share", "parameter", "Antagen kvarvarande andel för S2 och S3", _finite),
-    ("default_log_volume", "parameter", "Medelstockvolym när antal saknas", _intervals),
+    ("default_log_volume", "parameter", "Medelstockvolym när antal saknas", _log_volume),
     ("hel_givare", "regel", "S3 i Monte Carlo: en hel givare per dragning", _donors),
     ("volymfel", "regel", "Volymens mätfel per leverans och metod", _volume),
     ("unit_cv", "parameter", "Mätfel per enhet, per metod", _volume),
@@ -111,6 +116,7 @@ GROUPS = {
     "andlighet": ["finite_population"],
     "hel_givare": ["donor_draws"],
     "volymfel": ["volume_error"],
+    "antal_stockar": ["log_counts"],
 }
 # Intervals from the noise around the composition alone: three parts instead of ten.
 LIGHT_INTERVALS = {"intervals": True, "finite_population": False, "donor_draws": False, "volume_error": False}
