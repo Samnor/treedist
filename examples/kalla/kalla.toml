@@ -1,6 +1,6 @@
 # Mappning från ett påhittat källsystems export till de kanoniska tabellerna.
-# Kör: uv run treedist check --period 2026-01 --kalla examples/kalla/kalla.toml
-# Kanoniska namn står till vänster, källans till höger. Se `uv run treedist kontrakt`.
+# Kör: treedist check --period 2026-01 --kalla examples/kalla/kalla.toml
+# Kanoniska namn står till vänster, källans till höger. Se `treedist kontrakt`.
 
 [skordning]
 fil = "export/produktion_{period}.csv"

@@ -1,4 +1,4 @@
-# Modell enkel. Kör med --config modeller/enkel.toml; se scripts/modell.py.
+# Modell enkel. Kör med --modell enkel; se scripts/modell.py.
 
 harvester_bias = 0
 handling_loss = 0

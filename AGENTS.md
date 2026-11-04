@@ -3,6 +3,9 @@
 Den här filen är skriven för en modell eller en person som ska få `treedist` att läsa data från ett nytt
 system. Uppgiften är nästan alltid att beskriva källans format, inte att ändra metoden.
 
+Kommandona nedan skrivs `treedist ...`, som efter `pip install` och `treedist init`. Arbetar du i en klon av
+repot, skriv `uv run` före varje kommando.
+
 ## Vad du får ändra
 
 - **En källbeskrivning.** Helst en `.toml`-mappning, se [examples/kalla/kalla.toml](examples/kalla/kalla.toml).
@@ -11,32 +14,36 @@ system. Uppgiften är nästan alltid att beskriva källans format, inte att änd
 - **En `.py`-adapter** bara när mappningen inte räcker: filer som måste slås ihop, koder som ska bli namn,
   id som skiljer mellan källorna. Den definierar `read(period) -> dict[str, DataFrame]` med tabellerna i
   kontraktets kolumnnamn. Lägg den i en egen katalog, till exempel `kallor/<system>/`.
-- **En konfigurationsfil** till `--config`, till exempel [examples/profil_enkel.toml](examples/profil_enkel.toml).
+
+Välj inte modell själv. Utan `--modell` körs standardmodellen. `treedist modeller` listar de sparade
+modellerna, om en person ber om en annan.
 
 ## Vad du inte får ändra
 
-`src/treedist/core/`, `src/treedist/contract.py`, `src/treedist/schema.py`, `src/treedist/uncertainty/` och
-`tests/golden/`. De är metoden och dess facit. Om du tror att något där måste ändras: stanna och fråga en person.
-Ett test som slutar fungera ska inte skrivas om för att passera.
+Metoden och dess facit. Efter `pip install` ligger de i det installerade paketet; ändra inget där. I en klon
+av repot är det `src/treedist/core/`, `src/treedist/contract.py`, `src/treedist/schema.py`,
+`src/treedist/uncertainty/` och `tests/golden/`. Om du tror att något där måste ändras: stanna och fråga en
+person. Ett test som slutar fungera ska inte skrivas om för att passera.
 
 ## Arbetsgång
 
-1. `uv sync` och sedan `uv run pytest -q`. Allt ska passera innan du börjar.
-2. `uv run treedist kontrakt` skriver ut de fem tabellerna med krav, enhet, rimliga värden och betydelse.
+1. `treedist selftest` ska skriva `OK` innan du börjar. I en klon: `uv sync` och sedan `uv run pytest -q`.
+2. `treedist kontrakt` skriver ut de fem tabellerna med krav, enhet, rimliga värden och betydelse.
    Läs kolumnen Betydelse noga.
-3. Kopiera `examples/kalla/kalla.toml` och fyll i källans filer och kolumnnamn.
+3. Kopiera `examples/kalla/kalla.toml` till `kallor/<system>/kalla.toml` och fyll i källans filer och
+   kolumnnamn. Filnamnen räknas från källbeskrivningens katalog.
 4. Kör tills inget `FEL` återstår:
 
    ```bash
-   uv run treedist check --period 2026-01 --kalla kallor/system/kalla.toml
+   treedist check --period 2026-01 --kalla kallor/system/kalla.toml
    ```
 
    Varje `VARNING` ska antingen rättas eller förklaras för en person. `INFO` kräver inget. Med `--state`
    provkörs månaden mot liggaren utan att något sparas.
-5. Kör månaderna i ordning, först med profilen enkel:
+5. Kör månaderna i ordning, med samma `--state` varje månad:
 
    ```bash
-   uv run treedist run --period 2026-01 --kalla kallor/system/kalla.toml --state state --out out/2026-01 --config examples/profil_enkel.toml
+   treedist run --period 2026-01 --kalla kallor/system/kalla.toml --state state --out out/2026-01
    ```
 
 ## Fallgropar som ger fel siffror utan felmeddelande
@@ -56,6 +63,6 @@ Ett test som slutar fungera ska inte skrivas om för att passera.
 ## Klart betyder
 
 - `treedist check` visar inget `FEL`, och varje `VARNING` är rättad eller förklarad.
-- `uv run pytest -q` passerar.
+- `treedist selftest` skriver `OK`, och i en klon passerar `uv run pytest -q`.
 - En körd månad visar fakturerad volym per destination och sortiment lika med inmätningen. Körningen
   stoppar själv om det inte stämmer.

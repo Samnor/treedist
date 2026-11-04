@@ -15,7 +15,29 @@ håller `treedist` en liggare över skördat men olevererat virke per arbetsorde
 - [AGENTS.md](AGENTS.md): hur en ny datakälla kopplas in, skrivet så att en modell kan göra det
 - [Portabilitet](docs/portabilitet.md): hur väl en enklare modell kopplar in nya källor, och vad `check` fångar
 
-## Kom igång
+## Installera
+
+Med pip, direkt från GitHub. Ange en version, så att metoden och de sparade modellerna inte byts ut under en
+pågående serie månader:
+
+```bash
+pip install "treedist @ git+https://github.com/OWNER/treedist@v0.2.0"
+```
+
+`treedist init` lägger [AGENTS.md](AGENTS.md) och exemplen i en katalog, och `treedist selftest` kör demons
+fyra månader och jämför med facit. Det ska stå `OK` innan riktiga månader körs:
+
+```bash
+treedist init mitt-projekt
+```
+
+```bash
+treedist selftest
+```
+
+Utan uv eller klon skrivs kommandona nedan utan `uv run`.
+
+## Kom igång i en klon av repot
 
 Installera med [uv](https://docs.astral.sh/uv/):
 
@@ -73,15 +95,15 @@ borttagningar mot samma baslinje; varje steg får kosta högst 0,25 i poäng och
 uv run python scripts/climb.py forenkla donor_group_weight=1 'design_effect=100,pool_min_pairs=5'
 ```
 
-Sparade modeller ligger i [modeller/](modeller), en TOML-fil per modell som `--config` läser direkt, med kod,
-antal delar och resultat i tabellen `[modell]`. Byt modell genom att ange en annan fil, till exempel
-`--config modeller/enkel.toml`: 4 av 23 delar och 92 % av standardmodellens förbättring mot den naiva skattningen,
-men utan intervall. `modeller/halv.toml` har 9 av 23 delar, 99 % av förbättringen och lätta intervall, och `modeller/halv-volym.toml`
-samma med 8 delar och utan att läsa antal stockar, se
-[metodjämförelsen](docs/metodjamforelse.md#en-femtedel-av-delarna).
+Sparade modeller ligger i [modeller/](modeller), en TOML-fil per modell med kod, antal delar och resultat i
+tabellen `[modell]`, och följer med paketet. Utan `--modell` körs standardmodellen. `--modell enkel` har 4 av 23
+delar och 92 % av standardmodellens förbättring mot den naiva skattningen, men inga intervall. `--modell halv`
+har 9 av 23 delar, 99 % av förbättringen och lätta intervall, och `--modell halv-volym` samma med 8 delar och
+utan att läsa antal stockar, se [metodjämförelsen](docs/metodjamforelse.md#en-femtedel-av-delarna). `--config`
+tar en egen fil i stället.
 
 ```bash
-uv run python scripts/modell.py lista
+uv run treedist modeller
 ```
 
 ```bash
@@ -130,7 +152,7 @@ källans export ──> adapter ──> kanoniska tabeller ──> kärna ──
 | `uncertainty/` | Monte Carlo-intervall. Stängs av med `intervals = false` | Nej |
 | `dev/` | Simulator och utvärdering. Behövs inte i drift | Nej |
 
-Profilen [enkel](examples/profil_enkel.toml) kör utan Monte Carlo: fakturan och matriserna blir desamma, men
+Profilen [utan_intervall](examples/utan_intervall.toml) kör utan Monte Carlo: fakturan och matriserna blir desamma, men
 spridning och intervall saknas. Säkerhetsklasserna visar fortfarande hur säker fördelningen är. Golden-testet i
 `tests/test_portability.py` kontrollerar att demons fakturor och matriser inte ändras av omstruktureringar, och
 liggaren sparar sin kontraktsversion så att en gammal liggare inte läses med ett nytt format.

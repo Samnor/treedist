@@ -1,3 +1,0 @@
-# Profil enkel: liggare, mjuk matchning och äldsta virket först, utan Monte Carlo-intervall.
-# Säkerhetsklasserna S1–S4 visar fortfarande hur säker fördelningen är.
-intervals = false

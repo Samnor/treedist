@@ -1,4 +1,4 @@
-# Modell halv-volym. Kör med --config modeller/halv-volym.toml; se scripts/modell.py.
+# Modell halv-volym. Kör med --modell halv-volym; se scripts/modell.py.
 
 harvester_bias = 0
 handling_loss = 0

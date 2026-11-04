@@ -1,4 +1,4 @@
-# Modell halv. Kör med --config modeller/halv.toml; se scripts/modell.py.
+# Modell halv. Kör med --modell halv; se scripts/modell.py.
 
 harvester_bias = 0
 handling_loss = 0

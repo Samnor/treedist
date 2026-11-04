@@ -138,7 +138,7 @@ def test_the_simple_profile_gives_the_same_invoice_without_intervals():
 
 
 def test_a_ledger_from_another_contract_version_is_refused(tmp_path):
-    run_demo(tmp_path, "2026-01", "--config", str(ROOT / "examples" / "profil_enkel.toml"))
+    run_demo(tmp_path, "2026-01", "--config", str(ROOT / "examples" / "utan_intervall.toml"))
     version = tmp_path / "state" / "2026-01" / "kontrakt.json"
     assert json.loads(version.read_text())["kontrakt"] == CONTRACT_VERSION
     version.write_text(json.dumps({"kontrakt": CONTRACT_VERSION + 1}))

@@ -1,6 +1,6 @@
 """Saved models: a named set of parameters to switch back to, and how complicated each is.
 
-A model is a TOML file in modeller/ that `--config` reads directly, with a
+A model is a TOML file in modeller/ that `--modell NAMN` reads, with a
 [modell] table saying what it is, which code it was saved with and how it did.
 Complexity is the number of parts in PARTS that the model uses: each rule and
 each number a reader must know to follow an estimate. Bookkeeping every model
@@ -14,7 +14,7 @@ for that share in every scenario, not only on average.
     uv run python scripts/modell.py delar --config modeller/enkel.toml
     uv run python scripts/modell.py spara NAMN --beskrivning "..." [--config FIL] [--set k=v] [--utvardera]
     uv run python scripts/modell.py sok --delar 0.2 --prestanda 0.8
-    uv run treedist run ... --config modeller/NAMN.toml
+    uv run treedist run ... --modell NAMN
 """
 
 from __future__ import annotations
@@ -164,7 +164,7 @@ def save(name: str, cfg: Config, description: str, results: dict | None) -> Path
     used = parts(cfg)
     values = asdict(cfg)
     methods = values.pop("volume_methods")
-    lines = [f"# Modell {name}. Kör med --config modeller/{name}.toml; se scripts/modell.py.", ""]
+    lines = [f"# Modell {name}. Kör med --modell {name}; se scripts/modell.py.", ""]
     lines += [f"{key} = {_toml_value(value)}" for key, value in values.items()]
     for method, numbers in methods.items():
         lines += ["", f"[volume_methods.{method}]", *(f"{k} = {_toml_value(v)}" for k, v in numbers.items())]

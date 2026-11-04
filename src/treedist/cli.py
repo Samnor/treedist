@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
+import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 import pandas as pd
 
 from .dev.backtest import run_backtest
-from . import adapters, contract
+from . import __version__, adapters, contract, resources
 from .check import FEL, check
-from .config import load_config
+from .config import Config, load_config
 from .core.invoice import invoice_total_kr
 from .core.ledger import load_for_period
 from .core.pipeline import run_month
@@ -20,8 +24,14 @@ from .schema import AO, DEST
 from .dev.simulate import SimParams, example_price_list, simulate
 
 
+def _config(args: argparse.Namespace) -> Config:
+    if args.modell and args.config:
+        raise ValueError("Ange --modell eller --config, inte båda")
+    return load_config(resources.model(args.modell) if args.modell else args.config)
+
+
 def _run(args: argparse.Namespace) -> int:
-    cfg = load_config(args.config)
+    cfg = _config(args)
     ledger = load_for_period(args.state, args.period)
     if ledger.period is None:
         print(f"Kallstart: ingen liggare före {args.period}. Virke skördat tidigare saknar skördardata.")
@@ -54,7 +64,7 @@ def _files(args: argparse.Namespace) -> dict[str, Path | None]:
 
 
 def _check(args: argparse.Namespace) -> int:
-    findings = check(args.period, load_config(args.config), args.kalla, _files(args), args.state)
+    findings = check(args.period, _config(args), args.kalla, _files(args), args.state)
     for finding in findings:
         print(finding)
     return 1 if any(f.level == FEL for f in findings) else 0
@@ -79,8 +89,79 @@ def _simulate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _models(args: argparse.Namespace) -> int:
+    print("Utan --modell körs standardmodellen. Byt bara om en person ber om det.\n")
+    for name, path in resources.models().items():
+        about = resources.describe(path)
+        share = f"{about['prestanda'] * 100:.0f} % av standardmodellens förbättring" if "prestanda" in about else ""
+        parts = f"{about['delar']} av {about['delar_av']} delar" if "delar" in about else ""
+        print(f"{name}: {', '.join(x for x in (parts, share) if x)}")
+        if "beskrivning" in about:
+            print(f"    {about['beskrivning']}")
+    return 0
+
+
+def _init(args: argparse.Namespace) -> int:
+    """Put AGENTS.md and the examples where a person or a model will connect a source."""
+    args.dir.mkdir(parents=True, exist_ok=True)
+    copies = [
+        (resources.path("AGENTS.md"), args.dir / "AGENTS.md"),
+        (resources.path("examples") / "kalla", args.dir / "examples" / "kalla"),
+        (resources.path("examples") / "demo", args.dir / "examples" / "demo"),
+    ]
+    for source, target in copies:
+        if target.exists():
+            print(f"Finns redan, orörd: {target}")
+        elif source.is_dir():
+            shutil.copytree(source, target)
+            print(f"Skapad: {target}/")
+        else:
+            shutil.copy(source, target)
+            print(f"Skapad: {target}")
+    print(f"\nLäs {args.dir / 'AGENTS.md'} och börja med `treedist selftest`.")
+    return 0
+
+
+def _selftest(args: argparse.Namespace) -> int:
+    """The demo's four months must give exactly the invoices and matrices they always have."""
+    demo, answer = resources.path("examples") / "demo", resources.path("facit")
+    periods = sorted(p.stem.removeprefix("faktura_rader_") for p in answer.glob("faktura_rader_*.csv"))
+    failures = []
+    with tempfile.TemporaryDirectory() as tmp:
+        for period in periods:
+            out = Path(tmp) / "out" / period
+            files = {
+                "--skordning": demo / f"skordning_{period}.csv",
+                "--leverans": demo / f"leverans_{period}.csv",
+                "--prislista": demo / "prislista.csv",
+                "--arbetsordrar": demo / "arbetsordrar.csv",
+                "--avslutade-ao": demo / f"avslutade_ao_{period}.csv",
+            }
+            argv = ["run", "--period", period, "--state", str(Path(tmp) / "state"), "--out", str(out)]
+            with contextlib.redirect_stdout(io.StringIO()):
+                if main(argv + [str(x) for pair in files.items() for x in pair]) != 0:
+                    failures.append(f"{period}: körningen misslyckades")
+                    break
+            comparisons = [(out / "faktura_rader.csv", answer / f"faktura_rader_{period}.csv")]
+            if period == periods[-1]:
+                comparisons += [(out / name, answer / f"{name.removesuffix('.csv')}_{period}.csv")
+                                for name in ("matriser_lang.csv", "avstamning_ao.csv")]
+            for actual, expected in comparisons:
+                try:
+                    pd.testing.assert_frame_equal(pd.read_csv(actual), pd.read_csv(expected), check_exact=False, rtol=1e-9)
+                except AssertionError as error:
+                    failures.append(f"{period} {actual.name}: {str(error).splitlines()[0]}")
+    for failure in failures:
+        print(f"FEL {failure}")
+    if failures:
+        print("treedist räknar inte som det ska i den här miljön. Kör inte månader förrän det är rättat.")
+        return 1
+    print(f"OK: demons {len(periods)} månader ger samma fakturor och matriser som facit (treedist {__version__}).")
+    return 0
+
+
 def _backtest(args: argparse.Namespace) -> int:
-    cfg = load_config(args.config)
+    cfg = _config(args)
     result = run_backtest(SimParams(months=args.manader, seed=args.seed), cfg)
     if args.out:
         args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -92,7 +173,18 @@ def _backtest(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="treedist", description=__doc__)
+    parser.add_argument("--version", action="version", version=f"treedist {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
+
+    init = commands.add_parser("init", help="Lägg AGENTS.md och exemplen i en katalog, för att koppla in en källa")
+    init.add_argument("dir", type=Path, nargs="?", default=Path("."))
+    init.set_defaults(handler=_init)
+
+    selftest = commands.add_parser("selftest", help="Kör demon och jämför med facit: räknar treedist rätt här?")
+    selftest.set_defaults(handler=_selftest)
+
+    models = commands.add_parser("modeller", help="De sparade modellerna som --modell kan välja")
+    models.set_defaults(handler=_models)
 
     run = commands.add_parser("run", help="Stäng en månad: matriser, faktura och ny liggare")
     _input_arguments(run)
@@ -119,7 +211,7 @@ def build_parser() -> argparse.ArgumentParser:
     backtest.add_argument("--manader", type=int, default=10)
     backtest.add_argument("--seed", type=int, default=7)
     backtest.add_argument("--out", type=Path)
-    backtest.add_argument("--config", type=Path)
+    _model_arguments(backtest)
     backtest.set_defaults(handler=_backtest)
     return parser
 
@@ -132,7 +224,12 @@ def _input_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--prislista", type=Path)
     parser.add_argument("--avslutade-ao", type=Path)
     parser.add_argument("--arbetsordrar", type=Path, help="Planerad destination och grupp per arbetsorder")
-    parser.add_argument("--config", type=Path)
+    _model_arguments(parser)
+
+
+def _model_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--modell", help="En sparad modell, se `treedist modeller`. Utan den körs standardmodellen")
+    parser.add_argument("--config", type=Path, help="En egen konfigurationsfil, i stället för --modell")
 
 
 def main(argv: list[str] | None = None) -> int:

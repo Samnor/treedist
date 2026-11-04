@@ -1,4 +1,4 @@
-# Modell standard-2026-11-03. Kör med --config modeller/standard-2026-11-03.toml; se scripts/modell.py.
+# Modell standard-2026-11-03. Kör med --modell standard-2026-11-03; se scripts/modell.py.
 
 harvester_bias = 0.009
 handling_loss = 0.01

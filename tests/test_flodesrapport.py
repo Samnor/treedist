@@ -14,7 +14,7 @@ DEMO = ROOT / "examples" / "demo"
 
 def test_the_flow_report_follows_the_demo_month_by_month(tmp_path):
     out = tmp_path / "flode.html"
-    assert main(["--out", str(out), "--config", str(ROOT / "examples" / "profil_enkel.toml")]) == 0
+    assert main(["--out", str(out), "--config", str(ROOT / "examples" / "utan_intervall.toml")]) == 0
     report = json.loads(re.search(r"const R = (.*);\n", out.read_text(encoding="utf-8")).group(1))
 
     assert [m["period"] for m in report["manader"]] == ["2026-01", "2026-02", "2026-03", "2026-04"]
