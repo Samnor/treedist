@@ -57,6 +57,25 @@ Första kontrollkatalogen visade att de första kontrollerna var specifika: de f
 nya. Falsklarmet i kontrollen är befogat: i den källan saknar två arbetsordrar skördardata, och varningen
 pekar ut dem.
 
+### Installerat med pip (2026-11-04)
+
+Samma fyra källor, men modellen fick en katalog skapad med `treedist init` ur paketet och körde `treedist` från
+en ren miljö, utan repot. Rättat med `portability_bench.py rätta`.
+
+| Omgång | AGENTS.md | Modellprov, Haiku |
+|---|---|---|
+| 1 | Paketet byggt före omskrivningen: nämner `uv run`, `pytest` och `profil_enkel` | 4 av 4, 86 000–91 000 tokens, 13–17 verktygsanrop |
+| 2 | Version 0.2.0: `treedist selftest`, ingen modell att välja | 4 av 4, 74 000–94 000 tokens, 10–18 verktygsanrop |
+
+- **Installationen kostar inget i träffsäkerhet eller tokens.** Modellerna följde `selftest`, `kontrakt`, `check` och
+  `run` i projektkatalogen utan att behöva repot.
+- **Ingen valde modell själv.** Alla körde standardmodellen, som AGENTS.md säger.
+- **`kodning` saknades i AGENTS.md.** En modell hittade nyckeln genom att prova efter ett UTF-8-fel; nu står
+  tabellnycklarna uppräknade.
+- **Provet var inte helt blint.** Agenterna startades i repot och fick därför också repots AGENTS.md från
+  sessionens början, med `profil_enkel`. Två agenter i omgång 2 nämnde den fast den inte fanns i deras katalog.
+  I riktig användning läser modellen bara katalogens AGENTS.md, som `init` lägger i roten där verktygen hittar den.
+
 ## Det som `check` ännu inte ser
 
 - **Fel kolumn som id i arbetsordertabellen.** Missen i kontroll 2. Kan fångas genom att kräva att arbetsordrarna

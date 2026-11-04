@@ -10,7 +10,9 @@ repot, skriv `uv run` före varje kommando.
 
 - **En källbeskrivning.** Helst en `.toml`-mappning, se [examples/kalla/kalla.toml](examples/kalla/kalla.toml).
   Den byter kolumnnamn, räknar om enheter, sätter konstanter, filtrerar rader och läser datumformat.
-  Decimalkomma läses alltid rätt, så `enheter` behövs bara för omräkning.
+  Decimalkomma läses alltid rätt, så `enheter` behövs bara för omräkning. Varje tabell tar nycklarna `fil`,
+  `separator`, `kodning` (förval `"utf-8"`, till exempel `"latin-1"`), `datumformat`, `kolumner`, `enheter`,
+  `konstanter` och `filter`.
 - **En `.py`-adapter** bara när mappningen inte räcker: filer som måste slås ihop, koder som ska bli namn,
   id som skiljer mellan källorna. Den definierar `read(period) -> dict[str, DataFrame]` med tabellerna i
   kontraktets kolumnnamn. Lägg den i en egen katalog, till exempel `kallor/<system>/`.
