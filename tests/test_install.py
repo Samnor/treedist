@@ -42,6 +42,13 @@ def test_init_gives_agents_md_and_an_example_that_passes_check(tmp_path):
     assert not [f for f in findings if f.level == FEL]
 
 
+def test_init_copies_no_python_caches(tmp_path):
+    cache = resources.path("examples") / "kalla" / "__pycache__"
+    cache.mkdir(exist_ok=True)
+    assert main(["init", str(tmp_path)]) == 0
+    assert not list(tmp_path.rglob("__pycache__"))
+
+
 def test_init_leaves_existing_files_alone(tmp_path, capsys):
     (tmp_path / "AGENTS.md").write_text("egen", encoding="utf-8")
     assert main(["init", str(tmp_path)]) == 0

@@ -176,3 +176,19 @@ def test_a_file_in_treedists_own_format_needs_only_its_name(tmp_path):
     path.write_text(head + f'[prislista]\nfil = "{DEMO}/prislista.csv"\n\n[avslutade_ao]\nfil = "{DEMO}/avslutade_ao_{{period}}.csv"\n',
                     encoding="utf-8")
     assert load("2026-01", Config(), source=path).prices.rules == load("2026-01", Config(), source=SOURCE).prices.rules
+
+
+def test_check_refuses_a_negative_unit_count(tmp_path):
+    adapter = tmp_path / "vand.py"
+    adapter.write_text(
+        "import pandas as pd\n"
+        f"DEMO = {str(DEMO)!r}\n"
+        "def read(period):\n"
+        "    loads = pd.read_csv(f'{DEMO}/leverans_{period}.csv')\n"
+        "    back = loads.head(1).assign(volym_m3fub=lambda t: -t.volym_m3fub, brutto_m3fub=lambda t: -t.brutto_m3fub,\n"
+        "                                antal_matenheter=lambda t: -t.antal_matenheter)\n"
+        "    return {'skordning': pd.read_csv(f'{DEMO}/skordning_{period}.csv'), 'leverans': pd.concat([loads, back]),\n"
+        "            'prislista': pd.read_csv(f'{DEMO}/prislista.csv'), 'arbetsordrar': pd.read_csv(f'{DEMO}/arbetsordrar.csv')}\n"
+    )
+    findings = check("2026-01", Config(intervals=False), source=adapter)
+    assert "antal_matenheter är negativt på 1 rader" in messages(findings, FEL)

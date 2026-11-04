@@ -37,17 +37,16 @@ LOG = ROOT / "climb" / "setup_logg.jsonl"
 WORK = Path(os.environ.get("TREEDIST_KLATTRING", "/tmp/treedist-setup-climb"))
 
 TASKS = {
-    "dev": {**bench.VARIANTS, **bench.PLATFORMS, **bench.HISTORY},
-    "kontroll": {**bench.CONTROL, **bench.PLATFORM_CONTROL, **bench.HISTORY_CONTROL},
+    "dev": {**bench.VARIANTS, **bench.PLATFORMS, **bench.HISTORY, **bench.HARD},
+    "kontroll": {**bench.CONTROL, **bench.PLATFORM_CONTROL, **bench.HISTORY_CONTROL, **bench.HARD_CONTROL},
 }
 MODEL = "haiku"
 # Shell commands run in Claude Code's sandbox, which keeps writes inside the project folder and has no
-# network, so compound commands need no allow-list entry of their own.
-SANDBOX = {"sandbox": {"enabled": True, "autoAllowBashIfSandboxed": True}}
-# Everything else is refused without asking: the model reads, writes its source description and runs treedist.
-ALLOWED = ["Read", "Write", "Edit", "Glob", "Grep", "Bash(treedist:*)", "Bash(python:*)", "Bash(python3:*)",
-           "Bash(ls:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(cat:*)", "Bash(wc:*)", "Bash(file:*)", "Bash(cd:*)",
-           "Bash(find:*)", "Bash(grep:*)", "Bash(sort:*)", "Bash(echo:*)", "Bash(sqlite3:*)"]
+# network; inside it every command is allowed, since a refused command makes a cheap model give up on the
+# shell and measures the test instead of treedist. Everything else is refused without asking: the model
+# reads, writes its source description and runs treedist.
+SANDBOX = {"sandbox": {"enabled": True, "autoAllowBashIfSandboxed": True, "allowUnsandboxedCommands": False}}
+ALLOWED = ["Read", "Write", "Edit", "Glob", "Grep", "Bash"]
 PARALLEL = 6
 TIMEOUT_S = 1200
 BUDGET_USD = 3.0

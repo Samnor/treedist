@@ -68,6 +68,7 @@ def check(
     findings += _harvest_logs(inputs.harvest)
     findings += _gross_and_net(raw.get("leverans"), inputs.deliveries)
     findings += _loads(raw.get("leverans"), inputs.deliveries)
+    findings += _unit_counts(raw.get("leverans"))
     findings += _dates(inputs.harvest, inputs.deliveries)
     findings += _destinations(raw.get("leverans"), inputs)
     findings += _prices(inputs)
@@ -173,6 +174,21 @@ def _gross_and_net(raw: pd.DataFrame | None, deliveries: pd.DataFrame) -> list[F
     if ratio < 0.85:
         return [Finding(VARNING, "leverans", f"netto är {ratio:.1%} av brutto; normalt 95–100 %. Är det fub och fub, och rätt kolumner?")]
     return [Finding(OK, "leverans", f"netto är {ratio:.1%} av brutto")]
+
+
+def _unit_counts(raw: pd.DataFrame | None) -> list[Finding]:
+    """A count is never negative; a reversing row is easily given the volume's sign on every number.
+
+    Read from the raw table: validation replaces counts that are not positive with the method's default.
+    """
+    if raw is None or "antal_matenheter" not in raw.columns:
+        return []
+    counts = pd.to_numeric(raw["antal_matenheter"].astype(str).str.replace(",", ".", regex=False), errors="coerce")
+    negative = int((counts < 0).sum())
+    if negative:
+        return [Finding(FEL, "leverans", f"antal_matenheter är negativt på {negative} rader; antalet är alltid positivt, "
+                        "också på en rad som vänder ett lass. Bara volymerna byter tecken")]
+    return []
 
 
 def _loads(raw: pd.DataFrame | None, deliveries: pd.DataFrame) -> list[Finding]:

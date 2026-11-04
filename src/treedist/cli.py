@@ -113,7 +113,7 @@ def _init(args: argparse.Namespace) -> int:
         if target.exists():
             print(f"Finns redan, orörd: {target}")
         elif source.is_dir():
-            shutil.copytree(source, target)
+            shutil.copytree(source, target, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
             print(f"Skapad: {target}/")
         else:
             shutil.copy(source, target)

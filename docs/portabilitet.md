@@ -137,6 +137,37 @@ inte heller föll på kontrolluppgifterna.
   riktat på den uppgift där de uppträder.
 - **Läckor.** Testkatalogens sökväg innehåller repots namn, och två körningar försökte läsa repot; båda nekades.
 
+### Andra omgången: hela skalet och svåra fällor
+
+Varje nekat kommando fick Haiku att ge upp skalet och leta i filerna för hand, så testet mätte sina egna
+behörigheter. Nu tillåts alla skalkommandon i sandlådan, som fortfarande håller skrivningar i projektkatalogen och
+saknar nätverk. Då klarades alla nio utvecklingsuppgifter, 36 av 36, till 0,020 USD, 11 turer och 78 s per
+körning, och de gav ingen signal längre.
+
+Fyra nya uppgifter bygger på fällor ur AGENTS.md, `skapa --svara`. Referensadaptern klarar var och en, och det
+lockande felet underkänns i alla, två av dem utan att `check` säger något:
+
+| Uppgift | Fälla | Lockande fel, syns i `check`? |
+|---|---|---|
+| `s_omklassat` | Industrin har klassat om en del lass; bokföringsdag ibland i månaden efter | Skördarens sortiment som `handelssortiment`: **tyst** |
+| `t_kredit` | Volymer utan tecken, kolumn för debet och kredit; ommätta lass krediteras och debiteras igen | Kreditraderna som positiva: `FEL`, dubblerat lass |
+| `u_per_bruk` | En fil per sågverk, sågverket bara i filnamnet, planerat sågverk på varje rad | Planerat sågverk som mottagningsplats: **tyst** |
+| `v_kalkylblad` | Datum som serienummer, tusentalsavgränsare, summarad | Fel epok för serienumren: `FEL`, datum efter perioden |
+
+Baslinjen klarade 22 av 24. Båda missarna var i `t_kredit`: adaptern gav också `antal_matenheter` kreditradens
+tecken. Valideringen ersätter tyst ett antal som inte är positivt, så felet syntes inte.
+
+| Steg | Ändring | Utfall | Beslut |
+|---|---|---|---|
+| H | `check` ger `FEL` när `antal_matenheter` är negativt i källan: antalet är alltid positivt, bara volymerna byter tecken | `t_kredit` 12 av 12 mot 9 av 12; i 3 av körningarna kom felet och modellen rättade | Tagen |
+
+**Kontroll** på alla 13 kontrolluppgifter, tre körningar var: 39 av 39 mot baslinjens 38 av 39, där missen var
+samma fel i `x_kredit`. Kostnaden är oförändrad, cirka 0,02 USD per körning. Sammantaget över alla körningar med
+kreditfällan: 11 av 15 före, 18 av 18 efter. Utvecklingsuppgifterna klarades 39 av 39 med den slutliga versionen.
+
+Haiku klarade alltså de tysta fällorna i omklassning och per sågverk varje gång. Det som fällde den var ett tal
+som kontraktet anger men som ingen kontroll såg.
+
 ```bash
 uv run python scripts/setup_climb.py prova --not "vad som ändrats" --korningar 4
 ```

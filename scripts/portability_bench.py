@@ -4,7 +4,7 @@
         Plants common mapping mistakes in examples/kalla and counts how many
         `treedist check` notices. Deterministic.
 
-    uv run python scripts/portability_bench.py skapa --dir BENCH [--kontroll] [--plattform | --historik]
+    uv run python scripts/portability_bench.py skapa --dir BENCH [--kontroll] [--plattform | --historik | --svara]
         Writes simulated months as foreign exports, each with its own quirks,
         under BENCH/uppgifter/<variant>/ with a data owner's description, and
         the canonical answer under BENCH/facit/<variant>/. A model gets only the
@@ -481,6 +481,121 @@ def _fixed(m: Month, out: Path) -> str:
     )
 
 
+# --- Traps from AGENTS.md that a plausible description gets wrong without any error. ---
+
+
+def _reclassified(m: Month, out: Path) -> str:
+    """The mill booked some loads as the other assortment, and some were booked the month after they were driven."""
+    d = m.deliveries.copy()
+    rng = np.random.default_rng(len(d))
+    other = {"TALL_SAG": "GRAN_SAG", "GRAN_SAG": "TALL_SAG"}
+    moved = rng.random(len(d)) < 0.2
+    d["producerat_handelssortiment"] = d["handelssortiment"]
+    d.loc[moved, "handelssortiment"] = d.loc[moved, "handelssortiment"].map(other)
+    m.deliveries = d
+    driven = pd.to_datetime(d["leveransdatum"])
+    booked = (driven + pd.to_timedelta(rng.integers(0, 6, len(d)), unit="D")).dt.strftime("%Y-%m-%d")
+    pd.DataFrame({
+        "Lass": d["leverans_id"], "AO": d["arbetsorder"], "SkordatSortiment": d["producerat_handelssortiment"],
+        "InmattSortiment": d["handelssortiment"], "Mottagare": d["mottagningsplats"], "Kord": d["leveransdatum"],
+        "Bokford": booked, "Netto": _decimal(d["volym_m3fub"], comma=False), "Brutto": _decimal(d["brutto_m3fub"], comma=False),
+        "Metod": d["matmetod"], "Enheter": d["antal_matenheter"],
+    }).to_csv(out / f"inmatning_{PERIOD}.csv", index=False)
+    m.harvest.to_csv(out / f"skord_{PERIOD}.csv", index=False)
+    m.orders.to_csv(out / "arbetsordrar.csv", index=False)
+    return (
+        "Kommaseparerade filer, punkt som decimaltecken, datum som ÅÅÅÅ-MM-DD.\n\n"
+        f"- `skord_{PERIOD}.csv`: skördarens produktion, i treedists kolumnnamn.\n"
+        f"- `inmatning_{PERIOD}.csv`: alla lass som kördes under månaden. SkordatSortiment är sortimentet skördaren "
+        "angav, InmattSortiment det industrin mätte in och fakturerar; de skiljer när industrin klassat om. Kord är "
+        "dagen lasset kördes och Bokford dagen det bokfördes, ibland i månaden efter. Netto är fakturerad volym, "
+        "Brutto volym före avdrag, båda i m3fub.\n"
+        "- `arbetsordrar.csv`: arbetsordrar i treedists format.\n"
+    )
+
+
+def _credit(m: Month, out: Path) -> str:
+    """Remeasured loads: credited in full and booked again. Volumes are unsigned; a column says debit or credit."""
+    d = m.deliveries.copy()
+    rng = np.random.default_rng(len(d))
+    redo = d[rng.random(len(d)) < 0.2]
+    again = redo.assign(volym_m3fub=(redo["volym_m3fub"] * 0.97).round(3), brutto_m3fub=(redo["brutto_m3fub"] * 0.97).round(3))
+    first = redo.assign(volym_m3fub=(redo["volym_m3fub"] * 1.05).round(3), brutto_m3fub=(redo["brutto_m3fub"] * 1.05).round(3))
+    credit = first.assign(volym_m3fub=-first["volym_m3fub"], brutto_m3fub=-first["brutto_m3fub"])
+    rows = pd.concat([d.drop(redo.index), first, credit, again]).sort_values(["leverans_id", "volym_m3fub"], ascending=[True, False])
+    m.deliveries = rows.reset_index(drop=True)
+    kind = np.where(rows["volym_m3fub"] < 0, "K", "D")
+    pd.DataFrame({
+        "LassId": rows["leverans_id"], "Arbetsorder": rows["arbetsorder"], "Sortiment": rows["handelssortiment"],
+        "Mottagare": rows["mottagningsplats"], "Datum": rows["leveransdatum"].str.replace("-", ""),
+        "DK": kind, "NettoFub": _decimal(rows["volym_m3fub"].abs()), "BruttoFub": _decimal(rows["brutto_m3fub"].abs()),
+        "Metod": rows["matmetod"], "Enheter": rows["antal_matenheter"],
+    }).to_csv(out / f"inmatning_{PERIOD}.csv", sep=";", index=False)
+    m.harvest.to_csv(out / f"skord_{PERIOD}.csv", index=False)
+    m.orders.to_csv(out / "arbetsordrar.csv", index=False)
+    return (
+        f"- `skord_{PERIOD}.csv` och `arbetsordrar.csv`: kommaseparerade, i treedists format.\n"
+        f"- `inmatning_{PERIOD}.csv`: inmätning per lass ur ekonomisystemet, semikolon och decimalkomma, Datum som "
+        "ÅÅÅÅMMDD är dagen lasset kördes. NettoFub är fakturerad volym och BruttoFub volym före avdrag, i m3fub och "
+        "alltid utan tecken: DK säger om raden är debet (D) eller kredit (K). Ett lass som mätts om krediteras i sin "
+        "helhet och debiteras igen under samma LassId.\n"
+    )
+
+
+def _per_mill(m: Month, out: Path) -> str:
+    """One file per mill: the actual mill is only in the file name, and each row also names the planned one."""
+    d = m.deliveries
+    planned = d["arbetsorder"].map(dict(zip(m.orders["arbetsorder"], m.orders["destination"])))
+    for mill, rows in d.assign(planerad=planned).groupby("mottagningsplats"):
+        pd.DataFrame({
+            "lass": rows["leverans_id"], "ao": rows["arbetsorder"], "sortiment": rows["handelssortiment"],
+            "planerad_mottagare": rows["planerad"], "kordag": rows["leveransdatum"], "netto_m3fub": rows["volym_m3fub"],
+            "brutto_m3fub": rows["brutto_m3fub"], "matmetod": rows["matmetod"], "matenheter": rows["antal_matenheter"],
+        }).to_csv(out / f"inmatning_{mill}_{PERIOD}.csv", index=False)
+    m.harvest.to_csv(out / f"skord_{PERIOD}.csv", index=False)
+    m.orders.to_csv(out / "arbetsordrar.csv", index=False)
+    return (
+        "Kommaseparerade filer med punkt som decimaltecken.\n\n"
+        f"- `skord_{PERIOD}.csv` och `arbetsordrar.csv`: i treedists format.\n"
+        f"- `inmatning_<MOTTAGARE>_{PERIOD}.csv`: en fil per mottagande sågverk, med sågverket i filnamnet. "
+        "planerad_mottagare är det sågverk arbetsordern planerades för. kordag är dagen lasset kördes, netto_m3fub "
+        "fakturerad volym och brutto_m3fub volym före avdrag.\n"
+    )
+
+
+def _spreadsheet(m: Month, out: Path) -> str:
+    """Saved from a spreadsheet: serial dates, spaces as thousands separators, a totals row."""
+    h, d = m.harvest, m.deliveries
+    serial = lambda s: (pd.to_datetime(s) - pd.Timestamp("1899-12-30")).dt.days  # noqa: E731
+    thousands = lambda v: v.map(lambda x: f"{x:,.3f}".replace(",", " ").replace(".", ",").rstrip("0").rstrip(","))  # noqa: E731
+    harvest = pd.DataFrame({
+        "Arbetsorder": h["arbetsorder"], "Sortiment": h["handelssortiment"], "Diameterklass": h["diametergrupp"],
+        "Langdklass": h["langdgrupp"], "Fallningsdag": serial(h["avverkningsdatum"]), "Volym": thousands(h["volym_m3fub"]),
+        "Stockar": h["antal_stockar"],
+    })
+    total = {"Arbetsorder": "Totalsumma", "Volym": thousands(pd.Series([h["volym_m3fub"].sum()])).iloc[0],
+             "Stockar": int(h["antal_stockar"].sum())}
+    pd.concat([harvest.astype(str), pd.DataFrame([total])]).to_csv(out / f"skord_{PERIOD}.csv", sep=";", index=False)
+    loads = pd.DataFrame({
+        "Lass": d["leverans_id"], "Arbetsorder": d["arbetsorder"], "Sortiment": d["handelssortiment"],
+        "Mottagare": d["mottagningsplats"], "Kordag": serial(d["leveransdatum"]), "Netto": thousands(d["volym_m3fub"]),
+        "Brutto": thousands(d["brutto_m3fub"]), "Metod": d["matmetod"], "Enheter": d["antal_matenheter"],
+    })
+    total = {"Lass": "Totalsumma", "Netto": thousands(pd.Series([d["volym_m3fub"].sum()])).iloc[0],
+             "Brutto": thousands(pd.Series([d["brutto_m3fub"].sum()])).iloc[0]}
+    pd.concat([loads.astype(str), pd.DataFrame([total])]).to_csv(out / f"lass_{PERIOD}.csv", sep=";", index=False)
+    m.orders.to_csv(out / "arbetsordrar.csv", index=False)
+    return (
+        "Sparat som CSV ur ett kalkylblad: semikolon, decimalkomma och mellanslag mellan tusental. Datum är "
+        "kalkylbladets serienummer, dagar sedan 1899-12-30. Sista raden i varje fil är en totalsumma.\n\n"
+        f"- `skord_{PERIOD}.csv`: skördarens produktion. Diameterklass och Langdklass är klassernas nedre gränser i "
+        "cm, Volym m3fub under bark, Stockar antal stockar.\n"
+        f"- `lass_{PERIOD}.csv`: inmätning per lass. Kordag är dagen lasset kördes, Netto fakturerad volym och "
+        "Brutto volym före avdrag, i m3fub.\n"
+        "- `arbetsordrar.csv`: arbetsordrar i treedists format.\n"
+    )
+
+
 VARIANTS = {"a_semikolon": (_semicolon, 23), "b_engelska": (_english, 26), "c_lass": (_join, 29), "d_koder": (_codes, 33)}
 CONTROL = {"e_semikolon": (_semicolon, 34), "f_engelska": (_english, 35), "g_lass": (_join, 24), "h_koder": (_codes, 36)}
 PLATFORMS = {"i_lager": (_warehouse, 42), "j_api": (_api, 49), "k_rapport": (_report, 52), "l_stordator": (_fixed, 40)}
@@ -488,6 +603,8 @@ PLATFORM_CONTROL = {"n_lager": (_warehouse, 47), "o_api": (_api, 58), "p_rapport
 # The second month of a warehouse that holds every month: late reports were felled the month before.
 HISTORY = {"m_lagerhistorik": (_warehouse_history, 70)}
 HISTORY_CONTROL = {"r_lagerhistorik": (_warehouse_history, 74)}
+HARD = {"s_omklassat": (_reclassified, 78), "t_kredit": (_credit, 80), "u_per_bruk": (_per_mill, 105), "v_kalkylblad": (_spreadsheet, 79)}
+HARD_CONTROL = {"w_omklassat": (_reclassified, 82), "x_kredit": (_credit, 104), "y_per_bruk": (_per_mill, 97), "z_kalkylblad": (_spreadsheet, 81)}
 
 
 def make(bench: Path, variants: dict) -> None:
@@ -593,12 +710,15 @@ def main() -> None:
         command.add_argument("--kontroll", action="store_true")
         command.add_argument("--plattform", action="store_true", help="Datalager, API, rapport och stordator")
         command.add_argument("--historik", action="store_true", help="Andra månaden ur ett datalager med alla månader")
+        command.add_argument("--svara", action="store_true", help="Fällor ur AGENTS.md: omklassning, kredit, per bruk, kalkylblad")
     args = parser.parse_args()
     if args.command == "felkatalog":
         mistakes(CONTROL_MISTAKES if args.kontroll else MISTAKES)
         false_alarms(args.dir)
     elif args.command == "skapa":
-        if args.historik:
+        if args.svara:
+            variants = HARD_CONTROL if args.kontroll else HARD
+        elif args.historik:
             variants = HISTORY_CONTROL if args.kontroll else HISTORY
         elif args.plattform:
             variants = PLATFORM_CONTROL if args.kontroll else PLATFORMS
