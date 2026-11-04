@@ -61,6 +61,9 @@ person. Ett test som slutar fungera ska inte skrivas om för att passera.
 | Vilket sortiment är `handelssortiment` i inmätningen? | Det inmätta, som faktureras | Det skördaren producerade. Det hör hemma i `producerat_handelssortiment` |
 | Vilken destination? | `mottagningsplats` är den faktiska, `arbetsordrar.destination` den planerade | Planerad destination i `mottagningsplats` |
 | Är arbetsorder-id samma i båda källorna? | Ja, exakt samma sträng | Inledande nollor eller prefix som skiljer. `check` visar det som hög andel S3 |
+| Vilka skördarrader hör till månaden? | De som rapporterades under månaden, även om virket fälldes tidigare | Att filtrera på `avverkningsdatum`, så att sent rapporterade rader aldrig kommer med |
+| När fylls `producerat_handelssortiment` i? | Bara när källan anger det per lass | Att härleda det ur skördardatan. Saknas kolumnen, lämna den tom |
+| Vilken dag gäller en tidpunkt i UTC? | Dagen i svensk tid | Datumet i UTC, så att nattlass hamnar dagen före |
 
 ## Klart betyder
 

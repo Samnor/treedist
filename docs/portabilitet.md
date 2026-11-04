@@ -76,6 +76,30 @@ en ren miljö, utan repot. Rättat med `portability_bench.py rätta`.
   sessionens början, med `profil_enkel`. Två agenter i omgång 2 nämnde den fast den inte fanns i deras katalog.
   I riktig användning läser modellen bara katalogens AGENTS.md, som `init` lägger i roten där verktygen hittar den.
 
+### Andra plattformar än filexporter (2026-11-04)
+
+Fyra nya källor som ingen TOML-mappning klarar, skapade med `portability_bench.py skapa --plattform`. Haiku fick
+en katalog från `treedist init` och treedist installerat med pip från GitHub, version 0.2.0. Innan provet löstes
+varje uppgift med en referensadapter, och ett planterat fel per uppgift underkändes.
+
+| Källa | Egenhet | Planterat fel, syns i `check`? | Haiku |
+|---|---|---|---|
+| `i_lager` | SQLite-datalager: surrogatnycklar, dimensioner, dm³, ommätta lass som ogiltiga versioner | Ogiltiga versioner med: `FEL`, dubblerat lass | Godkänd, 103 000 tokens, 15 anrop |
+| `j_api` | REST-API: nästlad JSON, lass i sidor, tider i UTC | UTC-datum i stället för svensk dag: **tyst** | Godkänd, 93 000 tokens, 16 anrop |
+| `k_rapport` | BI-rapport: förtext, BOM, skördad volym pivoterad per diameterklass, delsummor, sidfot | Delsummor som rader: `FEL` | Godkänd, 105 000 tokens, 20 anrop |
+| `l_stordator` | Fast postlängd med posttyper, underförstådda decimaler, trailer | Två decimaler i stället för tre: `FEL` | Godkänd, 98 000 tokens, 15 anrop |
+
+- **4 av 4 godkända,** till cirka 15 % fler tokens än filexporterna. Alla skrev en `.py`, och alla lade till egna
+  kontroller mot källan: delsummor, antal poster i trailern, sidnummer i följd.
+- **Den tysta fällan klarades.** API-agenten räknade transportdagen i svensk tid; 12 av 46 lass hade annars hamnat
+  på fel dag.
+- **Datalagrets `VARNING` är verklig.** 49 % S3 kommer av att en arbetsorder saknar skördardata, och
+  referensadaptern ger samma. Agenten förklarade den och hittade inte på en omklassning.
+- **Två val som inte syns i en månad.** Datalageragenten filtrerade skördardatan på fällningsdag, vilket skulle tappa
+  sent rapporterade rader från månad två. Stordatoragenten härledde `producerat_handelssortiment` ur skördardatan.
+  Båda står nu som fallgropar i AGENTS.md, tillsammans med UTC-datum.
+- **Samma förbehåll som förut:** agenterna startades i repot och såg också dess AGENTS.md från sessionens början.
+
 ## Det som `check` ännu inte ser
 
 - **Fel kolumn som id i arbetsordertabellen.** Missen i kontroll 2. Kan fångas genom att kräva att arbetsordrarna

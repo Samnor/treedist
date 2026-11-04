@@ -4,7 +4,7 @@
         Plants common mapping mistakes in examples/kalla and counts how many
         `treedist check` notices. Deterministic.
 
-    uv run python scripts/portability_bench.py skapa --dir BENCH [--kontroll]
+    uv run python scripts/portability_bench.py skapa --dir BENCH [--kontroll | --plattform]
         Writes simulated months as foreign exports, each with its own quirks,
         under BENCH/uppgifter/<variant>/ with a data owner's description, and
         the canonical answer under BENCH/facit/<variant>/. A model gets only the
@@ -18,11 +18,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
+import sqlite3
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from treedist.adapters import load
@@ -255,12 +258,208 @@ def _codes(m: Month, out: Path) -> str:
     )
 
 
+# --- Other kinds of platform than a file export: none of these can be read by a TOML mapping alone. ---
+
+
+def _decimal(values: pd.Series, comma: bool = True) -> pd.Series:
+    text = values.map(lambda v: f"{v:.3f}".rstrip("0").rstrip("."))
+    return text.str.replace(".", ",", regex=False) if comma else text
+
+
+def _warehouse(m: Month, out: Path) -> str:
+    """A data warehouse: surrogate keys, dimension tables, volumes in dm3 and superseded versions of loads."""
+    h, d, o = m.harvest, m.deliveries, m.orders
+    rng = np.random.default_rng(len(d))
+    ao_key = {ao: 1000 + 7 * i for i, ao in enumerate(o["arbetsorder"])}
+    sort_key = {"TALL_SAG": 11, "GRAN_SAG": 12}
+    mills = sorted(set(o["destination"]) | set(d["mottagningsplats"]))
+    mill_key = {name: 501 + i for i, name in enumerate(mills)}
+    day_key = lambda s: s.str.replace("-", "").astype(int)  # noqa: E731
+    dm3 = lambda v: (v * 1000).round(0).astype(int)  # noqa: E731
+
+    loads = pd.DataFrame({
+        "lass_id": d["leverans_id"], "version": 1, "giltig": 1, "ao_key": d["arbetsorder"].map(ao_key),
+        "sortiment_key": d["handelssortiment"].map(sort_key), "mottagare_key": d["mottagningsplats"].map(mill_key),
+        "kord_datum_key": day_key(d["leveransdatum"]), "netto_dm3": dm3(d["volym_m3fub"]),
+        "brutto_dm3": dm3(d["brutto_m3fub"]), "matmetod": d["matmetod"], "matenheter": d["antal_matenheter"],
+    })
+    # A remeasurement writes a new version of the load and keeps the old one as invalid.
+    remeasured = rng.random(len(loads)) < 0.15
+    old = loads[remeasured].assign(giltig=0, netto_dm3=lambda t: (t["netto_dm3"] * 0.94).round(0).astype(int))
+    loads.loc[remeasured, "version"] = 2
+    loads = pd.concat([old, loads]).sample(frac=1, random_state=1)
+
+    with sqlite3.connect(out / "lager.sqlite") as db:
+        pd.DataFrame({
+            "ao_key": o["arbetsorder"].map(ao_key), "ao_nr": o["arbetsorder"],
+            "planerad_mottagare_key": o["destination"].map(mill_key), "jamforgrupp": o["grupp"],
+        }).to_sql("dim_ao", db, index=False)
+        pd.DataFrame({"mottagare_key": list(mill_key.values()), "namn": list(mill_key)}).to_sql("dim_mottagare", db, index=False)
+        pd.DataFrame({"sortiment_key": list(sort_key.values()), "namn": list(sort_key)}).to_sql("dim_sortiment", db, index=False)
+        pd.DataFrame({
+            "ao_key": h["arbetsorder"].map(ao_key), "sortiment_key": h["handelssortiment"].map(sort_key),
+            "diameter_mm": h["diametergrupp"].astype(int) * 10, "langd_cm": h["langdgrupp"].astype(int),
+            "fallt_datum_key": day_key(h["avverkningsdatum"]), "volym_dm3": dm3(h["volym_m3fub"]),
+            "antal_stockar": h["antal_stockar"],
+        }).to_sql("fakta_skord", db, index=False)
+        loads.to_sql("fakta_lass", db, index=False)
+    return (
+        "Allt ligger i datalagret `lager.sqlite` (SQLite), som en stjärnmodell med surrogatnycklar.\n\n"
+        "- `dim_ao`: arbetsordrar. ao_nr är arbetsordernumret, planerad_mottagare_key pekar på dim_mottagare, "
+        "jamforgrupp är jämförbar grupp.\n"
+        "- `dim_mottagare` och `dim_sortiment`: namnen bakom nycklarna.\n"
+        "- `fakta_skord`: skördarens produktion. diameter_mm är diameterklassens nedre gräns i millimeter, langd_cm "
+        "längdklassens nedre gräns, fallt_datum_key fällningsdagen som heltal ÅÅÅÅMMDD, volym_dm3 volym under bark "
+        "i kubikdecimeter.\n"
+        "- `fakta_lass`: inmätning per lass. kord_datum_key är dagen lasset kördes. netto_dm3 är fakturerad volym "
+        "och brutto_dm3 volym före avdrag, i kubikdecimeter under bark. En ommätning skriver en ny version av "
+        "lasset; bara raden med giltig = 1 gäller.\n"
+    )
+
+
+def _api(m: Month, out: Path) -> str:
+    """JSON from a REST API: nested harvest, loads in pages with UTC timestamps, work orders keyed by number."""
+    h, d, o = m.harvest, m.deliveries, m.orders
+    rng = np.random.default_rng(len(d))
+    harvest = [
+        {"arbetsorder": ao, "sortiment": sort, "klasser": [
+            {"d_cm": int(r.diametergrupp), "l_cm": int(r.langdgrupp), "fallt": r.avverkningsdatum,
+             "m3fub": float(r.volym_m3fub), "stockar": int(r.antal_stockar)} for r in group.itertuples()]}
+        for (ao, sort), group in h.groupby(["arbetsorder", "handelssortiment"])
+    ]
+    (out / f"skord_{PERIOD}.json").write_text(json.dumps({"antal": len(harvest), "data": harvest}, ensure_ascii=False))
+
+    # Night loads: a load driven just after midnight in Sweden is the day before in UTC.
+    minutes = np.where(rng.random(len(d)) < 0.25, rng.integers(0, 60, len(d)), rng.integers(60, 24 * 60, len(d)))
+    local = pd.to_datetime(d["leveransdatum"]) + pd.to_timedelta(minutes, unit="min")
+    utc = local.dt.tz_localize("Europe/Stockholm").dt.tz_convert("UTC").dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    loads = [
+        {"lass": r.leverans_id, "arbetsorder": r.arbetsorder, "sortiment": r.handelssortiment,
+         "mottagare": {"kod": r.mottagningsplats}, "kord_utc": stamp,
+         "matning": {"metod": r.matmetod, "enheter": int(r.antal_matenheter), "netto_m3fub": float(r.volym_m3fub),
+                     "brutto_m3fub": float(r.brutto_m3fub)}}
+        for r, stamp in zip(d.itertuples(), utc)
+    ]
+    for page, start in enumerate(range(0, len(loads), 20), start=1):
+        lines = [json.dumps(load, ensure_ascii=False) for load in loads[start:start + 20]]
+        (out / f"lass_{PERIOD}_sida{page}.jsonl").write_text("\n".join(lines) + "\n")
+    orders = {r.arbetsorder: {"planerad_mottagare": r.destination, "grupp": r.grupp} for r in o.itertuples()}
+    (out / "arbetsordrar.json").write_text(json.dumps(orders, ensure_ascii=False, indent=2))
+    return (
+        "JSON hämtat från leverantörens REST-API.\n\n"
+        f"- `skord_{PERIOD}.json`: skördarens produktion per arbetsorder och sortiment, med en lista av klasser. "
+        "d_cm och l_cm är klassernas nedre gränser i cm, fallt fällningsdagen, m3fub volym under bark, stockar "
+        "antal stockar.\n"
+        f"- `lass_{PERIOD}_sida1.jsonl`, `sida2` och så vidare: inmätning per lass, ett JSON-objekt per rad, "
+        "hämtat i sidor om 20 lass. kord_utc är när lasset kördes, i UTC; transportdagen räknas i svensk tid. "
+        "netto_m3fub är fakturerad volym, brutto_m3fub volym före avdrag.\n"
+        "- `arbetsordrar.json`: arbetsordrar med planerad mottagare och grupp, med arbetsordernumret som nyckel.\n"
+    )
+
+
+def _report(m: Month, out: Path) -> str:
+    """A BI report saved as CSV: a preamble, harvest pivoted wide by diameter, subtotals and a footer."""
+    h, d = m.harvest, m.deliveries
+    m.harvest = h.drop(columns=["antal_stockar"])  # the report has no log counts, so neither does the answer
+    preamble = lambda title: [title, "Utskriven 2026-02-03 07:12 av rapportservern", f"Period: {PERIOD}", ""]  # noqa: E731
+
+    wide = h.assign(d=h["diametergrupp"].astype(int)).pivot_table(
+        index=["arbetsorder", "handelssortiment", "langdgrupp", "avverkningsdatum"], columns="d",
+        values="volym_m3fub", aggfunc="sum")
+    labels = {c: f"{c}–{c + 1},9 cm" for c in wide.columns}
+    rows = []
+    for ao, block in wide.groupby(level="arbetsorder"):
+        for (_, sort, length, day), values in block.iterrows():
+            rows.append([ao, sort, length, day] + [_decimal(pd.Series([v]))[0] if pd.notna(v) else "" for v in values])
+        rows.append([f"Summa {ao}", "", "", ""] + [_decimal(pd.Series([v]))[0] for v in block.sum().round(3)])
+    rows.append(["Totalt", "", "", ""] + [_decimal(pd.Series([v]))[0] for v in wide.sum().round(3)])
+    header = ["Arbetsorder", "Sortiment", "Längd (cm)", "Fällningsdag"] + [labels[c] for c in wide.columns]
+    lines = preamble("Rapport: Skördad volym per diameterklass, m3fub") + [";".join(header)]
+    lines += [";".join(str(x) for x in row) for row in rows]
+    (out / f"skordrapport_{PERIOD}.csv").write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
+
+    table = pd.DataFrame({
+        "Lass nr": d["leverans_id"], "Arbetsorder": d["arbetsorder"], "Sortiment": d["handelssortiment"],
+        "Mottagare": d["mottagningsplats"], "Kördag": d["leveransdatum"], "Netto m3fub": _decimal(d["volym_m3fub"]),
+        "Brutto m3fub": _decimal(d["brutto_m3fub"]), "Mätmetod": d["matmetod"], "Mätenheter": d["antal_matenheter"],
+    })
+    lines = preamble("Rapport: Inmätta lass") + [table.to_csv(sep=";", index=False).rstrip("\n"), "", f"Antal lass: {len(d)}"]
+    (out / f"lassrapport_{PERIOD}.csv").write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
+    m.orders.to_csv(out / "arbetsordrar.csv", index=False)
+    return (
+        "Två rapporter sparade som CSV ur rapportverktyget, semikolon och decimalkomma, med några rader text "
+        "överst.\n\n"
+        f"- `skordrapport_{PERIOD}.csv`: skördad volym under bark, m3fub, en kolumn per diameterklass med klassens "
+        "gränser i rubriken. En rad per arbetsorder, sortiment, längdklass (nedre gräns i cm) och fällningsdag. "
+        "Tom cell betyder ingen volym. Rapporten har delsummor per arbetsorder och en totalrad. Antal stockar "
+        "finns inte i rapporten.\n"
+        f"- `lassrapport_{PERIOD}.csv`: inmätta lass. Kördag är dagen lasset kördes. Netto är fakturerad volym, "
+        "brutto volym före avdrag. Sist står antalet lass.\n"
+        "- `arbetsordrar.csv`: arbetsordrar i treedists format.\n"
+    )
+
+
+FIXED_LAYOUT = {
+    "A": [("ao", 2, 13), ("planerad", 14, 23), ("grupp", 24, 53)],
+    "S": [("ao", 2, 13), ("sortiment", 14, 23), ("diameter_cm", 24, 26), ("langd_cm", 27, 29),
+          ("fallt", 30, 37), ("volym", 38, 46), ("stockar", 47, 51)],
+    "L": [("lass", 2, 13), ("ao", 14, 25), ("sortiment", 26, 35), ("mottagare", 36, 45), ("kordag", 46, 53),
+          ("netto", 54, 62), ("brutto", 63, 71), ("metod", 72, 83), ("enheter", 84, 88)],
+}
+
+
+def _fixed(m: Month, out: Path) -> str:
+    """A mainframe file: one fixed-width file with a record type per line and implied decimals."""
+    h, d, o = m.harvest, m.deliveries, m.orders
+    implied = lambda v: f"{round(v * 1000):09d}"  # noqa: E731
+
+    def record(kind: str, **values) -> str:
+        line = [" "] * 88
+        line[0] = kind
+        for name, first, last in FIXED_LAYOUT[kind]:
+            text = str(values[name])
+            width = last - first + 1
+            text = text.rjust(width, "0") if text.isdigit() else text.ljust(width)
+            line[first - 1:last] = list(text[:width])
+        return "".join(line).rstrip()
+
+    lines = [f"H VIRKESEXPORT {PERIOD.replace('-', '')} SKAPAD 20260203"]
+    for r in o.itertuples():
+        lines.append(record("A", ao=r.arbetsorder, planerad=r.destination, grupp=r.grupp))
+        for s in h[h["arbetsorder"] == r.arbetsorder].itertuples():
+            lines.append(record("S", ao=s.arbetsorder, sortiment=s.handelssortiment, diameter_cm=s.diametergrupp,
+                                langd_cm=s.langdgrupp, fallt=s.avverkningsdatum.replace("-", ""),
+                                volym=implied(s.volym_m3fub), stockar=s.antal_stockar))
+        for x in d[d["arbetsorder"] == r.arbetsorder].itertuples():
+            lines.append(record("L", lass=x.leverans_id, ao=x.arbetsorder, sortiment=x.handelssortiment,
+                                mottagare=x.mottagningsplats, kordag=x.leveransdatum.replace("-", ""),
+                                netto=implied(x.volym_m3fub), brutto=implied(x.brutto_m3fub), metod=x.matmetod,
+                                enheter=x.antal_matenheter))
+    counts = {k: sum(line.startswith(k) for line in lines) for k in "ASL"}
+    lines.append(f"T A{counts['A']:07d} S{counts['S']:07d} L{counts['L']:07d}")
+    (out / f"VIRKE_{PERIOD.replace('-', '')}.DAT").write_text("\n".join(lines) + "\n", encoding="ascii")
+    layout = "\n".join(
+        f"| {kind} | {name} | {first}–{last} |" for kind, fields in FIXED_LAYOUT.items() for name, first, last in fields)
+    return (
+        f"En fil med fast postlängd från stordatorn, `VIRKE_{PERIOD.replace('-', '')}.DAT`, ASCII. Första tecknet "
+        "är posttypen: H är filhuvud, A arbetsorder, S skördad volym, L inmätt lass och T avslutning med antalet "
+        "poster av varje typ. Texter är vänsterställda och utfyllda med blanksteg, tal högerställda och utfyllda "
+        "med nollor. Volymer har tre underförstådda decimaler, så 000045123 är 45,123 m3fub. Datum är ÅÅÅÅMMDD.\n\n"
+        "| Post | Fält | Positioner |\n|---|---|---|\n" + layout + "\n\n"
+        "planerad är planerad mottagare och grupp jämförbar grupp. I S-posten är diameter_cm och langd_cm "
+        "klassernas nedre gränser och volym volym under bark. I L-posten är kordag dagen lasset kördes, netto "
+        "fakturerad volym och brutto volym före avdrag.\n\n"
+    )
+
+
 VARIANTS = {"a_semikolon": (_semicolon, 23), "b_engelska": (_english, 26), "c_lass": (_join, 29), "d_koder": (_codes, 33)}
 CONTROL = {"e_semikolon": (_semicolon, 34), "f_engelska": (_english, 35), "g_lass": (_join, 24), "h_koder": (_codes, 36)}
+PLATFORMS = {"i_lager": (_warehouse, 42), "j_api": (_api, 49), "k_rapport": (_report, 52), "l_stordator": (_fixed, 40)}
 
 
-def make(bench: Path, control: bool) -> None:
-    for name, (writer, seed) in (CONTROL if control else VARIANTS).items():
+def make(bench: Path, control: bool, platform: bool = False) -> None:
+    variants = PLATFORMS if platform else CONTROL if control else VARIANTS
+    for name, (writer, seed) in variants.items():
         month = _month(seed)
         task, answer = bench / "uppgifter" / name, bench / "facit" / name
         for folder in (task, answer):
@@ -337,12 +536,13 @@ def main() -> None:
         command = commands.add_parser(name)
         command.add_argument("--dir", type=Path, required=True)
         command.add_argument("--kontroll", action="store_true")
+        command.add_argument("--plattform", action="store_true", help="Datalager, API, rapport och stordator")
     args = parser.parse_args()
     if args.command == "felkatalog":
         mistakes(CONTROL_MISTAKES if args.kontroll else MISTAKES)
         false_alarms(args.dir)
     elif args.command == "skapa":
-        make(args.dir, args.kontroll)
+        make(args.dir, args.kontroll, args.plattform)
     else:
         grade(args.dir)
 
