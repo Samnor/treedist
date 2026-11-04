@@ -88,6 +88,14 @@ uv run python scripts/modell.py lista
 uv run python scripts/modell.py spara NAMN --beskrivning "vad som ändrats" --utvardera
 ```
 
+Stresstestet kör modellerna på simuleringar som skiljer sig från dem de valdes på, till exempel sen rapportering,
+stor skillnad mellan brutto och netto eller klumpiga avlägg, se
+[metodjämförelsen](docs/metodjamforelse.md#stresstest-när-verkligheten-skiljer-sig-från-simulatorn):
+
+```bash
+uv run python scripts/stresstest.py
+```
+
 [Flödesrapporten](docs/flodesrapport.html) visar demons månader steg för steg som en graf, från indata via liggaren,
 dragningen och säkerhetsklasserna till matriser, faktura och facit. Klicka på ett steg för detaljerna. Skapa den på
 nytt efter en ändring i metoden, eller för annan data med `--data` eller `--kalla` och `--perioder`:

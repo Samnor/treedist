@@ -207,6 +207,45 @@ Samma `design_effect`, 200, fungerar här också.
 
 [Flödesrapporten för halv-volym](flodesrapport_halv-volym.html) visar demots månader med modellen.
 
+### Stresstest: när verkligheten skiljer sig från simulatorn
+
+Kontrollfröna är nya dragningar ur samma simulator. En del som förenklingen tog bort kan ha sett onyttig ut bara för
+att simulatorn aldrig gav den något att göra. `scripts/stresstest.py` vrider upp en sak i taget som verkligheten kan ha
+mer av, och kör de sparade modellerna på samma simuleringar, med frön 501–506 som inget beslut har använt.
+Prestanda är andelen av standardmodellens förbättring mot den naiva skattningen i samma scenario.
+
+| Scenario | Prisfel standard | `halv-volym` mot standard | Prestanda `halv-volym` | `enkel` | Täckning standard | Täckning `halv-volym` |
+|---|---|---|---|---|---|---|
+| bas | 8,65 | +0,19 ± 0,10 | 99 % | 96 % | 91 % | 95 % |
+| skördaren mäter 5 % för mycket | 8,71 | +0,21 ± 0,08 | 99 % | 96 % | 93 % | 95 % |
+| 5 % spill vid hantering | 8,74 | +0,22 ± 0,09 | 99 % | 96 % | 93 % | 95 % |
+| 10 % skillnad brutto–netto | 8,67 | **+0,46 ± 0,11** | 98 % | 96 % | 91 % | 95 % |
+| lång eftersläpning | 8,90 | +0,06 ± 0,08 | 100 % | 98 % | 90 % | 97 % |
+| 40 % rapporteras sent | 11,90 | **+0,80 ± 0,17** | **97 %** | 93 % | 89 % | 89 % |
+| 25 % omdirigeras | 9,78 | +0,29 ± 0,06 | 99 % | 97 % | 92 % | 93 % |
+| mest travmätning | 8,64 | +0,18 ± 0,10 | 99 % | 96 % | 92 % | 95 % |
+| klumpiga avlägg | 10,91 | +0,04 ± 0,17 | 100 % | **89 %** | **88 %** | 95 % |
+| små arbetsordrar | 6,58 | **+0,39 ± 0,08** | 98 % | 95 % | 98 % | 99 % |
+| stora diameterfel | 11,32 | +0,16 ± 0,10 | 99 % | 96 % | **79 %** | 94 % |
+
+- **`halv-volym` behåller minst 97 % av förbättringen i varje scenario.** Gapet mot standard växer bara där en
+  borttagen del får något att göra: historiken när 40 % rapporteras sent (+0,8), bruttovolymen när brutto och netto
+  skiljer 10 % (+0,5), och delarna för små arbetsordrar (+0,4).
+- **Kalibreringen betyder nästan inget för prisfelet**, inte ens när skördaren mäter 5 % fel eller 5 % spills.
+  Liggaren skalar om till inmätt volym, så ett jämnt volymfel ändrar inte fördelningen. Att ta bort
+  `harvester_bias` och `handling_loss` är alltså robust här.
+- **Intervallen i de enkla modellerna är bredare och tål mer.** Standardmodellens täckning faller till 79 % med stora
+  diameterfel och 88 % med klumpiga avlägg; `halv-volym` ligger mellan 89 % och 99 %. Priset är för breda intervall,
+  95 % i de flesta scenarier och 99 % för små arbetsordrar.
+- **`enkel` faller till 89 %** med klumpiga avlägg (+3,4 ± 1,2). Den saknar äldsta först, som är det som följer
+  avläggen när de körs ut ett i taget.
+- **Testet kan inte vrida på** fler sortiment, säsongsskillnader i grovlek eller arbetsorder-id som inte stämmer
+  mellan källorna. Simulatorn har inga parametrar för dem.
+
+```bash
+uv run python scripts/stresstest.py
+```
+
 ## För- och nackdelar
 
 | | Fördelar | Nackdelar |
