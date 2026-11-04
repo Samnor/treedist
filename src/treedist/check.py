@@ -130,6 +130,8 @@ def _classes(harvest: pd.DataFrame) -> list[Finding]:
 def _class_bottoms(inputs) -> list[Finding]:
     """Price limits sit on class bottoms, so a harvest whose classes never meet them is likely given as midpoints."""
     findings = []
+    if inputs.prices is None:
+        return []
     rules = [r for rules in inputs.prices.rules.values() for r in rules]
     for column, low, high in ((DIA, "diameter_min", "diameter_max"), (LEN, "length_min", "length_max")):
         classes = set(_numeric_classes(inputs.harvest[column]))
@@ -255,6 +257,8 @@ def _destinations(raw: pd.DataFrame | None, inputs) -> list[Finding]:
 
 
 def _prices(inputs) -> list[Finding]:
+    if inputs.prices is None:
+        return [Finding(INFO, "prislista", "ingen prislista: körningen ger matriser och bilagor, inget fakturaunderlag")]
     findings = []
     priced = inputs.prices.rules
     unpriced = sorted(set(inputs.deliveries[SORT]) - set(priced))

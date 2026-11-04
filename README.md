@@ -1,7 +1,9 @@
 # TreeDistributionSimulator
 
 Tar fram matriser per destination och handelssortiment som beskriver hur månadens levererade virke fördelar sig över
-diameter och längd, utifrån mätningar av olika säkerhet, och ett fakturaunderlag per destination.
+diameter och längd, utifrån mätningar av olika säkerhet. Matriserna för ett sågverk samlas i en bilaga till månadens
+faktura, `bilagor/<destination>.md`. Med en prislista blir det också ett fakturaunderlag per destination; utan den
+blir det bara matriser och bilagor.
 
 Skördardatan, skördarens produktionsrapportering, vet fördelningen men mäter vid avverkning. Inmätningen vid industri
 vet volymen, brutto och netto, men inget om dimensioner. Leveransen kommer dessutom efter skörden, så månadens skörd beskriver inte månadens leveranser. Därför
@@ -190,7 +192,8 @@ längdgrupp.
 | `matmetod` | Nej | `stockmatning`, `travmatning`, `vagning`, `skordarmatning` eller `okand` |
 | `antal_matenheter` | Nej | Antal stockar eller travar i leveransen |
 
-**Prislista.** Halvöppna intervall `[min, max)` på klassbottnar, tomt betyder öppet.
+**Prislista**, valfri. Halvöppna intervall `[min, max)` på klassbottnar, tomt betyder öppet. Utan prislista blir
+matriserna och bilagorna desamma, men `fakturor/` och matrisernas `pris` och `varde` skrivs inte.
 
 | Kolumn | Beskrivning |
 |---|---|
@@ -217,7 +220,9 @@ grupp och arbetsorderns andra sortiment. Skörd och lager redovisas på den plan
 
 ```
 out/2026-01/
-  fakturor/<destination>.md          fakturaunderlag per destination
+  bilagor/<destination>.md           bilaga till fakturan: en matris per handelssortiment, med summor
+  bilagor/<destination>.csv          samma volymer i långt format, med andel per säkerhetsklass
+  fakturor/<destination>.md          fakturaunderlag per destination, bara med prislista
   faktura_rader.csv                  alla leveransrader och korrigeringar
   sammanfattning.md                  volymer och andel per säkerhetsklass
   matriser/<destination>/<sortiment>/*.csv   matriser med diameter som rader, längd som kolumner

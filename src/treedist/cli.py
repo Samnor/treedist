@@ -19,7 +19,7 @@ from .config import Config, load_config
 from .core.invoice import invoice_total_kr
 from .core.ledger import load_for_period
 from .core.pipeline import run_month
-from .report import warnings_for, write_month
+from .report import slug, warnings_for, write_month
 from .schema import AO, DEST
 from .dev.simulate import SimParams, example_price_list, simulate
 
@@ -45,15 +45,19 @@ def _run(args: argparse.Namespace) -> int:
 
     print(f"{args.period}: utdata i {args.out}")
     for destination, lines in output.invoice.groupby(DEST):
-        print(f"  {destination}: att fakturera {invoice_total_kr(lines):.2f} kr exkl. moms")
+        delivered = lines.loc[lines["radtyp"] == "LEVERANS", "volym_m3fub"].sum()
+        amount = f", att fakturera {invoice_total_kr(lines):.2f} kr exkl. moms" if output.priced else ""
+        print(f"  {destination}: {delivered:.3f} m3fub levererat, bilaga i bilagor/{slug(destination)}.md{amount}")
+    if not output.priced:
+        print("Ingen prislista: matriser och bilagor, inget fakturaunderlag.")
     for note in warnings_for(output):
         print(f"OBS: {note}")
     return 0
 
 
 def _files(args: argparse.Namespace) -> dict[str, Path | None]:
-    if args.kalla is None and not (args.skordning and args.leverans and args.prislista):
-        raise ValueError("Ange --kalla, eller --skordning, --leverans och --prislista")
+    if args.kalla is None and not (args.skordning and args.leverans):
+        raise ValueError("Ange --kalla, eller --skordning och --leverans")
     return {
         "skordning": args.skordning,
         "leverans": args.leverans,
@@ -186,7 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
     models = commands.add_parser("modeller", help="De sparade modellerna som --modell kan välja")
     models.set_defaults(handler=_models)
 
-    run = commands.add_parser("run", help="Stäng en månad: matriser, faktura och ny liggare")
+    run = commands.add_parser("run", help="Stäng en månad: matriser och bilagor per mottagare, faktura och ny liggare")
     _input_arguments(run)
     run.add_argument("--state", required=True, type=Path, help="Katalog med liggaren")
     run.add_argument("--out", required=True, type=Path)
@@ -221,7 +225,7 @@ def _input_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--kalla", type=Path, help="Källans beskrivning: en .toml-mappning eller en .py-adapter")
     parser.add_argument("--skordning", type=Path, help="Kanonisk CSV, om --kalla inte används")
     parser.add_argument("--leverans", type=Path)
-    parser.add_argument("--prislista", type=Path)
+    parser.add_argument("--prislista", type=Path, help="Valfri. Utan den blir det matriser och bilagor, ingen faktura")
     parser.add_argument("--avslutade-ao", type=Path)
     parser.add_argument("--arbetsordrar", type=Path, help="Planerad destination och grupp per arbetsorder")
     _model_arguments(parser)

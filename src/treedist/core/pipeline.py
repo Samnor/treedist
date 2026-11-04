@@ -20,13 +20,15 @@ class MonthOutput:
     matrices: dict[MatrixKey, SortimentMatrices]
     invoice: pd.DataFrame
     deliveries: pd.DataFrame
+    # False without a price list: the invoice lines then carry volume only, for the appendices.
+    priced: bool = True
 
 
 def run_month(
     ledger: Ledger,
     harvest: pd.DataFrame,
     deliveries: pd.DataFrame,
-    prices: PriceList,
+    prices: PriceList | None,
     period: str,
     closed_aos: set[str],
     cfg: Config,
@@ -40,10 +42,12 @@ def run_month(
         from ..uncertainty.monte_carlo import monte_carlo
 
         draws = monte_carlo(step.components, deliveries, grids, cfg)
-    matrices = build_matrices(step, grids, draws, prices)
-    invoice = build_invoice(step, prices)
+    # Prices never steer the allocation; without them every product is simply unpriced.
+    price_list = prices if prices is not None else PriceList([])
+    matrices = build_matrices(step, grids, draws, price_list)
+    invoice = build_invoice(step, price_list)
     _check_invoice_volume(invoice, deliveries)
-    return MonthOutput(step, matrices, invoice, deliveries)
+    return MonthOutput(step, matrices, invoice, deliveries, priced=prices is not None)
 
 
 def _check_invoice_volume(invoice: pd.DataFrame, deliveries: pd.DataFrame) -> None:

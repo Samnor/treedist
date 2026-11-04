@@ -15,12 +15,12 @@ from .core.allocate import CERTAINTY_TIERS, TIER_NAMES
 from .config import Config
 from .core.invoice import invoice_total_kr
 from .core.pipeline import MonthOutput
-from .schema import DEST, DIA, LEN, SORT, VOL
+from .schema import DEST, DIA, LEN, SORT, VOL, sorted_groups
 
 _ROUNDING = 3
 
 
-def _slug(sortiment: str) -> str:
+def slug(sortiment: str) -> str:
     return re.sub(r"[^\w.-]+", "_", sortiment)
 
 
@@ -38,8 +38,8 @@ def _long_matrices(output: MonthOutput) -> pd.DataFrame:
             "skordat_ra_m3fub": m.harvested,
             "lager_utgaende_m3fub": m.closing_stock,
             "korrigering_m3fub": m.corrections,
-            "pris_kr_m3fub": m.price_kr,
-            "varde_kr": m.value_kr,
+            "pris_kr_m3fub": m.price_kr if output.priced else None,
+            "varde_kr": m.value_kr if output.priced else None,
         }
         combined = pd.DataFrame(
             {name: m.frame(values).stack(future_stack=True) for name, values in tables.items() if values is not None}
@@ -52,7 +52,7 @@ def _long_matrices(output: MonthOutput) -> pd.DataFrame:
 
 def _write_matrices(output: MonthOutput, target: Path) -> None:
     for m in output.matrices.values():
-        folder = target / _slug(m.destination) / _slug(m.sortiment)
+        folder = target / slug(m.destination) / slug(m.sortiment)
         folder.mkdir(parents=True, exist_ok=True)
         tables = {
             "levererat": m.delivered,
@@ -64,8 +64,8 @@ def _write_matrices(output: MonthOutput, target: Path) -> None:
             "skordat_ra": m.harvested,
             "lager_utgaende": m.closing_stock,
             "korrigering": m.corrections,
-            "pris": m.price_kr,
-            "varde": m.value_kr,
+            "pris": m.price_kr if output.priced else None,
+            "varde": m.value_kr if output.priced else None,
             **{f"levererat_{t}": m.by_tier[t] for t in CERTAINTY_TIERS},
         }
         for name, values in tables.items():
@@ -90,7 +90,7 @@ def warnings_for(output: MonthOutput, destination: str | None = None) -> list[st
     if destination is not None:
         invoice = invoice[invoice[DEST] == destination]
         allocation = allocation[allocation[DEST] == destination]
-    unpriced = invoice[~invoice["prissatt"].astype(bool)] if len(invoice) else invoice
+    unpriced = invoice[~invoice["prissatt"].astype(bool)] if len(invoice) and output.priced else invoice.iloc[0:0]
     if len(unpriced):
         volume = unpriced["volym_m3fub"].sum()
         notes.append(f"{volume:.3f} m3fub saknar pris och är inte debiterat; komplettera prislistan eller invänta skördardata.")
@@ -140,6 +140,71 @@ def _invoice_markdown(output: MonthOutput, destination: str) -> str:
     return "\n".join(lines)
 
 
+def _litres(lines: pd.DataFrame) -> pd.Series:
+    # The invoice lines are whole litres, so sums in litres are exact.
+    return (lines["volym_m3fub"] * 1000).round().astype(np.int64)
+
+
+def _appendix_matrix(lines: pd.DataFrame) -> str:
+    """Diameter classes as rows, length classes as columns, m3fub, with sums that add up to the litre."""
+    grid = lines.assign(_liter=_litres(lines)).pivot_table(
+        index=DIA, columns=LEN, values="_liter", aggfunc="sum", fill_value=0
+    )
+    grid = grid.reindex(index=sorted_groups(grid.index), columns=sorted_groups(grid.columns), fill_value=0)
+    grid["Summa"] = grid.sum(axis=1)
+    grid.loc["Summa"] = grid.sum(axis=0)
+    shown = grid.map(lambda v: f"{v / 1000:.3f}" if v else "")
+    return _markdown_table(shown.rename_axis("diameter, cm").reset_index())
+
+
+def _tier_sources(output: MonthOutput, destination: str, sortiment: str) -> str:
+    m = output.matrices.get((destination, sortiment))
+    if m is None or m.delivered.sum() <= 0:
+        return ""
+    delivered = m.delivered.sum()
+    shares = [f"{t} {m.by_tier[t].sum() / delivered:.0%}" for t in CERTAINTY_TIERS if m.by_tier[t].sum() > 0]
+    return f"Fördelningens källa: {', '.join(shares)}."
+
+
+def _appendix_markdown(output: MonthOutput, destination: str) -> str:
+    """The appendix to a mill's invoice: one matrix per assortment for the month."""
+    invoice = output.invoice[output.invoice[DEST] == destination]
+    lines = [
+        f"# Bilaga till faktura {output.step.period}, {destination}",
+        "",
+        "Levererad volym per handelssortiment, m3fub under bark. Raderna är diameterklasser och kolumnerna "
+        "längdklasser, båda med klassens nedre gräns i cm. Volymen är inmätningens; fördelningen på klasser är "
+        "skattad ur skördarens produktionsrapportering.",
+        "",
+    ]
+    for sortiment, block in invoice.groupby(SORT, sort=True):
+        delivered = block[block["radtyp"] == "LEVERANS"]
+        earlier = block[block["radtyp"] != "LEVERANS"]
+        lines += [f"## {sortiment}", ""]
+        if len(delivered):
+            total = _litres(delivered).sum() / 1000
+            sources = _tier_sources(output, destination, sortiment)
+            lines += [f"Levererat {total:.3f} m3fub. {sources}".rstrip(), "", _appendix_matrix(delivered), ""]
+        if len(earlier):
+            net = _litres(earlier).sum() / 1000
+            lines += [
+                "### Ändringar av tidigare månaders leveranser",
+                "",
+                f"Krediterade lass och rättade fördelningar, netto {net:.3f} m3fub.",
+                "",
+                _appendix_matrix(earlier),
+                "",
+            ]
+    lines += ["Fördelningens källa:", "", *[f"- {t}: {name}" for t, name in TIER_NAMES.items()], ""]
+    return "\n".join(lines)
+
+
+def _appendix_rows(output: MonthOutput, destination: str) -> pd.DataFrame:
+    invoice = output.invoice[output.invoice[DEST] == destination]
+    columns = ["radtyp", SORT, DIA, LEN, "volym_m3fub", *[f"andel_{t}" for t in CERTAINTY_TIERS]]
+    return invoice[columns]
+
+
 def _summary_markdown(output: MonthOutput) -> str:
     step = output.step
     rows = []
@@ -162,6 +227,8 @@ def _summary_markdown(output: MonthOutput) -> str:
     lines += [f"- {t}: {name}" for t, name in TIER_NAMES.items()]
     written_off = step.reconciliation["avskrivet"].sum() if len(step.reconciliation) else 0.0
     lines += ["", f"Avskrivet lager på avslutade arbetsordrar: {written_off:.1f} m3fub.", ""]
+    if not output.priced:
+        lines += ["Ingen prislista: matriser och bilagor per mottagare, inget fakturaunderlag.", ""]
     lines += [f"- OBS: {note}" for note in warnings_for(output)]
     return "\n".join([*lines, ""])
 
@@ -179,10 +246,16 @@ def write_month(output: MonthOutput, out_dir: Path, cfg: Config, inputs: dict[st
     output.step.credits.round(6).to_csv(out_dir / "krediteringar_ao_lang.csv", index=False)
     output.step.reconciliation.round(4).to_csv(out_dir / "avstamning_ao.csv", index=False)
     output.invoice.round(4).to_csv(out_dir / "faktura_rader.csv", index=False)
-    invoices = out_dir / "fakturor"
-    invoices.mkdir(exist_ok=True)
+    appendices = out_dir / "bilagor"
+    appendices.mkdir(exist_ok=True)
     for destination in sorted(set(output.invoice[DEST])):
-        (invoices / f"{_slug(destination)}.md").write_text(_invoice_markdown(output, destination), encoding="utf-8")
+        (appendices / f"{slug(destination)}.md").write_text(_appendix_markdown(output, destination), encoding="utf-8")
+        _appendix_rows(output, destination).round(4).to_csv(appendices / f"{slug(destination)}.csv", index=False)
+    if output.priced:
+        invoices = out_dir / "fakturor"
+        invoices.mkdir(exist_ok=True)
+        for destination in sorted(set(output.invoice[DEST])):
+            (invoices / f"{slug(destination)}.md").write_text(_invoice_markdown(output, destination), encoding="utf-8")
     (out_dir / "sammanfattning.md").write_text(_summary_markdown(output), encoding="utf-8")
 
     manifest = {

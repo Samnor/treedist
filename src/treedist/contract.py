@@ -53,6 +53,8 @@ class Table:
     name: str
     meaning: str
     columns: tuple[Column, ...]
+    # An optional table may be left out of a source; the meaning says what is lost.
+    optional: bool = False
 
     @property
     def required(self) -> list[str]:
@@ -95,7 +97,8 @@ TABLES = {
     ),
     "prislista": Table(
         "Prislista",
-        "Pris per sortiment och klassintervall. Halvöppna intervall [min, max), tomt betyder öppet.",
+        "Pris per sortiment och klassintervall. Halvöppna intervall [min, max), tomt betyder öppet. Utan prislista "
+        "blir det matriser och bilagor per mottagare, men inget fakturaunderlag.",
         (
             Column(SORT, "text", True, "Handelssortiment"),
             Column("diameter_min", "tal", True, "Lägsta diameterklass som ingår", "cm"),
@@ -105,29 +108,36 @@ TABLES = {
             Column("pris_kr_per_m3fub", "tal", True, "Pris", "kr/m3fub", 0, 5000),
             Column(DEST, "text", False, "Regler med destination ersätter de allmänna för den destinationen"),
         ),
+        optional=True,
     ),
     "arbetsordrar": Table(
         "Arbetsordrar",
-        "Det som är känt om arbetsordern innan virket mäts.",
+        "Det som är känt om arbetsordern innan virket mäts. Utan den saknas planerad destination och grupp, och "
+        "lånad fördelning blir sämre.",
         (
             Column(AO, "text", True, "Arbetsorderns id"),
             Column(DEST, "text", True, "Planerad mottagningsplats"),
             Column("grupp", "text", False, "Jämförbar grupp, till exempel region och avverkningsform"),
         ),
+        optional=True,
     ),
     "avslutade_ao": Table(
         "Avslutade arbetsordrar",
-        "Arbetsordrar som är klara efter månaden. Kvarvarande lager skrivs av.",
+        "Arbetsordrar som är klara efter månaden. Kvarvarande lager skrivs av. Utan den skrivs inget av.",
         (Column(AO, "text", True, "Arbetsorderns id"),),
+        optional=True,
     ),
 }
+
+REQUIRED_TABLES = [key for key, table in TABLES.items() if not table.optional]
 
 
 def markdown() -> str:
     """The contract as Markdown tables, for people and for a model adapting a source."""
     lines = [f"Kontraktsversion {CONTRACT_VERSION}.", ""]
     for key, table in TABLES.items():
-        lines += [f"## {table.name} (`{key}`)", "", table.meaning, ""]
+        meaning = f"Valfri tabell. {table.meaning}" if table.optional else table.meaning
+        lines += [f"## {table.name} (`{key}`)", "", meaning, ""]
         lines += ["| Kolumn | Krav | Typ | Enhet | Rimligt | Betydelse |", "|---|---|---|---|---|---|"]
         for c in table.columns:
             plausible = "" if c.low is None and c.high is None else f"{_num(c.low)}–{_num(c.high)}"

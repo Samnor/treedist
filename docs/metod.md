@@ -70,6 +70,10 @@ Nettovolymen fördelas, den ändras aldrig. Summan av alla rader per sortiment �
 körningen avbryts om den inte är det. Volymer räknas i hela liter och belopp i hela ören, så att raderna går jämnt
 upp. Osäkerheten flyttar alltså värde mellan produkter men aldrig volym in eller ut ur fakturan.
 
+Samma rader blir bilagan till varje sågverks faktura, `bilagor/<destination>.md`: en matris per handelssortiment,
+diameter som rader och längd som kolumner, med summor som går jämnt upp mot inmätningen. Bilagan kräver ingen
+prislista; utan den blir det matriser och bilagor men inget fakturaunderlag.
+
 ## Osäkerhet
 
 Varje dragning i Monte Carlo-simuleringen slumpar om två saker.

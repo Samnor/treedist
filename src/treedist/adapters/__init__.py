@@ -21,6 +21,7 @@ from pathlib import Path
 import pandas as pd
 
 from ..config import Config
+from ..contract import REQUIRED_TABLES
 from ..core.invoice import PriceList
 from ..schema import (
     WorkOrders,
@@ -38,7 +39,8 @@ Raw = dict[str, pd.DataFrame]
 class Inputs:
     harvest: pd.DataFrame
     deliveries: pd.DataFrame
-    prices: PriceList
+    # None when the source has no price list: matrices and appendices, no invoice basis.
+    prices: PriceList | None
     work_orders: WorkOrders
     closed_aos: set[str]
     # Files read, for the manifest's checksums.
@@ -57,14 +59,14 @@ def read_raw(period: str, source: Path | None = None, files: dict[str, Path | No
 
 
 def validate(raw: Raw, period: str, cfg: Config) -> Inputs:
-    for key in ("skordning", "leverans", "prislista"):
+    for key in REQUIRED_TABLES:
         if key not in raw:
             raise ValueError(f"Källan gav ingen tabell {key!r}")
     work_orders = validate_work_orders(raw["arbetsordrar"]) if "arbetsordrar" in raw else WorkOrders()
     return Inputs(
         harvest=validate_harvest(raw["skordning"], period),
         deliveries=validate_deliveries(raw["leverans"], period, cfg, work_orders),
-        prices=PriceList.from_frame(raw["prislista"]),
+        prices=PriceList.from_frame(raw["prislista"]) if "prislista" in raw else None,
         work_orders=work_orders,
         closed_aos=validate_closed_aos(raw["avslutade_ao"]) if "avslutade_ao" in raw else set(),
     )

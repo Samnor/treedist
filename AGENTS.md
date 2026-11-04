@@ -71,5 +71,8 @@ person. Ett test som slutar fungera ska inte skrivas om för att passera.
 
 - `treedist check` visar inget `FEL`, och varje `VARNING` är rättad eller förklarad.
 - `treedist selftest` skriver `OK`, och i en klon passerar `uv run pytest -q`.
-- En körd månad visar fakturerad volym per destination och sortiment lika med inmätningen. Körningen
-  stoppar själv om det inte stämmer.
+- En körd månad har en bilaga per sågverk, `bilagor/<destination>.md`, med en matris per handelssortiment vars
+  summa är inmätningens volym. Körningen stoppar själv om den inte stämmer.
+
+Prislistan är valfri. Saknar källan priser, lämna tabellen ute; då blir det matriser och bilagor men inget
+fakturaunderlag. Hitta inte på priser.
