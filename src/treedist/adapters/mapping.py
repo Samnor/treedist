@@ -20,8 +20,9 @@
     [leverans.filter]                       # keep rows where the source column has the value
     Status = ["Godkänd", "Klar"]
 
-Decimal commas are read as decimal points everywhere, so `enheter` is only for
-converting units. Each table is one file read as it is: joining files, mapping
+A source column that already has the canonical name is read as it is, so a file
+in treedist's own format needs only `fil`. Decimal commas are read as decimal
+points everywhere, so `enheter` is only for converting units. Each table is one file read as it is: joining files, mapping
 codes to names or changing ids needs a `.py` adapter instead.
 
 Every error names what is allowed, so that whoever writes the mapping can fix it
@@ -99,6 +100,8 @@ def _table(key: str, settings: dict, file: Path) -> pd.DataFrame:
             values = source[columns[column.name]]
         elif column.name in constants:
             values = pd.Series(str(constants[column.name]), index=source.index)
+        elif column.name in source.columns:
+            values = source[column.name]
         else:
             continue
         if column.name in units:

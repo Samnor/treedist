@@ -13,7 +13,7 @@ håller `treedist` en liggare över skördat men olevererat virke per arbetsorde
 - [Exempelresor](docs/exempelresor.md) och [antaganden](docs/antaganden.md): virkets väg från skördare till sågverk,
   och hur rimliga antagandena är
 - [AGENTS.md](AGENTS.md): hur en ny datakälla kopplas in, skrivet så att en modell kan göra det
-- [Portabilitet](docs/portabilitet.md): hur väl en enklare modell kopplar in nya källor, och vad `check` fångar
+- [Portabilitet](docs/portabilitet.md): hur väl en enklare modell kopplar in nya källor, och vad `check` fångar, och klättringen av installationen med billiga modeller
 
 ## Installera
 

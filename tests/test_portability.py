@@ -85,6 +85,14 @@ def test_a_python_adapter_is_loaded_from_its_file(tmp_path):
     )
 
 
+def test_the_example_adapter_gives_the_same_tables_as_the_example_mapping():
+    cfg = Config(intervals=False)
+    mapped, adapted = load("2026-01", cfg, source=SOURCE), load("2026-01", cfg, source=SOURCE.with_suffix(".py"))
+    for name in ("harvest", "deliveries"):
+        pd.testing.assert_frame_equal(getattr(adapted, name), getattr(mapped, name))
+    assert adapted.work_orders == mapped.work_orders and adapted.closed_aos == mapped.closed_aos
+
+
 def mapping_with(tmp_path, old, new):
     text = SOURCE.read_text(encoding="utf-8").replace(old, new)
     text = text.replace('"export/', f'"{SOURCE.parent}/export/').replace('"../demo/', f'"{DEMO}/')
@@ -159,3 +167,12 @@ def test_check_notices_every_mistake_in_the_catalog_and_warns_about_no_correct_s
 
     assert mistakes() == len(MISTAKES)
     assert false_alarms(None) == 0
+
+
+def test_a_file_in_treedists_own_format_needs_only_its_name(tmp_path):
+    text = SOURCE.read_text(encoding="utf-8").replace('"export/', f'"{SOURCE.parent}/export/').replace('"../demo/', f'"{DEMO}/')
+    head, _, _ = text.partition("[prislista]")
+    path = tmp_path / "kalla.toml"
+    path.write_text(head + f'[prislista]\nfil = "{DEMO}/prislista.csv"\n\n[avslutade_ao]\nfil = "{DEMO}/avslutade_ao_{{period}}.csv"\n',
+                    encoding="utf-8")
+    assert load("2026-01", Config(), source=path).prices.rules == load("2026-01", Config(), source=SOURCE).prices.rules

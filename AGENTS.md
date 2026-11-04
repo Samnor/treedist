@@ -12,10 +12,12 @@ repot, skriv `uv run` före varje kommando.
   Den byter kolumnnamn, räknar om enheter, sätter konstanter, filtrerar rader och läser datumformat.
   Decimalkomma läses alltid rätt, så `enheter` behövs bara för omräkning. Varje tabell tar nycklarna `fil`,
   `separator`, `kodning` (förval `"utf-8"`, till exempel `"latin-1"`), `datumformat`, `kolumner`, `enheter`,
-  `konstanter` och `filter`.
+  `konstanter` och `filter`. Kolumner som redan har kontraktets namn läses som de är, så en fil i treedists
+  format, som prislistan, behöver bara `fil`.
 - **En `.py`-adapter** bara när mappningen inte räcker: filer som måste slås ihop, koder som ska bli namn,
   id som skiljer mellan källorna. Den definierar `read(period) -> dict[str, DataFrame]` med tabellerna i
-  kontraktets kolumnnamn. Lägg den i en egen katalog, till exempel `kallor/<system>/`.
+  kontraktets kolumnnamn. Lägg den i en egen katalog, till exempel `kallor/<system>/`. Utgå från
+  [examples/kalla/kalla.py](examples/kalla/kalla.py), som läser samma källa som mappningen.
 
 Välj inte modell själv. Utan `--modell` körs standardmodellen. `treedist modeller` listar de sparade
 modellerna, om en person ber om en annan.
@@ -60,7 +62,7 @@ person. Ett test som slutar fungera ska inte skrivas om för att passera.
 | Hur läses datum? | Ange alltid `datumformat`, till exempel `"%Y%m%d"` eller `"%d.%m.%Y"`; då ger avvikande värden `FEL` | Utan format kan dag och månad tolkas omvänt utan att något märks |
 | Vilket sortiment är `handelssortiment` i inmätningen? | Det inmätta, som faktureras | Det skördaren producerade. Det hör hemma i `producerat_handelssortiment` |
 | Vilken destination? | `mottagningsplats` är den faktiska, `arbetsordrar.destination` den planerade | Planerad destination i `mottagningsplats` |
-| Är arbetsorder-id samma i båda källorna? | Ja, exakt samma sträng | Inledande nollor eller prefix som skiljer. `check` visar det som hög andel S3 |
+| Är arbetsorder-id samma i båda källorna? | Ja, exakt samma sträng, i den form arbetsordertabellen har. Skriv om de andra källornas id till den | Inledande nollor eller prefix som skiljer, eller att skriva om alla källor till en egen form. `check` visar skillnader som hög andel S3 |
 | Vilka skördarrader hör till månaden? | De som rapporterades under månaden, även om virket fälldes tidigare | Att filtrera på `avverkningsdatum`, så att sent rapporterade rader aldrig kommer med |
 | När fylls `producerat_handelssortiment` i? | Bara när källan anger det per lass | Att härleda det ur skördardatan. Saknas kolumnen, lämna den tom |
 | Vilken dag gäller en tidpunkt i UTC? | Dagen i svensk tid | Datumet i UTC, så att nattlass hamnar dagen före |

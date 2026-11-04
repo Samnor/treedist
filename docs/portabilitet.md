@@ -100,6 +100,51 @@ varje uppgift med en referensadapter, och ett planterat fel per uppgift underkä
   Båda står nu som fallgropar i AGENTS.md, tillsammans med UTC-datum.
 - **Samma förbehåll som förut:** agenterna startades i repot och såg också dess AGENTS.md från sessionens början.
 
+## Klättring av installationen (2026-11-04)
+
+[scripts/setup_climb.py](../scripts/setup_climb.py) mäter hela vägen för en billig modell: treedist byggs från
+arbetskatalogen som ett hjul i en ny miljö, `treedist init` görs i en tom katalog per uppgift och körning, och
+Haiku kopplar in källan med Claude Code utan gränssnitt, från den katalogen. Modellen får bara uppgiftens text,
+katalogens AGENTS.md och det installerade paketet. Källbeskrivningen rättas mot facit, och kostnad, turer och tid
+loggas i `climb/setup_logg.jsonl`.
+
+- **Uppgifter.** Utveckling: de fyra filexporterna, de fyra plattformarna och `m_lagerhistorik`, andra månaden ur
+  ett datalager med alla månader, där sent rapporterade rader fälldes månaden före. Kontroll: andra frön och
+  källor, `skapa --kontroll` med och utan `--plattform` och `--historik`, som inget beslut använt.
+- **Poäng** per uppgift: kostnad plus 0,25 USD per underkänd körning. Ett steg tas om poängen sjunker med mer än
+  två standardfel och minst 5 %.
+- **Behörigheter.** Skalkommandon körs i Claude Codes sandlåda, som håller skrivningar i projektkatalogen; övrigt
+  nekas. En körning som stannar utan källbeskrivning efter ett nekat kommando räknas som ogiltig, inte underkänd.
+
+| Steg | Ändring | Utfall | Beslut |
+|---|---|---|---|
+| Baslinje | v0.2.0 med fallgroparna, `ab0adf3` | 36 av 36, 0,029 USD och 22,9 turer per körning | |
+| A | Kolumner som redan har kontraktets namn läses utan `kolumner`; prislistan behöver bara `fil` | 36 av 36; felet "prislistans kolumner saknas" kom i 5 av 81 körningar före och 0 av 54 efter | Tagen: tar bort en felklass, kostar inget |
+| Exempel | `examples/kalla/kalla.py`, samma källa som `.py`-adapter, nämnd i AGENTS.md | −20 % kostnad, −4,8 turer; lästa filer ur det installerade paketet från 2,7 till 0,3 per körning | Tagen: −0,006 USD i två oberoende mätningar, tillsammans cirka 3 standardfel |
+| Månadsrader | Utan rapportmånad är exporten månadens rader | Inget mätbart; vägran i datalagret försvann redan med sandlådan | Inte tagen |
+| Låt `check` leta | AGENTS.md: leta inte avvikelser för hand | Grep från 4,5 till 2,5 per körning, −2,9 turer, men inom bruset | Inte tagen |
+| Avstämt | `run` skriver att fakturan är avstämd mot inmätningen | Färre öppnade utdatafiler, men inom bruset | Inte tagen |
+| Id-form | Arbetsorder-id i arbetsordertabellens form | Riktat på `d_koder`: 12 av 12 mot 9 av 12; alla körningar 0 av 16 fel mot 5 av 28 | Tagen: varje fel var just fel form |
+
+**Kontroll**, slutlig version mot baslinjen på nio uppgifter som inget beslut använt, tre körningar var:
+kostnaden −27 % (−0,0083 ± 0,0022 USD per körning), −4,0 turer och 21 s kortare, 27 av 27 godkända i båda.
+Kontrollen bekräftar alltså vinsten i kostnad och turer. Träffsäkerheten kunde den inte pröva, eftersom baslinjen
+inte heller föll på kontrolluppgifterna.
+
+- **Billigt.** En körning kostar cirka 0,02 USD och tar en och en halv minut; en utvärdering med 36 körningar
+  kostar under en dollar.
+- **Bruset är stort.** Tre till fyra körningar per uppgift skiljer bara större steg. Sällsynta fel prövas bäst
+  riktat på den uppgift där de uppträder.
+- **Läckor.** Testkatalogens sökväg innehåller repots namn, och två körningar försökte läsa repot; båda nekades.
+
+```bash
+uv run python scripts/setup_climb.py prova --not "vad som ändrats" --korningar 4
+```
+
+```bash
+uv run python scripts/setup_climb.py jamfor BAS KANDIDAT
+```
+
 ## Det som `check` ännu inte ser
 
 - **Fel kolumn som id i arbetsordertabellen.** Missen i kontroll 2. Kan fångas genom att kräva att arbetsordrarna

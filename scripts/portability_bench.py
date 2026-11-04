@@ -4,7 +4,7 @@
         Plants common mapping mistakes in examples/kalla and counts how many
         `treedist check` notices. Deterministic.
 
-    uv run python scripts/portability_bench.py skapa --dir BENCH [--kontroll | --plattform]
+    uv run python scripts/portability_bench.py skapa --dir BENCH [--kontroll] [--plattform | --historik]
         Writes simulated months as foreign exports, each with its own quirks,
         under BENCH/uppgifter/<variant>/ with a data owner's description, and
         the canonical answer under BENCH/facit/<variant>/. A model gets only the
@@ -147,17 +147,25 @@ class Month:
     deliveries: pd.DataFrame
     orders: pd.DataFrame
     closed: pd.DataFrame
+    period: str = PERIOD
+
+
+def _months(seed: int, count: int = 1) -> list[Month]:
+    months = []
+    for month in simulate(SimParams(months=count, seed=seed, work_orders_per_month=10)):
+        orders = pd.DataFrame({"destination": month.work_orders.destinations, "grupp": month.work_orders.groups})
+        months.append(Month(
+            month.harvest,
+            month.deliveries,
+            orders.rename_axis("arbetsorder").reset_index(),
+            pd.DataFrame({"arbetsorder": sorted(month.closed_aos)}),
+            month.period,
+        ))
+    return months
 
 
 def _month(seed: int) -> Month:
-    month = simulate(SimParams(months=1, seed=seed, work_orders_per_month=10))[0]
-    orders = pd.DataFrame({"destination": month.work_orders.destinations, "grupp": month.work_orders.groups})
-    return Month(
-        month.harvest,
-        month.deliveries,
-        orders.rename_axis("arbetsorder").reset_index(),
-        pd.DataFrame({"arbetsorder": sorted(month.closed_aos)}),
-    )
+    return _months(seed)[0]
 
 
 def _comma(values: pd.Series) -> pd.Series:
@@ -268,7 +276,26 @@ def _decimal(values: pd.Series, comma: bool = True) -> pd.Series:
 
 def _warehouse(m: Month, out: Path) -> str:
     """A data warehouse: surrogate keys, dimension tables, volumes in dm3 and superseded versions of loads."""
-    h, d, o = m.harvest, m.deliveries, m.orders
+    _star(out, m.harvest, m.deliveries, m.orders, {})
+    return WAREHOUSE_TEXT
+
+
+def _warehouse_history(months: list[Month], out: Path) -> str:
+    """The same warehouse with every month so far: the month's harvest is what was reported in it."""
+    report_month = [m.harvest["avverkningsdatum"].map(lambda _, p=m.period: int(p.replace("-", ""))) for m in months]
+    harvest = pd.concat([m.harvest for m in months], ignore_index=True)
+    _star(out, harvest, pd.concat([m.deliveries for m in months], ignore_index=True), months[-1].orders,
+          {"rapport_manad": pd.concat(report_month, ignore_index=True)})
+    return WAREHOUSE_TEXT + (
+        "\nLagret har alla månader hittills. I `fakta_skord` är rapport_manad månaden skördaren rapporterade "
+        "raden, som ÅÅÅÅMM.\n"
+    )
+
+
+_warehouse_history.months = 2
+
+
+def _star(out: Path, h: pd.DataFrame, d: pd.DataFrame, o: pd.DataFrame, extra_harvest: dict) -> None:
     rng = np.random.default_rng(len(d))
     ao_key = {ao: 1000 + 7 * i for i, ao in enumerate(o["arbetsorder"])}
     sort_key = {"TALL_SAG": 11, "GRAN_SAG": 12}
@@ -300,21 +327,23 @@ def _warehouse(m: Month, out: Path) -> str:
             "ao_key": h["arbetsorder"].map(ao_key), "sortiment_key": h["handelssortiment"].map(sort_key),
             "diameter_mm": h["diametergrupp"].astype(int) * 10, "langd_cm": h["langdgrupp"].astype(int),
             "fallt_datum_key": day_key(h["avverkningsdatum"]), "volym_dm3": dm3(h["volym_m3fub"]),
-            "antal_stockar": h["antal_stockar"],
+            "antal_stockar": h["antal_stockar"], **extra_harvest,
         }).to_sql("fakta_skord", db, index=False)
         loads.to_sql("fakta_lass", db, index=False)
-    return (
-        "Allt ligger i datalagret `lager.sqlite` (SQLite), som en stjärnmodell med surrogatnycklar.\n\n"
-        "- `dim_ao`: arbetsordrar. ao_nr är arbetsordernumret, planerad_mottagare_key pekar på dim_mottagare, "
-        "jamforgrupp är jämförbar grupp.\n"
-        "- `dim_mottagare` och `dim_sortiment`: namnen bakom nycklarna.\n"
-        "- `fakta_skord`: skördarens produktion. diameter_mm är diameterklassens nedre gräns i millimeter, langd_cm "
-        "längdklassens nedre gräns, fallt_datum_key fällningsdagen som heltal ÅÅÅÅMMDD, volym_dm3 volym under bark "
-        "i kubikdecimeter.\n"
-        "- `fakta_lass`: inmätning per lass. kord_datum_key är dagen lasset kördes. netto_dm3 är fakturerad volym "
-        "och brutto_dm3 volym före avdrag, i kubikdecimeter under bark. En ommätning skriver en ny version av "
-        "lasset; bara raden med giltig = 1 gäller.\n"
-    )
+
+
+WAREHOUSE_TEXT = (
+    "Allt ligger i datalagret `lager.sqlite` (SQLite), som en stjärnmodell med surrogatnycklar.\n\n"
+    "- `dim_ao`: arbetsordrar. ao_nr är arbetsordernumret, planerad_mottagare_key pekar på dim_mottagare, "
+    "jamforgrupp är jämförbar grupp.\n"
+    "- `dim_mottagare` och `dim_sortiment`: namnen bakom nycklarna.\n"
+    "- `fakta_skord`: skördarens produktion. diameter_mm är diameterklassens nedre gräns i millimeter, langd_cm "
+    "längdklassens nedre gräns, fallt_datum_key fällningsdagen som heltal ÅÅÅÅMMDD, volym_dm3 volym under bark "
+    "i kubikdecimeter.\n"
+    "- `fakta_lass`: inmätning per lass. kord_datum_key är dagen lasset kördes. netto_dm3 är fakturerad volym "
+    "och brutto_dm3 volym före avdrag, i kubikdecimeter under bark. En ommätning skriver en ny version av "
+    "lasset; bara raden med giltig = 1 gäller.\n"
+)
 
 
 def _api(m: Month, out: Path) -> str:
@@ -455,32 +484,43 @@ def _fixed(m: Month, out: Path) -> str:
 VARIANTS = {"a_semikolon": (_semicolon, 23), "b_engelska": (_english, 26), "c_lass": (_join, 29), "d_koder": (_codes, 33)}
 CONTROL = {"e_semikolon": (_semicolon, 34), "f_engelska": (_english, 35), "g_lass": (_join, 24), "h_koder": (_codes, 36)}
 PLATFORMS = {"i_lager": (_warehouse, 42), "j_api": (_api, 49), "k_rapport": (_report, 52), "l_stordator": (_fixed, 40)}
+PLATFORM_CONTROL = {"n_lager": (_warehouse, 47), "o_api": (_api, 58), "p_rapport": (_report, 45), "q_stordator": (_fixed, 50)}
+# The second month of a warehouse that holds every month: late reports were felled the month before.
+HISTORY = {"m_lagerhistorik": (_warehouse_history, 70)}
+HISTORY_CONTROL = {"r_lagerhistorik": (_warehouse_history, 74)}
 
 
-def make(bench: Path, control: bool, platform: bool = False) -> None:
-    variants = PLATFORMS if platform else CONTROL if control else VARIANTS
+def make(bench: Path, variants: dict) -> None:
     for name, (writer, seed) in variants.items():
-        month = _month(seed)
+        months = _months(seed, getattr(writer, "months", 1))
+        month = months[-1]
         task, answer = bench / "uppgifter" / name, bench / "facit" / name
         for folder in (task, answer):
             shutil.rmtree(folder, ignore_errors=True)
             folder.mkdir(parents=True)
-        description = writer(month, task)
+        description = writer(months if len(months) > 1 else month, task)
         example_price_list().to_csv(task / "prislista.csv", index=False)
-        month.closed.to_csv(task / f"avslutade_{PERIOD}.csv", index=False)
+        periods = [m.period for m in months]
+        for m in months:
+            m.closed.to_csv(task / f"avslutade_{m.period}.csv", index=False)
+        which = f"perioden {periods[0]}" if len(months) == 1 else f"perioderna {' och '.join(periods)}, i den ordningen"
         (task / "UPPGIFT.md").write_text(
             f"# Källa {name}\n\nSkriv en källbeskrivning för treedist i den här katalogen, `kalla.toml` eller vid "
-            f"behov `kalla.py`, för perioden {PERIOD}. Läs AGENTS.md i treedist-repot först.\n\n"
+            f"behov `kalla.py`, för {which}. Läs AGENTS.md först.\n\n"
             f"## Dataägarens beskrivning\n\n{description}"
             "- `prislista.csv`: prislistan, redan i treedists format.\n"
-            f"- `avslutade_{PERIOD}.csv`: arbetsordrar som avslutades under månaden.\n",
+            "- `avslutade_ÅÅÅÅ-MM.csv`: arbetsordrar som avslutades under månaden.\n",
             encoding="utf-8",
         )
-        month.harvest.to_csv(answer / "skordning.csv", index=False)
-        month.deliveries.to_csv(answer / "leverans.csv", index=False)
-        month.orders.to_csv(answer / "arbetsordrar.csv", index=False)
-        month.closed.to_csv(answer / "avslutade_ao.csv", index=False)
-        example_price_list().to_csv(answer / "prislista.csv", index=False)
+        (answer / "period.txt").write_text("\n".join(periods))
+        for m in months:
+            folder = answer if len(months) == 1 else answer / m.period
+            folder.mkdir(exist_ok=True)
+            m.harvest.to_csv(folder / "skordning.csv", index=False)
+            m.deliveries.to_csv(folder / "leverans.csv", index=False)
+            m.orders.to_csv(folder / "arbetsordrar.csv", index=False)
+            m.closed.to_csv(folder / "avslutade_ao.csv", index=False)
+            example_price_list().to_csv(folder / "prislista.csv", index=False)
         print(f"Skrev {task}")
 
 
@@ -489,39 +529,54 @@ def _entry(task: Path) -> Path | None:
     return next((task / n for n in ("kalla.py", "kalla.toml") if (task / n).exists()), None)
 
 
-def _invoice(inputs) -> pd.DataFrame:
+def _invoice(inputs, period: str) -> pd.DataFrame:
     return run_month(
-        Ledger.empty(), inputs.harvest, inputs.deliveries, inputs.prices, PERIOD, inputs.closed_aos, CFG,
+        Ledger.empty(), inputs.harvest, inputs.deliveries, inputs.prices, period, inputs.closed_aos, CFG,
         inputs.work_orders,
     ).invoice
+
+
+def grade_task(task: Path, answer: Path) -> str | None:
+    """None if the task's source description gives exactly the answer in every period, else what differs."""
+    periods = (answer / "period.txt").read_text().split() if (answer / "period.txt").exists() else [PERIOD]
+    for period in periods:
+        failure = _grade_period(task, answer if len(periods) == 1 else answer / period, period)
+        if failure:
+            return f"{period} {failure}" if len(periods) > 1 else failure
+    return None
+
+
+def _grade_period(task: Path, answer: Path, period: str) -> str | None:
+    files = {key: answer / f"{key}.csv" for key in ("skordning", "leverans", "prislista", "arbetsordrar", "avslutade_ao")}
+    source = _entry(task)
+    if source is None:
+        return "ingen källbeskrivning"
+    try:
+        truth, got = load(period, CFG, files=files), load(period, CFG, source=source)
+        for name in ("harvest", "deliveries"):
+            expected = getattr(truth, name).sort_values(list(getattr(truth, name).columns)).reset_index(drop=True)
+            actual = getattr(got, name)
+            actual = actual[expected.columns].sort_values(list(expected.columns)).reset_index(drop=True)
+            pd.testing.assert_frame_equal(actual, expected, check_dtype=False, rtol=1e-6)
+        assert got.work_orders == truth.work_orders, "arbetsordrarna skiljer"
+        assert got.closed_aos == truth.closed_aos, "avslutade arbetsordrar skiljer"
+        pd.testing.assert_frame_equal(_invoice(got, period), _invoice(truth, period), check_dtype=False)
+    except Exception as error:  # noqa: BLE001  any failure is a failed task
+        first = str(error).strip().splitlines()
+        return f"({source.name}) {' '.join(first[:3])[:300]}"
+    return None
 
 
 def grade(bench: Path) -> int:
     passed = 0
     tasks = sorted(p for p in (bench / "uppgifter").iterdir() if p.is_dir())
     for task in tasks:
-        answer = bench / "facit" / task.name
-        files = {key: answer / f"{key}.csv" for key in ("skordning", "leverans", "prislista", "arbetsordrar", "avslutade_ao")}
-        source = _entry(task)
-        if source is None:
-            print(f"UNDERKÄND {task.name}: ingen källbeskrivning")
-            continue
-        try:
-            truth, got = load(PERIOD, CFG, files=files), load(PERIOD, CFG, source=source)
-            for name in ("harvest", "deliveries"):
-                expected = getattr(truth, name).sort_values(list(getattr(truth, name).columns)).reset_index(drop=True)
-                actual = getattr(got, name)
-                actual = actual[expected.columns].sort_values(list(expected.columns)).reset_index(drop=True)
-                pd.testing.assert_frame_equal(actual, expected, check_dtype=False, rtol=1e-6)
-            assert got.work_orders == truth.work_orders, "arbetsordrarna skiljer"
-            assert got.closed_aos == truth.closed_aos, "avslutade arbetsordrar skiljer"
-            pd.testing.assert_frame_equal(_invoice(got), _invoice(truth), check_dtype=False)
-        except Exception as error:  # noqa: BLE001  any failure is a failed task
-            first = str(error).strip().splitlines()
-            print(f"UNDERKÄND {task.name} ({source.name}): {' '.join(first[:3])[:300]}")
+        failure = grade_task(task, bench / "facit" / task.name)
+        if failure:
+            print(f"UNDERKÄND {task.name}: {failure}")
             continue
         passed += 1
-        print(f"GODKÄND  {task.name} ({source.name})")
+        print(f"GODKÄND  {task.name} ({_entry(task).name})")
     print(f"\n{passed} av {len(tasks)} godkända")
     return passed
 
@@ -537,12 +592,19 @@ def main() -> None:
         command.add_argument("--dir", type=Path, required=True)
         command.add_argument("--kontroll", action="store_true")
         command.add_argument("--plattform", action="store_true", help="Datalager, API, rapport och stordator")
+        command.add_argument("--historik", action="store_true", help="Andra månaden ur ett datalager med alla månader")
     args = parser.parse_args()
     if args.command == "felkatalog":
         mistakes(CONTROL_MISTAKES if args.kontroll else MISTAKES)
         false_alarms(args.dir)
     elif args.command == "skapa":
-        make(args.dir, args.kontroll, args.plattform)
+        if args.historik:
+            variants = HISTORY_CONTROL if args.kontroll else HISTORY
+        elif args.plattform:
+            variants = PLATFORM_CONTROL if args.kontroll else PLATFORMS
+        else:
+            variants = CONTROL if args.kontroll else VARIANTS
+        make(args.dir, variants)
     else:
         grade(args.dir)
 
