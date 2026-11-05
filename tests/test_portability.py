@@ -95,7 +95,8 @@ def test_the_example_adapter_gives_the_same_tables_as_the_example_mapping():
 
 def mapping_with(tmp_path, old, new):
     text = SOURCE.read_text(encoding="utf-8").replace(old, new)
-    text = text.replace('"export/', f'"{SOURCE.parent}/export/').replace('"../demo/', f'"{DEMO}/')
+    # Forward slashes: a Windows path's backslashes are escapes in a TOML string.
+    text = text.replace('"export/', f'"{SOURCE.parent.as_posix()}/export/').replace('"../demo/', f'"{DEMO.as_posix()}/')
     path = tmp_path / "kalla.toml"
     path.write_text(text, encoding="utf-8")
     return path
@@ -170,12 +171,26 @@ def test_check_notices_every_mistake_in_the_catalog_and_warns_about_no_correct_s
 
 
 def test_a_file_in_treedists_own_format_needs_only_its_name(tmp_path):
-    text = SOURCE.read_text(encoding="utf-8").replace('"export/', f'"{SOURCE.parent}/export/').replace('"../demo/', f'"{DEMO}/')
+    demo = DEMO.as_posix()
+    text = SOURCE.read_text(encoding="utf-8").replace('"export/', f'"{SOURCE.parent.as_posix()}/export/').replace('"../demo/', f'"{demo}/')
     head, _, _ = text.partition("[prislista]")
     path = tmp_path / "kalla.toml"
-    path.write_text(head + f'[prislista]\nfil = "{DEMO}/prislista.csv"\n\n[avslutade_ao]\nfil = "{DEMO}/avslutade_ao_{{period}}.csv"\n',
+    path.write_text(head + f'[prislista]\nfil = "{demo}/prislista.csv"\n\n[avslutade_ao]\nfil = "{demo}/avslutade_ao_{{period}}.csv"\n',
                     encoding="utf-8")
     assert load("2026-01", Config(), source=path).prices.rules == load("2026-01", Config(), source=SOURCE).prices.rules
+
+
+def test_a_windows_path_in_a_mapping_gets_a_hint(tmp_path):
+    path = tmp_path / "kalla.toml"
+    path.write_text('[leverans]\nfil = "C:\\data\\leverans.csv"\n', encoding="utf-8")
+    (finding,) = check("2026-01", Config(), source=path)
+    assert finding.level == FEL and "enkla citattecken" in finding.message
+
+
+def test_a_mapping_saved_with_a_byte_order_mark_is_read(tmp_path):
+    source = mapping_with(tmp_path, "", "")
+    source.write_text(source.read_text(encoding="utf-8"), encoding="utf-8-sig")
+    assert not [f for f in check("2026-01", Config(), source=source) if f.level == FEL]
 
 
 def test_check_refuses_a_negative_unit_count(tmp_path):

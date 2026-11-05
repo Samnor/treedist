@@ -42,8 +42,13 @@ _SETTINGS = {"fil", "separator", "kodning", "datumformat", "kolumner", "enheter"
 
 
 def read(path: Path, period: str) -> tuple[dict[str, pd.DataFrame], dict[str, Path]]:
-    with open(path, "rb") as f:
-        description = tomllib.load(f)
+    # utf-8-sig: PowerShell 5.1 and older Notepad write a byte order mark that TOML does not allow.
+    try:
+        description = tomllib.loads(path.read_text(encoding="utf-8-sig"))
+    except tomllib.TOMLDecodeError as exc:
+        # A Windows path in "..." is read as escapes: C:\data\x.csv fails here.
+        hint = ". Skriv sökvägar med / eller inom enkla citattecken: fil = 'C:\\data\\x.csv'" if "\\" in str(exc) else ""
+        raise ValueError(f"{path}: {exc}{hint}") from None
     unknown = set(description) - set(TABLES)
     if unknown:
         raise ValueError(f"{path}: okända tabeller {sorted(unknown)}; tillåtna är {list(TABLES)}")
