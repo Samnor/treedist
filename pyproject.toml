@@ -1,6 +1,6 @@
 [project]
 name = "treedist"
-version = "0.2.0"
+version = "0.3.0"
 description = "Fördelningsmatriser för virke levererat till sågverk, från skördar- och leveransmätningar av olika säkerhet"
 readme = "README.md"
 requires-python = ">=3.11"

@@ -23,7 +23,7 @@ Med pip, direkt från GitHub. Ange en version, så att metoden och de sparade mo
 pågående serie månader:
 
 ```bash
-pip install "treedist @ git+https://github.com/Samnor/treedist@v0.2.0"
+pip install "treedist @ git+https://github.com/Samnor/treedist@v0.3.0"
 ```
 
 `treedist init` lägger [AGENTS.md](AGENTS.md) och exemplen i en katalog, och `treedist selftest` kör demons
