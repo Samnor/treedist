@@ -2,7 +2,7 @@
 
 Tar fram matriser per destination och handelssortiment som beskriver hur månadens levererade virke fördelar sig över
 diameter och längd, utifrån mätningar av olika säkerhet. Matriserna för ett sågverk samlas i en bilaga till månadens
-faktura, `bilagor/<destination>.md`. Med en prislista blir det också ett fakturaunderlag per destination; utan den
+faktura, `bilagor/<destination>.html`, med raderna bakom i en Excelfil. Med en prislista blir det också ett fakturaunderlag per destination; utan den
 blir det bara matriser och bilagor.
 
 Skördardatan, skördarens produktionsrapportering, vet fördelningen men mäter vid avverkning. Inmätningen vid industri
@@ -37,7 +37,8 @@ treedist init mitt-projekt
 treedist selftest
 ```
 
-Utan uv eller klon skrivs kommandona nedan utan `uv run`.
+Utan uv eller klon skrivs kommandona nedan utan `uv run`. Stoppar datorns programkontroll `treedist.exe` med
+"Åtkomst nekad", fungerar `python -m treedist` med samma argument.
 
 ## Kom igång i en klon av repot
 
@@ -220,7 +221,9 @@ grupp och arbetsorderns andra sortiment. Skörd och lager redovisas på den plan
 
 ```
 out/2026-01/
-  bilagor/<destination>.md           bilaga till fakturan: en matris per handelssortiment, med summor
+  bilagor/<destination>.html         bilaga till fakturan: bara matriserna, procent per längdklass, A4 liggande för PDF
+  bilagor/<destination>.xlsx         raderna bakom matriserna, och matriserna som formler över dem, för kontroll
+  bilagor/<destination>.md           samma matriser som text, i m3fub eller procent
   bilagor/<destination>.csv          samma volymer i långt format, med andel per säkerhetsklass
   fakturor/<destination>.md          fakturaunderlag per destination, bara med prislista
   faktura_rader.csv                  alla leveransrader och korrigeringar
@@ -230,8 +233,26 @@ out/2026-01/
   leverans_ao_lang.csv               fördelningen per arbetsorder och säkerhetsklass
   korrigeringar_ao_lang.csv          korrigeringar av tidigare månader
   avstamning_ao.csv                  lagerbalans per arbetsorder och sortiment
-  manifest.json                      parametrar och kontrollsummor för indatan
+  manifest.json                      parametrar, bilagans form och kontrollsummor för indata och källbeskrivning
 ```
+
+HTML-sidan visar en matris per handelssortiment, där varje cell är procent av längdklassens volym och summaraden
+och summakolumnen är m3fub; ändringar av tidigare månader visas i m3fub. `treedist pdf --out out/2026-01` skriver
+ut månadens HTML-sidor som PDF med Edge eller Chrome och räknar sidorna; `TREEDIST_BROWSER` pekar ut en annan
+webbläsare. Markdown-filen visar m3fub, eller procent med `treedist run --bilaga andel`.
+
+Excelfilen har en flik per handelssortiment där matrisen räknas med SUMIFS ur fliken Bilagans rader, och under
+den samma matris i procent. Bakom finns Fördelning (volym per arbetsorder, klass och säkerhetsklass), Ändringar,
+Inmätning, Avstämning per arbetsorder och månadens Skördardata. Fliken Läs först jämför inmätt volym med bilagan
+per sortiment; skillnaden ska vara 0,000.
+
+`--bilaga-langd` och `--bilaga-diameter` tar nedre gränser i cm, till exempel `--bilaga-langd 340,370,400`, och
+visar klasserna i grupper i alla tre formerna utan att någon summa ändras; den sista gruppen är öppen uppåt.
+Valet sparas i `manifest.json`.
+
+En källa som bara har den kumulativa skörden, utan datum för när en rad rapporterades, ansluts med en
+`.py`-adapter som skickar skörden genom `treedist.adapters.snapshot.new_rows`. Den fryser varje månad första
+gången den läses och skickar bara tillväxten sedan förra månaden; minskningar loggas i en egen fil.
 
 Matriserna per destination och sortiment:
 

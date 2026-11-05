@@ -11,6 +11,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from .appendix import AppendixLayout, appendix_html, appendix_markdown, appendix_rows, appendix_workbook
+from .appendix import markdown_table as _markdown_table
 from .core.allocate import CERTAINTY_TIERS, TIER_NAMES
 from .config import Config
 from .core.invoice import invoice_total_kr
@@ -101,13 +103,6 @@ def warnings_for(output: MonthOutput, destination: str | None = None) -> list[st
     return notes
 
 
-def _markdown_table(df: pd.DataFrame) -> str:
-    header = "| " + " | ".join(df.columns) + " |"
-    rule = "|" + "---|" * len(df.columns)
-    rows = ["| " + " | ".join(str(v) for v in row) + " |" for row in df.itertuples(index=False)]
-    return "\n".join([header, rule, *rows])
-
-
 def _invoice_markdown(output: MonthOutput, destination: str) -> str:
     invoice = output.invoice[output.invoice[DEST] == destination]
     lines = [f"# Fakturaunderlag {output.step.period}, {destination}", ""]
@@ -138,71 +133,6 @@ def _invoice_markdown(output: MonthOutput, destination: str) -> str:
         lines.append(f"- 90 % intervall för leveransens värde vid mätt volym: {interval[0]:.0f}–{interval[1]:.0f} kr")
     lines += ["", *[f"- OBS: {note}" for note in warnings_for(output, destination)], ""]
     return "\n".join(lines)
-
-
-def _litres(lines: pd.DataFrame) -> pd.Series:
-    # The invoice lines are whole litres, so sums in litres are exact.
-    return (lines["volym_m3fub"] * 1000).round().astype(np.int64)
-
-
-def _appendix_matrix(lines: pd.DataFrame) -> str:
-    """Diameter classes as rows, length classes as columns, m3fub, with sums that add up to the litre."""
-    grid = lines.assign(_liter=_litres(lines)).pivot_table(
-        index=DIA, columns=LEN, values="_liter", aggfunc="sum", fill_value=0
-    )
-    grid = grid.reindex(index=sorted_groups(grid.index), columns=sorted_groups(grid.columns), fill_value=0)
-    grid["Summa"] = grid.sum(axis=1)
-    grid.loc["Summa"] = grid.sum(axis=0)
-    shown = grid.map(lambda v: f"{v / 1000:.3f}" if v else "")
-    return _markdown_table(shown.rename_axis("diameter, cm").reset_index())
-
-
-def _tier_sources(output: MonthOutput, destination: str, sortiment: str) -> str:
-    m = output.matrices.get((destination, sortiment))
-    if m is None or m.delivered.sum() <= 0:
-        return ""
-    delivered = m.delivered.sum()
-    shares = [f"{t} {m.by_tier[t].sum() / delivered:.0%}" for t in CERTAINTY_TIERS if m.by_tier[t].sum() > 0]
-    return f"Fördelningens källa: {', '.join(shares)}."
-
-
-def _appendix_markdown(output: MonthOutput, destination: str) -> str:
-    """The appendix to a mill's invoice: one matrix per assortment for the month."""
-    invoice = output.invoice[output.invoice[DEST] == destination]
-    lines = [
-        f"# Bilaga till faktura {output.step.period}, {destination}",
-        "",
-        "Levererad volym per handelssortiment, m3fub under bark. Raderna är diameterklasser och kolumnerna "
-        "längdklasser, båda med klassens nedre gräns i cm. Volymen är inmätningens; fördelningen på klasser är "
-        "skattad ur skördarens produktionsrapportering.",
-        "",
-    ]
-    for sortiment, block in invoice.groupby(SORT, sort=True):
-        delivered = block[block["radtyp"] == "LEVERANS"]
-        earlier = block[block["radtyp"] != "LEVERANS"]
-        lines += [f"## {sortiment}", ""]
-        if len(delivered):
-            total = _litres(delivered).sum() / 1000
-            sources = _tier_sources(output, destination, sortiment)
-            lines += [f"Levererat {total:.3f} m3fub. {sources}".rstrip(), "", _appendix_matrix(delivered), ""]
-        if len(earlier):
-            net = _litres(earlier).sum() / 1000
-            lines += [
-                "### Ändringar av tidigare månaders leveranser",
-                "",
-                f"Krediterade lass och rättade fördelningar, netto {net:.3f} m3fub.",
-                "",
-                _appendix_matrix(earlier),
-                "",
-            ]
-    lines += ["Fördelningens källa:", "", *[f"- {t}: {name}" for t, name in TIER_NAMES.items()], ""]
-    return "\n".join(lines)
-
-
-def _appendix_rows(output: MonthOutput, destination: str) -> pd.DataFrame:
-    invoice = output.invoice[output.invoice[DEST] == destination]
-    columns = ["radtyp", SORT, DIA, LEN, "volym_m3fub", *[f"andel_{t}" for t in CERTAINTY_TIERS]]
-    return invoice[columns]
 
 
 def _summary_markdown(output: MonthOutput) -> str:
@@ -237,7 +167,8 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def write_month(output: MonthOutput, out_dir: Path, cfg: Config, inputs: dict[str, Path]) -> None:
+def write_month(output: MonthOutput, out_dir: Path, cfg: Config, inputs: dict[str, Path],
+                layout: AppendixLayout = AppendixLayout(), harvest: pd.DataFrame | None = None) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     _write_matrices(output, out_dir / "matriser")
     _long_matrices(output).round(4).to_csv(out_dir / "matriser_lang.csv", index=False)
@@ -249,8 +180,11 @@ def write_month(output: MonthOutput, out_dir: Path, cfg: Config, inputs: dict[st
     appendices = out_dir / "bilagor"
     appendices.mkdir(exist_ok=True)
     for destination in sorted(set(output.invoice[DEST])):
-        (appendices / f"{slug(destination)}.md").write_text(_appendix_markdown(output, destination), encoding="utf-8")
-        _appendix_rows(output, destination).round(4).to_csv(appendices / f"{slug(destination)}.csv", index=False)
+        name = slug(destination)
+        (appendices / f"{name}.md").write_text(appendix_markdown(output, destination, layout), encoding="utf-8")
+        (appendices / f"{name}.html").write_text(appendix_html(output, destination, layout), encoding="utf-8")
+        appendix_rows(output, destination).round(4).to_csv(appendices / f"{name}.csv", index=False)
+        appendix_workbook(appendices / f"{name}.xlsx", output, destination, layout, harvest)
     if output.priced:
         invoices = out_dir / "fakturor"
         invoices.mkdir(exist_ok=True)
@@ -261,6 +195,7 @@ def write_month(output: MonthOutput, out_dir: Path, cfg: Config, inputs: dict[st
     manifest = {
         "period": output.step.period,
         "config": asdict(cfg),
+        "bilaga": asdict(layout),
         "indata": {name: {"fil": str(path), "sha256": _sha256(path)} for name, path in inputs.items()},
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")

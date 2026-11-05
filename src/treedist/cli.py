@@ -4,6 +4,11 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
+import json
+import os
+import re
+import subprocess
 import io
 import shutil
 import sys
@@ -17,8 +22,9 @@ from . import __version__, adapters, contract, resources
 from .check import FEL, check
 from .config import Config, load_config
 from .core.invoice import invoice_total_kr
-from .core.ledger import load_for_period
+from .core.ledger import load_for_period, previous_period
 from .core.pipeline import run_month
+from .appendix import APPENDIX_STYLES, AppendixLayout
 from .report import slug, warnings_for, write_month
 from .schema import AO, DEST
 from .dev.simulate import SimParams, example_price_list, simulate
@@ -40,8 +46,11 @@ def _run(args: argparse.Namespace) -> int:
     output = run_month(
         ledger, inputs.harvest, inputs.deliveries, inputs.prices, args.period, inputs.closed_aos, cfg, inputs.work_orders
     )
-    write_month(output, args.out, cfg, inputs.sources)
+    sources = {"kalla": args.kalla, **inputs.sources} if args.kalla else inputs.sources
+    layout = AppendixLayout(args.bilaga, _floors(args.bilaga_diameter), _floors(args.bilaga_langd))
+    write_month(output, args.out, cfg, sources, layout, inputs.harvest)
     output.step.ledger.save(args.state)
+    changed = _source_changed(args.state, args.period, args.kalla)
 
     print(f"{args.period}: utdata i {args.out}")
     for destination, lines in output.invoice.groupby(DEST):
@@ -52,7 +61,96 @@ def _run(args: argparse.Namespace) -> int:
         print("Ingen prislista: matriser och bilagor, inget fakturaunderlag.")
     for note in warnings_for(output):
         print(f"OBS: {note}")
+    if changed:
+        print(f"OBS: {changed}")
     return 0
+
+
+def _floors(text: str | None) -> tuple[int, ...]:
+    if not text:
+        return ()
+    try:
+        return tuple(int(part) for part in text.replace(" ", "").split(",") if part)
+    except ValueError:
+        raise ValueError(f"Ange gränserna som heltal i cm med komma emellan, till exempel 340,370,400: {text!r}") from None
+
+
+def _source_changed(state: Path, period: str, source: Path | None) -> str:
+    """Remember which source description ran the month, and say if it differs from last month's.
+
+    A changed adapter between months is often intended, but a run with an older copy is easy to miss.
+    """
+    if source is None:
+        return ""
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    (state / period / "kalla.json").write_text(json.dumps({"fil": str(source), "sha256": digest}) + "\n", encoding="utf-8")
+    before = state / previous_period(period) / "kalla.json"
+    if not before.exists() or json.loads(before.read_text(encoding="utf-8"))["sha256"] == digest:
+        return ""
+    return f"källbeskrivningen {source.name} har ändrats sedan {previous_period(period)}; kontrollera att ändringen är avsedd"
+
+
+def _browser() -> str | None:
+    """Edge or Chrome, which print HTML to PDF headless; TREEDIST_BROWSER overrides."""
+    candidates = [os.environ.get("TREEDIST_BROWSER", "")]
+    for root in (os.environ.get("ProgramFiles(x86)", ""), os.environ.get("ProgramFiles", ""), os.environ.get("LOCALAPPDATA", "")):
+        if root:
+            candidates += [rf"{root}\Microsoft\Edge\Application\msedge.exe", rf"{root}\Google\Chrome\Application\chrome.exe"]
+    candidates += ["/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+                   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"]
+    candidates += [shutil.which(name) or "" for name in ("msedge", "microsoft-edge", "google-chrome", "chromium", "chrome")]
+    return next((c for c in candidates if c and Path(c).exists()), None)
+
+
+# Ways to ask a browser for a PDF, best first. Versions differ in which flags they know, and a flag one
+# version rejects can stop it from writing anything; the last way prints the browser's own header and footer.
+# A fresh profile keeps a browser that is already open from taking the job, but some installations refuse it.
+_PDF_FLAGS = [
+    ["--headless=new", "--disable-gpu", "--no-pdf-header-footer", "PROFILE"],
+    ["--headless=new", "--disable-gpu", "--no-pdf-header-footer"],
+    ["--headless", "--disable-gpu", "--print-to-pdf-no-header"],
+    ["--headless", "--disable-gpu"],
+]
+
+
+def _print_pdf(browser: str, flags: list[str], page: Path, pdf: Path) -> tuple[int, str]:
+    """Pages written, and what the browser said."""
+    pdf.unlink(missing_ok=True)
+    # Absolute paths, and the page as a plain path rather than a file:/// URL: that is what works headless.
+    with tempfile.TemporaryDirectory() as profile:
+        flags = [f"--user-data-dir={profile}" if flag == "PROFILE" else flag for flag in flags]
+        try:
+            done = subprocess.run([browser, *flags, f"--print-to-pdf={pdf}", str(page)],
+                                  capture_output=True, text=True, timeout=120)
+            said = (done.stderr or done.stdout or "").strip()
+        except subprocess.TimeoutExpired:
+            said = "inget svar på 120 sekunder"
+    pages = len(re.findall(rb"/Type\s*/Page\b", pdf.read_bytes())) if pdf.exists() else 0
+    return pages, said
+
+
+def _pdf(args: argparse.Namespace) -> int:
+    """Print each appendix's HTML to PDF next to it, and check that every file came out with pages."""
+    pages = sorted((args.out / "bilagor").glob("*.html"))
+    if not pages:
+        raise FileNotFoundError(f"Inga bilagor i {args.out / 'bilagor'}; kör treedist run först")
+    browser = _browser()
+    if browser is None:
+        raise FileNotFoundError("Hittar varken Edge eller Chrome; ange webbläsaren i TREEDIST_BROWSER")
+    ways, failed = list(_PDF_FLAGS), 0
+    for page in pages:
+        pdf, said = page.with_suffix(".pdf").resolve(), ""
+        for flags in list(ways):
+            count, said = _print_pdf(browser, flags, page.resolve(), pdf)
+            if count:
+                print(f"{pdf}: {count} sidor" + (", med webbläsarens sidhuvud" if flags is _PDF_FLAGS[-1] else ""))
+                break
+            ways.remove(flags)  # A way that failed once fails for the next page too.
+        else:
+            failed += 1
+            print(f"Fel: ingen PDF för {page}. {browser} svarade: {said[-500:] or 'inget'}", file=sys.stderr)
+            ways = list(_PDF_FLAGS)
+    return 1 if failed else 0
 
 
 def _files(args: argparse.Namespace) -> dict[str, Path | None]:
@@ -194,7 +292,15 @@ def build_parser() -> argparse.ArgumentParser:
     _input_arguments(run)
     run.add_argument("--state", required=True, type=Path, help="Katalog med liggaren")
     run.add_argument("--out", required=True, type=Path)
+    run.add_argument("--bilaga", choices=APPENDIX_STYLES, default="volym",
+                     help="Bilagans celler: volym i m3fub, eller andel i procent av längdklassens volym")
+    run.add_argument("--bilaga-langd", help="Visa längden i grupper med dessa nedre gränser i cm, till exempel 340,370,400")
+    run.add_argument("--bilaga-diameter", help="Visa diametern i grupper; den sista gruppen är öppen uppåt, till exempel 10,12,...,36")
     run.set_defaults(handler=_run)
+
+    pdf = commands.add_parser("pdf", help="Skriv ut månadens bilagor som PDF med Edge eller Chrome")
+    pdf.add_argument("--out", required=True, type=Path, help="Månadens utdatakatalog, som i treedist run")
+    pdf.set_defaults(handler=_pdf)
 
     checker = commands.add_parser("check", help="Pröva en källas data mot kontraktet och mot rimliga värden")
     _input_arguments(checker)
