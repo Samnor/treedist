@@ -18,7 +18,7 @@ from pathlib import Path
 import pandas as pd
 
 from .dev.backtest import run_backtest
-from . import __version__, adapters, contract, resources
+from . import __version__, adapters, contract, quality, resources
 from .check import FEL, check
 from .config import Config, load_config
 from .core.invoice import invoice_total_kr
@@ -48,8 +48,11 @@ def _run(args: argparse.Namespace) -> int:
     )
     sources = {"kalla": args.kalla, **inputs.sources} if args.kalla else inputs.sources
     layout = AppendixLayout(args.bilaga, _floors(args.bilaga_diameter), _floors(args.bilaga_langd))
-    write_month(output, args.out, cfg, sources, layout, inputs.harvest)
+    # How good the approximations were, from the corrections that settle them; kept beside the ledger.
+    corrections = quality.update(ledger, output, quality.load(args.state, args.period))
+    write_month(output, args.out, cfg, sources, layout, inputs.harvest, corrections)
     output.step.ledger.save(args.state)
+    corrections.save(args.state, args.period)
     changed = _source_changed(args.state, args.period, args.kalla)
 
     print(f"{args.period}: utdata i {args.out}")
@@ -293,7 +296,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--state", required=True, type=Path, help="Katalog med liggaren")
     run.add_argument("--out", required=True, type=Path)
     run.add_argument("--bilaga", choices=APPENDIX_STYLES, default="volym",
-                     help="Bilagans celler: volym i m3fub, eller andel i procent av längdklassens volym")
+                     help="Markdown-bilagans celler: volym i m3fub, eller andel i procent av diameterklassens volym")
     run.add_argument("--bilaga-langd", help="Visa längden i grupper med dessa nedre gränser i cm, till exempel 340,370,400")
     run.add_argument("--bilaga-diameter", help="Visa diametern i grupper; den sista gruppen är öppen uppåt, till exempel 10,12,...,36")
     run.set_defaults(handler=_run)

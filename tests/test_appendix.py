@@ -53,7 +53,7 @@ def test_a_month_runs_without_a_price_list_and_gives_one_appendix_per_mill(tmp_p
     assert not list((out / "matriser").rglob("pris.csv"))
     text = (out / "bilagor" / f"{sorted(mills)[0]}.md").read_text(encoding="utf-8")
     assert text.startswith(f"# Bilaga till faktura {PERIOD}")
-    assert "| diameter, cm |" in text and "Summa" in text
+    assert "| längd, dm |" in text and "Summa" in text
 
 
 def test_prices_do_not_change_the_matrices_or_the_appendices(tmp_path):
@@ -123,7 +123,7 @@ def test_every_appendix_has_a_printable_page(tmp_path):
     for appendix in (out / "bilagor").glob("*.md"):
         page = appendix.with_suffix(".html").read_text(encoding="utf-8")
         assert "@page { size: A4 landscape" in page and "<thead>" in page
-        assert page.count("<table") == appendix.read_text(encoding="utf-8").count("| diameter, cm |")
+        assert page.count("<table") == appendix.read_text(encoding="utf-8").count("| längd, dm |")
 
 
 def test_a_run_says_when_the_source_description_changed_since_last_month(tmp_path, capsys):
@@ -158,8 +158,8 @@ def test_bands_group_the_classes_without_changing_any_sum(tmp_path):
     for appendix in (banded / "bilagor").glob("*.md"):
         by_band = first_table(appendix.read_text(encoding="utf-8"))
         by_class = first_table((plain / "bilagor" / appendix.name).read_text(encoding="utf-8"))
-        assert list(by_band.columns) == ["diameter, cm", "<370", "370–430", "430–490", "490+", "Summa"]
-        assert by_band["diameter, cm"].tolist() == ["<14", "14–20", "20–26", "26+", "Summa"]
+        assert list(by_band.columns) == ["längd, dm", "<14", "14–20", "20–26", "26+", "Summa"]
+        assert by_band["längd, dm"].tolist() == ["<37", "37–43", "43–49", "49+", "Summa"]
         assert by_band.iloc[-1, -1] == by_class.iloc[-1, -1]
 
 
@@ -186,3 +186,35 @@ def test_the_workbook_computes_the_appendix_from_its_own_rows(tmp_path):
     assert checks and all(abs(v) < 1e-9 for v in checks)
     rounding = [v for k, v in values.items() if k.startswith("BILAGANS RADER'!K") and isinstance(v, float)]
     assert rounding and max(abs(v) for v in rounding) <= 0.0011
+
+
+def test_labels_show_length_in_dm_and_a_one_unit_band_as_its_class():
+    from treedist.appendix import _label
+
+    assert [_label(x, 10) for x in ["370", "<300", "510+", "370–380", "370–430", "375", "OKÄND"]] == [
+        "37", "<30", "51+", "37", "37–43", "37,5", "OKÄND"]
+    assert [_label(x, 1) for x in ["24", "12–13", "12–14"]] == ["24", "12", "12–14"]
+
+
+def test_the_page_has_length_rows_and_whole_percent_of_each_diameter_column(tmp_path):
+    import re
+
+    out = demo_run(tmp_path, "sida", False)
+    rows = appendix_rows(out)
+    for page in (out / "bilagor").glob("*.html"):
+        html = page.read_text(encoding="utf-8")
+        delivered = rows[(rows["mill"] == page.stem) & (rows["radtyp"] == "LEVERANS")]
+        together = delivered[SORT].nunique() > 1
+        assert ("Stockarnas längd per dm och diameter per cm, alla handelssortiment" in html) == together
+        table = html.split("<table", 2)[1]
+        assert 'rowspan="2">Längd, dm</th><th class="axis"' in table and ">Diameter, cm</th>" in table
+        body = re.findall(r"<tr><th>[^<]*</th>(.*?)</tr>", table)
+        cells = [re.findall(r"<td[^>]*>([^<]*)</td>", row)[:-1] for row in body]
+        for column in zip(*cells):
+            assert all(c in ("–", "&lt;1") or c.isdigit() for c in column)
+            whole = [int(c) for c in column if c.isdigit()]
+            small = sum(c == "&lt;1" for c in column)
+            assert sum(whole) - 0.5 * len(whole) <= 100 <= sum(whole) + 0.5 * len(whole) + small
+        total = re.search(r'<tr class="total">.*?<td class="sum">([^<]*)</td>', table).group(1)
+        volume = delivered[VOL].sum() if together else delivered.groupby(SORT)[VOL].sum().iloc[0]
+        assert total == f"{volume:,.1f}".replace(",", " ").replace(".", ",")

@@ -1,7 +1,8 @@
 """The appendix to each mill's invoice, in three forms built from the same grid of litres.
 
     <mill>.md     the matrices as text, volume or percent per cell
-    <mill>.html   a page with only the matrices, percent of the length class per cell, made to print as PDF
+    <mill>.html   a page with only the matrices, length in dm by diameter in cm, percent of the diameter class per cell,
+                  made to print as PDF
     <mill>.xlsx   the rows the matrices are built from, with the matrices as formulas over them, for checking
 
 The invoice lines are whole litres, so every sum in every form adds up exactly.
@@ -85,18 +86,49 @@ def _ordered(labels, floors: tuple[int, ...]) -> list[str]:
 
 
 def grid(lines: pd.DataFrame, layout: AppendixLayout) -> pd.DataFrame:
-    """Litres with diameter classes (or bands) as rows and length classes as columns, empty ones dropped."""
+    """Litres with length classes (or bands) as rows and diameter classes as columns, empty ones dropped.
+
+    The labels stay in cm, as in the data; `_shown` turns them into what the reader sees.
+    """
     if layout.diameter:
         lines = lines.assign(**{DIA: lines[DIA].map(lambda v: _band(v, layout.diameter))})
     if layout.length:
         lines = lines.assign(**{LEN: lines[LEN].map(lambda v: _band(v, layout.length))})
     litres = lines.assign(_liter=_litres(lines)).pivot_table(
-        index=DIA, columns=LEN, values="_liter", aggfunc="sum", fill_value=0
+        index=LEN, columns=DIA, values="_liter", aggfunc="sum", fill_value=0
     )
-    litres = litres.reindex(index=_ordered(litres.index, layout.diameter),
-                            columns=_ordered(litres.columns, layout.length), fill_value=0)
+    litres = litres.reindex(index=_ordered(litres.index, layout.length),
+                            columns=_ordered(litres.columns, layout.diameter), fill_value=0)
     # Classes with no volume in any cell say nothing; dropping them keeps every sum.
     return litres.loc[(litres != 0).any(axis=1), (litres != 0).any(axis=0)]
+
+
+def _number(value: float) -> str:
+    return str(int(value)) if float(value).is_integer() else f"{value:g}".replace(".", ",")
+
+
+def _label(label, per: int) -> str:
+    """A class or band in cm as the reader sees it, in units of `per` cm: 10 for length in dm, 1 for diameter.
+
+    A band one unit wide is shown as its floor alone, like a class.
+    """
+    text = str(label)
+    try:
+        if text.startswith("<"):
+            return "<" + _number(float(text[1:]) / per)
+        if text.endswith("+"):
+            return _number(float(text[:-1]) / per) + "+"
+        if "–" in text:
+            low, high = (float(x) for x in text.split("–"))
+            return _number(low / per) if high - low == per else f"{_number(low / per)}–{_number(high / per)}"
+        return _number(float(text) / per)
+    except ValueError:
+        return text  # A class without a number, such as OKÄND.
+
+
+def _shown(litres: pd.DataFrame) -> pd.DataFrame:
+    """The grid with length in dm and diameter in cm, as the appendix shows them."""
+    return litres.rename(index=lambda v: _label(v, 10), columns=lambda v: _label(v, 1))
 
 
 def _blocks(output: MonthOutput, destination: str):
@@ -104,6 +136,22 @@ def _blocks(output: MonthOutput, destination: str):
     invoice = output.invoice[output.invoice[DEST] == destination]
     for sortiment, block in invoice.groupby(SORT, sort=True):
         yield sortiment, block[block["radtyp"] == "LEVERANS"], block[block["radtyp"] != "LEVERANS"]
+
+
+ALL = "Alla handelssortiment"
+
+
+def _matrices(output: MonthOutput, destination: str):
+    """The delivered matrices in the order they are shown: all assortments together first, when there are several."""
+    blocks = [(sortiment, delivered) for sortiment, delivered, _ in _blocks(output, destination) if len(delivered)]
+    if len(blocks) > 1:
+        yield ALL, None, pd.concat([d for _, d in blocks])
+    for sortiment, delivered in blocks:
+        yield sortiment, sortiment, delivered
+
+
+def _title(name: str) -> str:
+    return f"Stockarnas längd per dm och diameter per cm, {name[0].lower() + name[1:] if name == ALL else name}"
 
 
 def _tier_sources(output: MonthOutput, destination: str, sortiment: str) -> str:
@@ -115,12 +163,14 @@ def _tier_sources(output: MonthOutput, destination: str, sortiment: str) -> str:
     return f"Fördelningens källa: {', '.join(shares)}."
 
 
-_BANDS_NOTE = "Grupperade klasser är halvöppna: a–b betyder från a till under b cm, a+ betyder a cm och mer och <a under a cm."
+_CLASSES_NOTE = ("Raderna är stockarnas längd i dm och kolumnerna deras diameter i cm, båda med klassens nedre gräns.")
+_BANDS_NOTE = "Grupperade klasser är halvöppna: a–b betyder från a till under b, a+ betyder a och mer och <a under a."
 
 
 # Markdown
 
 def _matrix_markdown(litres: pd.DataFrame, shares: bool) -> str:
+    litres = _shown(litres)
     columns = litres.sum(axis=0)
     if shares:
         shown = litres.apply(lambda col: col.map(lambda v: f"{100 * v / col.sum():.1f}" if v and col.sum() > 0 else ""))
@@ -128,22 +178,25 @@ def _matrix_markdown(litres: pd.DataFrame, shares: bool) -> str:
         shown = litres.map(lambda v: f"{v / 1000:.3f}" if v else "")
     shown["Summa"] = (litres.sum(axis=1) / 1000).map(lambda v: f"{v:.3f}")
     shown.loc["Summa"] = [*(columns / 1000).map(lambda v: f"{v:.3f}"), f"{columns.sum() / 1000:.3f}"]
-    return markdown_table(shown.rename_axis("diameter, cm").reset_index())
+    return markdown_table(shown.rename_axis("längd, dm").reset_index())
 
 
 def appendix_markdown(output: MonthOutput, destination: str, layout: AppendixLayout = AppendixLayout()) -> str:
-    """The appendix as text: one matrix per assortment for the month."""
+    """The appendix as text: all assortments together, then one matrix per assortment for the month."""
     shares = layout.style == "andel"
     shown_as = (
-        "Cellerna är procent av längdklassens levererade volym, så att varje kolumn summerar till 100. Raden och "
+        "Cellerna är procent av diameterklassens levererade volym, så att varje kolumn summerar till 100. Raden och "
         "kolumnen Summa är m3fub under bark, liksom ändringar av tidigare månader."
         if shares
         else "Volymerna är m3fub under bark."
     )
-    intro = ("Levererad volym per handelssortiment. Raderna är diameterklasser och kolumnerna längdklasser, båda med "
-             "klassens nedre gräns i cm. Volymen är inmätningens; fördelningen på klasser är skattad ur skördarens "
-             f"produktionsrapportering. {shown_as}" + (f" {_BANDS_NOTE}" if layout.banded else ""))
+    intro = (f"Levererad volym per handelssortiment. {_CLASSES_NOTE} Volymen är inmätningens; fördelningen på klasser "
+             f"är skattad ur skördarens produktionsrapportering. {shown_as}" + (f" {_BANDS_NOTE}" if layout.banded else ""))
     lines = [f"# Bilaga till faktura {output.step.period}, {destination}", "", intro, ""]
+    together = next((d for name, s, d in _matrices(output, destination) if s is None), None)
+    if together is not None:
+        lines += [f"## {ALL}", "", f"Levererat {_litres(together).sum() / 1000:.3f} m3fub.", "",
+                  _matrix_markdown(grid(together, layout), shares), ""]
     for sortiment, delivered, earlier in _blocks(output, destination):
         lines += [f"## {sortiment}", ""]
         if len(delivered):
@@ -178,7 +231,7 @@ h1 { font-size: 18pt; margin: 2pt 0 4pt; font-weight: 650; }
 section { break-before: page; }
 section:first-of-type { break-before: auto; }
 h2 { font-size: 13pt; margin: 0 0 5pt; font-weight: 650; }
-.total { font-size: 10pt; font-weight: 400; color: #5b6573; margin-left: 10pt; font-variant-numeric: tabular-nums; }
+h2 .total { font-size: 10pt; font-weight: 400; color: #5b6573; margin-left: 10pt; font-variant-numeric: tabular-nums; }
 h3 { font-size: 10pt; margin: 12pt 0 4pt; font-weight: 600; color: #3a4452; }
 table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { padding: 2pt 4pt; text-align: right; white-space: nowrap; border: 0.4pt solid #d5dae1; }
@@ -210,57 +263,75 @@ def _sv(value: float, decimals: int) -> str:
 
 def _font(columns: int) -> str:
     # Wide matrices get smaller type so that they fit across an A4 landscape page.
-    return "9pt" if columns <= 12 else "8pt" if columns <= 18 else "7pt" if columns <= 26 else "6pt" if columns <= 36 else "5pt"
+    return "9pt" if columns <= 16 else "8pt" if columns <= 24 else "7pt" if columns <= 32 else "6pt" if columns <= 42 else "5pt"
+
+
+def _volume(m3: float, decimals: int) -> str:
+    """A volume at `decimals`; one that would round to zero but is not says so, instead of showing 0,0."""
+    step = 10.0 ** -decimals
+    if m3 and abs(m3) < step / 2:
+        return ("&lt;" if m3 > 0 else "&gt;-") + _sv(step, decimals)
+    return _sv(m3, decimals)
 
 
 def _matrix_html(litres: pd.DataFrame, shares: bool) -> str:
+    litres = _shown(litres)
     columns = litres.sum(axis=0)
     percent = litres.div(columns.where(columns > 0), axis=1) * 100
     top = float(np.nanmax(percent.to_numpy())) if shares and percent.size else 0.0
+    decimals = 1 if shares else 3
+    # Large column sums read better in thousands, as in the trade's own tables.
+    thousands = shares and columns.abs().max() >= 1_000_000
     head = "".join(f"<th>{escape(str(c))}</th>" for c in litres.columns)
     rows = []
-    for dia in litres.index:
+    for length in litres.index:
         cells = []
-        for length in litres.columns:
-            litre, share = litres.at[dia, length], percent.at[dia, length]
+        for dia in litres.columns:
+            litre, share = litres.at[length, dia], percent.at[length, dia]
             if not litre:
-                cells.append("<td></td>")
+                cells.append('<td class="none">–</td>')
             elif shares:
                 # A light shade by share, so that the shape of each column shows at a glance.
                 alpha = 0.06 + 0.5 * share / top if top > 0 and share > 0 else 0
-                # Volume too small to show at one decimal is still volume, not zero.
-                shown = _sv(share, 1) if share >= 0.05 else "&lt;0,1"
+                # Volume too small to show as a whole percent is still volume, not zero.
+                shown = _sv(share, 0) if share >= 0.5 or share < 0 else "&lt;1"
                 cells.append(f'<td style="background:rgba(37,99,235,{alpha:.2f})">{shown}</td>')
             else:
-                cells.append(f"<td>{_sv(litre / 1000, 3)}</td>")
-        rows.append(f"<tr><th>{escape(str(dia))}</th>{''.join(cells)}<td class=\"sum\">{_sv(litres.loc[dia].sum() / 1000, 3)}</td></tr>")
-    foot = "".join(f"<td>{_sv(v / 1000, 3)}</td>" for v in columns)
+                cells.append(f"<td>{_volume(litre / 1000, 3)}</td>")
+        rows.append(f"<tr><th>{escape(str(length))}</th>{''.join(cells)}"
+                    f"<td class=\"sum\">{_volume(litres.loc[length].sum() / 1000, decimals)}</td></tr>")
+    foot = "".join(f"<td>{_volume(v / (1_000_000 if thousands else 1000), decimals)}</td>" for v in columns)
     return (
         # Two header rows name the axes, instead of a corner cell that reads as a riddle.
         f'<table style="font-size:{_font(len(litres.columns))}"><thead>'
-        f'<tr><th class="corner" rowspan="2">Diameter, cm</th><th class="axis" colspan="{len(litres.columns)}">Längd, cm</th>'
+        f'<tr><th class="corner" rowspan="2">Längd, dm</th><th class="axis" colspan="{len(litres.columns)}">Diameter, cm</th>'
         f'<th class="sum" rowspan="2">Summa, m3fub</th></tr><tr>{head}</tr></thead><tbody>{"".join(rows)}'
         # The sum row belongs to the body: a footer would be repeated on every page the table spans.
-        f'<tr class="total"><th>Summa, m3fub</th>{foot}<td class="sum">{_sv(columns.sum() / 1000, 3)}</td></tr></tbody></table>'
+        f'<tr class="total"><th>Summa, {"tusen " if thousands else ""}m3fub</th>{foot}'
+        f'<td class="sum">{_volume(columns.sum() / 1000, decimals)}</td></tr></tbody></table>'
     )
 
 
 def appendix_html(output: MonthOutput, destination: str, layout: AppendixLayout = AppendixLayout()) -> str:
-    """A page with only the matrices, percent of the length class per cell, for a browser to print as PDF."""
+    """A page with only the matrices, percent of the diameter class per cell, for a browser to print as PDF."""
     blocks = list(_blocks(output, destination))
     total = sum(_litres(d).sum() for _, d, _ in blocks) / 1000
+    changes = {sortiment: earlier for sortiment, _, earlier in blocks if len(earlier)}
     sections = []
-    for sortiment, delivered, earlier in blocks:
-        parts = [f'<h2>{escape(sortiment)}<span class="total">{_sv(_litres(delivered).sum() / 1000, 3)} m3fub</span></h2>']
-        if len(delivered):
-            parts.append(_matrix_html(grid(delivered, layout), shares=True))
-        if len(earlier):
+    for name, sortiment, delivered in _matrices(output, destination):
+        parts = [f'<h2>{escape(_title(name))}<span class="total">{_sv(_litres(delivered).sum() / 1000, 3)} m3fub</span></h2>',
+                 _matrix_html(grid(delivered, layout), shares=True)]
+        if sortiment in changes:
             parts.append('<div class="changes"><h3>Ändringar av tidigare månaders leveranser, m3fub</h3>'
-                         f'{_matrix_html(grid(earlier, layout), shares=False)}</div>')
+                         f'{_matrix_html(grid(changes.pop(sortiment), layout), shares=False)}</div>')
         sections.append(f"<section>{''.join(parts)}</section>")
-    note = ("Cellerna är procent av längdklassens levererade volym, så att varje kolumn summerar till 100. Summa är "
-            "m3fub under bark. Klasserna anges med nedre gräns i cm. Volymen är inmätningens; fördelningen på klasser "
-            "är skattad ur skördarens produktionsrapportering." + (f" {_BANDS_NOTE}" if layout.banded else ""))
+    for sortiment, earlier in changes.items():  # An assortment with changes but no delivery this month.
+        sections.append(f'<section><h2>{escape(_title(sortiment))}</h2><div class="changes"><h3>Ändringar av tidigare '
+                        f'månaders leveranser, m3fub</h3>{_matrix_html(grid(earlier, layout), shares=False)}</div></section>')
+    note = ("Cellerna är procent av diameterklassens levererade volym, så att varje kolumn summerar till 100; – är "
+            f"ingen volym och <1 under en halv procent. {_CLASSES_NOTE} Summa är m3fub under bark. Volymen är "
+            "inmätningens; fördelningen på klasser är skattad ur skördarens produktionsrapportering."
+            + (f" {_BANDS_NOTE}" if layout.banded else ""))
     title = f"Bilaga till faktura {output.step.period}, {destination}"
     return (
         f'<!doctype html>\n<html lang="sv"><head><meta charset="utf-8"><title>{escape(title)}</title>'
@@ -363,7 +434,7 @@ def appendix_workbook(path: Path, output: MonthOutput, destination: str, layout:
         ("Den här filen innehåller raderna som bilagans matriser bygger på, så att vem som helst kan kontrollera dem.", None),
         ("", None),
         ("Flikar", bold),
-        ("Ett handelssortiment per flik: matrisen i m3fub, räknad med SUMIFS ur fliken Bilagans rader, och under den samma matris som procent av kolumnen.", None),
+        ("Alla handelssortiment, när det finns flera, och sedan ett handelssortiment per flik: matrisen i m3fub med längden i dm som rader och diametern i cm som kolumner, räknad med SUMIFS ur fliken Bilagans rader, och under den samma matris som procent av kolumnen.", None),
         ("Bilagans rader: volym per sortiment och klass, i hela liter, med andel per säkerhetsklass. Kolumnen Från fördelningen summerar fliken Fördelning per klass; skillnaden är avrundningen till hela liter.", None),
         ("Fördelning: månadens levererade volym per arbetsorder, klass och säkerhetsklass, före avrundning.", None),
         ("Ändringar: korrigeringar och krediteringar av tidigare månader.", None),
@@ -389,7 +460,7 @@ def appendix_workbook(path: Path, output: MonthOutput, destination: str, layout:
     for sortiment, delivered, _ in _blocks(output, destination):
         name = _SHEET.sub("_", str(sortiment))[:31]
         while name in sheets.values() or name in ("Läs först", "Bilagans rader", "Fördelning", "Ändringar",
-                                                    "Inmätning", "Avstämning", "Skördardata"):
+                                                    "Inmätning", "Avstämning", "Skördardata", ALL):
             name = name[:28] + "_" + str(len(sheets))
         sheets[sortiment] = name
         r = guide.max_row + 1
@@ -404,29 +475,29 @@ def appendix_workbook(path: Path, output: MonthOutput, destination: str, layout:
     for column in "BCD":
         guide.column_dimensions[column].width = 14
 
-    # The matrices, as formulas over the appendix rows.
-    for sortiment, delivered, _ in _blocks(output, destination):
-        if not len(delivered):
-            continue
-        sheet = book.create_sheet(sheets[sortiment])
+    # The matrices, as formulas over the appendix rows: all assortments together first, as on the page.
+    for name, sortiment, delivered in _matrices(output, destination):
+        sheet = book.create_sheet(ALL if sortiment is None else sheets[sortiment])
         litres = grid(delivered, layout)
         n_rows, n_cols = len(litres.index), len(litres.columns)
-        sheet["A1"], sheet["A1"].font = f"{sortiment}, levererat {step.period}, m3fub", Font(bold=True, size=12)
-        sheet["A2"] = "Räknat med SUMIFS ur fliken Bilagans rader. Klasser med nedre gräns i cm."
+        sheet["A1"], sheet["A1"].font = f"{_title(name)}, levererat {step.period}, m3fub", Font(bold=True, size=12)
+        sheet["A2"] = ("Räknat med SUMIFS ur fliken Bilagans rader, där längden står i cm. Rubrikerna visar längden i dm "
+                       "och diametern i cm, med klassens nedre gräns.")
         header, first = 4, 5
-        sheet.cell(header, 1, "Diameter \\ längd, cm")
-        for j, length in enumerate(litres.columns, start=2):
-            sheet.cell(header, j, _cell(str(length)))
+        sheet.cell(header, 1, "Längd, dm \\ diameter, cm")
+        for j, dia in enumerate(litres.columns, start=2):
+            sheet.cell(header, j, _cell(_label(dia, 1)))
         sum_col = n_cols + 2
         sum_row = first + n_rows
         sheet.cell(header, sum_col, "Summa")
-        for i, dia in enumerate(litres.index):
+        assortment = "" if sortiment is None else f",{rows_col('B')},{_text(sortiment)}"
+        for i, length in enumerate(litres.index):
             r = first + i
-            sheet.cell(r, 1, _cell(str(dia)))
-            for j, length in enumerate(litres.columns, start=2):
-                formula = (f"=SUMIFS({rows_col('E')},{rows_col('A')},\"LEVERANS\",{rows_col('B')},{_text(sortiment)}"
-                           + _criteria(str(dia), layout.diameter, rows_col("C"))
-                           + _criteria(str(length), layout.length, rows_col("D")) + ")")
+            sheet.cell(r, 1, _cell(_label(length, 10)))
+            for j, dia in enumerate(litres.columns, start=2):
+                formula = (f"=SUMIFS({rows_col('E')},{rows_col('A')},\"LEVERANS\"{assortment}"
+                           + _criteria(str(length), layout.length, rows_col("D"))
+                           + _criteria(str(dia), layout.diameter, rows_col("C")) + ")")
                 sheet.cell(r, j, formula).number_format = "0.000;-0.000;"
             sheet.cell(r, sum_col, f"=SUM(B{r}:{get_column_letter(sum_col - 1)}{r})").number_format = "0.000"
         sheet.cell(sum_row, 1, "Summa")
@@ -434,10 +505,10 @@ def appendix_workbook(path: Path, output: MonthOutput, destination: str, layout:
             letter = get_column_letter(j)
             sheet.cell(sum_row, j, f"=SUM({letter}{first}:{letter}{sum_row - 1})").number_format = "0.000"
 
-        # The same matrix as percent of each length class, as on the HTML page.
+        # The same matrix as percent of each diameter class, as on the HTML page.
         top = sum_row + 3
-        sheet.cell(top - 1, 1, "Andel av längdklassens volym").font = bold
-        sheet.cell(top, 1, "Diameter \\ längd, cm")
+        sheet.cell(top - 1, 1, "Andel av diameterklassens volym").font = bold
+        sheet.cell(top, 1, "Längd, dm \\ diameter, cm")
         for j in range(2, sum_col):
             sheet.cell(top, j, f"={get_column_letter(j)}{header}")
         for i in range(n_rows):

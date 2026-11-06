@@ -221,13 +221,15 @@ grupp och arbetsorderns andra sortiment. Skörd och lager redovisas på den plan
 
 ```
 out/2026-01/
-  bilagor/<destination>.html         bilaga till fakturan: bara matriserna, procent per längdklass, A4 liggande för PDF
+  bilagor/<destination>.html         bilaga till fakturan: bara matriserna, procent per diameterklass, A4 liggande för PDF
   bilagor/<destination>.xlsx         raderna bakom matriserna, och matriserna som formler över dem, för kontroll
   bilagor/<destination>.md           samma matriser som text, i m3fub eller procent
   bilagor/<destination>.csv          samma volymer i långt format, med andel per säkerhetsklass
   fakturor/<destination>.md          fakturaunderlag per destination, bara med prislista
   faktura_rader.csv                  alla leveransrader och korrigeringar
   sammanfattning.md                  volymer och andel per säkerhetsklass
+  sakerhet.html                      Sankeydiagram: hur stor del av volymen som är bestämd och hur stor som är approximerad
+  rattelser.csv                      per S2–S4: rättad volym, andel som bytte klass och volym som ännu är preliminär
   matriser/<destination>/<sortiment>/*.csv   matriser med diameter som rader, längd som kolumner
   matriser_lang.csv                  samma matriser i långt format
   leverans_ao_lang.csv               fördelningen per arbetsorder och säkerhetsklass
@@ -236,8 +238,10 @@ out/2026-01/
   manifest.json                      parametrar, bilagans form och kontrollsummor för indata och källbeskrivning
 ```
 
-HTML-sidan visar en matris per handelssortiment, där varje cell är procent av längdklassens volym och summaraden
-och summakolumnen är m3fub; ändringar av tidigare månader visas i m3fub. `treedist pdf --out out/2026-01` skriver
+HTML-sidan visar stockarnas längd i dm som rader och diameter i cm som kolumner, först för alla handelssortiment
+tillsammans och sedan för vart och ett. Varje cell är procent av diameterklassens volym i hela procent, `<1` under en
+halv procent och `–` utan volym; summakolumnen är m3fub och summaraden m3fub, eller tusen m3fub när kolumnerna är
+stora. Ändringar av tidigare månader visas i m3fub. `treedist pdf --out out/2026-01` skriver
 ut månadens HTML-sidor som PDF med Edge eller Chrome och räknar sidorna; `TREEDIST_BROWSER` pekar ut en annan
 webbläsare. Markdown-filen visar m3fub, eller procent med `treedist run --bilaga andel`.
 
@@ -247,7 +251,20 @@ Inmätning, Avstämning per arbetsorder och månadens Skördardata. Fliken Läs 
 per sortiment; skillnaden ska vara 0,000.
 
 `--bilaga-langd` och `--bilaga-diameter` tar nedre gränser i cm, till exempel `--bilaga-langd 340,370,400`, och
-visar klasserna i grupper i alla tre formerna utan att någon summa ändras; den sista gruppen är öppen uppåt.
+visar klasserna i grupper i alla tre formerna utan att någon summa ändras; den sista gruppen är öppen uppåt. En grupp
+som är en enhet bred, 1 dm eller 1 cm, visas med bara sin nedre gräns, så `--bilaga-langd 300,310,...,510` ger raderna
+`<30`, `30`, `31` och så vidare till `51+`.
+
+`sakerhet.html` visar månadens volym per sågverk som ett Sankeydiagram: bestämd ur arbetsorderns egen skörd (S1),
+approximerad ur arbetsorderns tidigare skörd (S2) eller lånad från liknande arbetsordrar (S3), eller utan fördelning
+(S4). Under diagrammet står samma volymer i en tabell, och på en egen sida efter den förklaras varje del av
+diagrammet och tabellen för den som vill läsa. Sidan hämtar inget från nätet och skrivs ut på A4.
+
+Sidan visar också hur bra approximationerna var. S2–S4 rättas när skördardata kommer, och andelen av den rättade
+volymen som hamnade i en annan klass än den preliminära fördelningen är approximationens fel, mätt på verklig data.
+Måttet räknas från den första månaden som kördes med den här versionen och växer månad för månad; S1 rättas aldrig
+och mäts därför inte. Liggaren vet inte vilken klass ett underskott kom från, så treedist för ett eget register
+bredvid den: `state/<period>/preliminart.csv` och `state/<period>/rattelser.csv`.
 Valet sparas i `manifest.json`.
 
 En källa som bara har den kumulativa skörden, utan datum för när en rad rapporterades, ansluts med en

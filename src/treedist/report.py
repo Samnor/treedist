@@ -17,6 +17,8 @@ from .core.allocate import CERTAINTY_TIERS, TIER_NAMES
 from .config import Config
 from .core.invoice import invoice_total_kr
 from .core.pipeline import MonthOutput
+from .quality import Quality
+from .sankey import sankey_html
 from .schema import DEST, DIA, LEN, SORT, VOL, sorted_groups
 
 _ROUNDING = 3
@@ -168,7 +170,8 @@ def _sha256(path: Path) -> str:
 
 
 def write_month(output: MonthOutput, out_dir: Path, cfg: Config, inputs: dict[str, Path],
-                layout: AppendixLayout = AppendixLayout(), harvest: pd.DataFrame | None = None) -> None:
+                layout: AppendixLayout = AppendixLayout(), harvest: pd.DataFrame | None = None,
+                quality: Quality | None = None) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     _write_matrices(output, out_dir / "matriser")
     _long_matrices(output).round(4).to_csv(out_dir / "matriser_lang.csv", index=False)
@@ -191,6 +194,9 @@ def write_month(output: MonthOutput, out_dir: Path, cfg: Config, inputs: dict[st
         for destination in sorted(set(output.invoice[DEST])):
             (invoices / f"{slug(destination)}.md").write_text(_invoice_markdown(output, destination), encoding="utf-8")
     (out_dir / "sammanfattning.md").write_text(_summary_markdown(output), encoding="utf-8")
+    (out_dir / "sakerhet.html").write_text(sankey_html(output, quality), encoding="utf-8")
+    if quality is not None:
+        quality.by_tier().assign(sedan=quality.since).to_csv(out_dir / "rattelser.csv", float_format="%.3f")
 
     manifest = {
         "period": output.step.period,

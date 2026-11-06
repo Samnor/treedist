@@ -22,10 +22,11 @@ repot, skriv `uv run` före varje kommando. Ger `treedist` "Åtkomst nekad", sto
 - **Frågor, hjälpskript och tester** som hör till källan, i samma katalog `kallor/<system>/`. Lägg dem inte i
   `out/`, som är utdata. Håll `kallor/` och `AGENTS.md` i git, och säkerhetskopiera `state/`.
 
-Varje körning skriver per sågverk i `bilagor/`: `.html`, en sida med bara matriserna i procent av
-längdklassens volym, gjord för att skrivas ut som PDF; `.xlsx`, raderna som matriserna bygger på och matriserna
+Varje körning skriver per sågverk i `bilagor/`: `.html`, en sida med bara matriserna, längd i dm som rader och
+diameter i cm som kolumner, i procent av diameterklassens volym, gjord för att skrivas ut som PDF; `.xlsx`, raderna som matriserna bygger på och matriserna
 som formler över dem, för den som vill kontrollera; `.md` och `.csv`. `treedist pdf --out <månadens utdata>`
-skriver ut HTML-sidorna som PDF med Edge eller Chrome. `--bilaga-langd 340,370,400` och `--bilaga-diameter` visar
+skriver ut HTML-sidorna som PDF med Edge eller Chrome. `sakerhet.html` visar hur stor del av månadens volym som är
+bestämd och hur stor som är approximerad, och hur stor andel av den rättade approximerade volymen som bytte klass. `--bilaga-langd 340,370,400` och `--bilaga-diameter` visar
 klasserna i grupper med de nedre gränserna i cm, till exempel 10 cm eller produktens brytpunkter, och den sista
 gruppen är öppen uppåt. Låt adaptern ge de fina klasserna, och låt en person bestämma grupperna; samma grupper
 varje månad. Ändra aldrig det installerade paketet, inte heller för presentationen: en ominstallation tar bort
