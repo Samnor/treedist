@@ -1,6 +1,6 @@
 """The canonical input tables, as data.
 
-Everything the method reads comes through these five tables. A new source
+Everything the method reads comes through these tables. A new source
 system is connected by an adapter that produces them (see adapters/), never by
 changing the method. `treedist kontrakt` prints this as a table, and
 `treedist check` tests an adapter's output against it, including whether the
@@ -28,6 +28,12 @@ DEST = "destination"
 LOGS = "antal_stockar"
 VINTAGE = "avverkningsdatum"
 TIER = "sakerhetsklass"
+LAT = "latitud"
+LON = "longitud"
+NORTH = "nord_sweref99tm"
+EAST = "ost_sweref99tm"
+MEASURE = "atgard"
+STEM = "medelstam_m3fub"
 
 NO_CLASS = "-"
 NO_DESTINATION = "-"
@@ -118,6 +124,23 @@ TABLES = {
             Column(AO, "text", True, "Arbetsorderns id"),
             Column(DEST, "text", True, "Planerad mottagningsplats"),
             Column("grupp", "text", False, "Jämförbar grupp, till exempel region och avverkningsform"),
+            Column(LAT, "tal", False, "Läge, latitud i WGS84. Ger en karta i bilagan", "grader", 55, 69.1),
+            Column(LON, "tal", False, "Läge, longitud i WGS84", "grader", 10.5, 24.2),
+            Column(NORTH, "tal", False, "Läge, nordlig koordinat i SWEREF 99 TM, i stället för latitud och longitud",
+                   "m", 6100000, 7700000),
+            Column(EAST, "tal", False, "Läge, östlig koordinat i SWEREF 99 TM", "m", 250000, 950000),
+        ),
+        optional=True,
+    ),
+    "atgarder": Table(
+        "Åtgärder",
+        "Åtgärderna i en arbetsorder, en rad per åtgärd, med medelstam. Visar i bilagan om en arbetsorder har flera "
+        "åtgärder med olika medelstam. Utan den visas inga åtgärder.",
+        (
+            Column(AO, "text", True, "Arbetsorderns id, samma som i arbetsordertabellen"),
+            Column(MEASURE, "text", True, "Åtgärden, till exempel slutavverkning eller gallring"),
+            Column(STEM, "tal", False, "Medelstam: genomsnittlig volym per avverkat träd, under bark", "m3fub", 0.02, 2.5),
+            Column(VOL, "tal", False, "Planerad volym för åtgärden, under bark", "m3fub", 0, None),
         ),
         optional=True,
     ),

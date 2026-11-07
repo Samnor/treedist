@@ -22,11 +22,13 @@ repot, skriv `uv run` före varje kommando. Ger `treedist` "Åtkomst nekad", sto
 - **Frågor, hjälpskript och tester** som hör till källan, i samma katalog `kallor/<system>/`. Lägg dem inte i
   `out/`, som är utdata. Håll `kallor/` och `AGENTS.md` i git, och säkerhetskopiera `state/`.
 
-Varje körning skriver per sågverk i `bilagor/`: `.html`, en sida med bara matriserna, längd i dm som rader och
-diameter i cm som kolumner, i procent av diameterklassens volym, gjord för att skrivas ut som PDF; `.xlsx`, raderna som matriserna bygger på och matriserna
+Varje körning skriver per sågverk i `bilagor/`: `.html`, bilagan till fakturan, först matrisen för all volym till
+sågverket, längd i dm som rader och diameter i cm som kolumner, i procent av diameterklassens volym, sedan hur den
+togs fram (Sankeydiagram, arbetsordrarna bakom den och en förklaring), gjord för att skrivas ut som PDF; `.xlsx`, raderna som matriserna bygger på och matriserna
 som formler över dem, för den som vill kontrollera; `.md` och `.csv`. `treedist pdf --out <månadens utdata>`
-skriver ut HTML-sidorna som PDF med Edge eller Chrome. `sakerhet.html` visar hur stor del av månadens volym som är
-bestämd och hur stor som är approximerad, och hur stor andel av den rättade approximerade volymen som bytte klass. `--bilaga-langd 340,370,400` och `--bilaga-diameter` visar
+skriver ut HTML-sidorna som PDF med Edge eller Chrome. Arbetsordrarna bakom matriserna står också i
+`arbetsordrar.csv`. Har källan arbetsordrarnas läge eller åtgärder med medelstam, ta med dem: bilagan visar då en
+karta och åtgärderna. `--bilaga-langd 340,370,400` och `--bilaga-diameter` visar
 klasserna i grupper med de nedre gränserna i cm, till exempel 10 cm eller produktens brytpunkter, och den sista
 gruppen är öppen uppåt. Låt adaptern ge de fina klasserna, och låt en person bestämma grupperna; samma grupper
 varje månad. Ändra aldrig det installerade paketet, inte heller för presentationen: en ominstallation tar bort
@@ -46,7 +48,7 @@ person. Ett test som slutar fungera ska inte skrivas om för att passera.
 
 1. `treedist selftest` ska skriva `OK` innan du börjar. I en klon: `uv sync` och sedan `uv run pytest -q`.
    Kör bara läsande frågor mot källan, och fråga en person innan den första körningen mot ett produktionssystem.
-2. `treedist kontrakt` skriver ut de fem tabellerna med krav, enhet, rimliga värden och betydelse.
+2. `treedist kontrakt` skriver ut tabellerna med krav, enhet, rimliga värden och betydelse.
    Läs kolumnen Betydelse noga.
 3. Kopiera `examples/kalla/kalla.toml` till `kallor/<system>/kalla.toml` och fyll i källans filer och
    kolumnnamn. Filnamnen räknas från källbeskrivningens katalog.
@@ -82,13 +84,15 @@ person. Ett test som slutar fungera ska inte skrivas om för att passera.
 | Vilka skördarrader hör till månaden? | De som rapporterades under månaden, även om virket fälldes tidigare. Har källan bara den kumulativa skörden, utan datum för när en rad rapporterades: låt adaptern läsa skörden fram till månadens slut och skicka den genom `treedist.adapters.snapshot.new_rows`, som fryser varje månad och bara skickar tillväxten | Att filtrera på `avverkningsdatum`, så att sent rapporterade rader aldrig kommer med, eller att skicka hela den kumulativa skörden varje månad, så att den räknas igen |
 | När fylls `producerat_handelssortiment` i? | Bara när källan anger det per lass | Att härleda det ur skördardatan. Saknas kolumnen, lämna den tom |
 | Vilken dag gäller en tidpunkt i UTC? | Dagen i svensk tid | Datumet i UTC, så att nattlass hamnar dagen före |
+| Vilka koordinater? | `latitud` och `longitud` i WGS84-grader, eller `nord_sweref99tm` och `ost_sweref99tm` i meter | RT90, omkastad latitud och longitud, eller grader i SWEREF-kolumnerna. `check` varnar för värden utanför Sverige |
+| Vilken medelstam? | Volym per avverkat träd i m3fub, per åtgärd i `atgarder` | dm3, eller en enda medelstam för hela arbetsordern när den har flera åtgärder |
 | Hur läser egna skript utdata och liggare? | Med alla kolumner som text, `dtype=str` | Att låta pandas gissa, så att ledande nollor försvinner och klasser blir flyttal |
 
 ## Klart betyder
 
 - `treedist check` visar inget `FEL`, och varje `VARNING` är rättad eller förklarad.
 - `treedist selftest` skriver `OK`, och i en klon passerar `uv run pytest -q`.
-- En körd månad har en bilaga per sågverk i `bilagor/`, med en matris per handelssortiment vars summa är
+- En körd månad har en bilaga per sågverk i `bilagor/`, med en matris för alla handelssortiment vars summa är
   inmätningens volym. Excelfilens flik Läs först visar skillnaden 0,000 per sortiment. Körningen stoppar själv om den inte stämmer.
 - Säger körningen att källbeskrivningen har ändrats sedan förra månaden, är ändringen förklarad för en person.
 

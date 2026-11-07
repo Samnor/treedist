@@ -30,6 +30,7 @@ from ..schema import (
     validate_harvest,
     validate_work_orders,
 )
+from ..workorders import Facts, measures, sites
 from . import csv_files, mapping
 
 Raw = dict[str, pd.DataFrame]
@@ -43,6 +44,8 @@ class Inputs:
     prices: PriceList | None
     work_orders: WorkOrders
     closed_aos: set[str]
+    # Where the work orders are and their measures, for the appendix only; the method never reads them.
+    facts: Facts = field(default_factory=Facts)
     # Files read, for the manifest's checksums.
     sources: dict[str, Path] = field(default_factory=dict)
 
@@ -69,6 +72,7 @@ def validate(raw: Raw, period: str, cfg: Config) -> Inputs:
         prices=PriceList.from_frame(raw["prislista"]) if "prislista" in raw else None,
         work_orders=work_orders,
         closed_aos=validate_closed_aos(raw["avslutade_ao"]) if "avslutade_ao" in raw else set(),
+        facts=Facts(sites(raw.get("arbetsordrar")), measures(raw.get("atgarder"))),
     )
 
 

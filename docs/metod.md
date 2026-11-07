@@ -59,7 +59,7 @@ S4 får bara ett pris om prislistan har en uttrycklig regel för det, annars fla
 
 Hur bra S2–S4 var syns när de rättas: andelen av den rättade volymen som bytte klass är approximationens fel, mätt
 på verklig data i leveransens klasser. Rättelsen av en arbetsorder gäller hela dess underskott, så har det flera
-klasser får var och en sin andel av den rättade volymen och samma andel flyttad. `sakerhet.html` och `rattelser.csv`
+klasser får var och en sin andel av den rättade volymen och samma andel flyttad. Bilagorna och `rattelser.csv`
 visar måttet summerat från den första månaden som kördes med det.
 
 ### Lånad fördelning, S3
@@ -76,7 +76,7 @@ körningen avbryts om den inte är det. Volymer räknas i hela liter och belopp 
 upp. Osäkerheten flyttar alltså värde mellan produkter men aldrig volym in eller ut ur fakturan.
 
 Samma rader blir bilagan till varje sågverks faktura, `bilagor/<destination>.md` och `.html`: en matris för alla
-handelssortiment och en per handelssortiment, längd i dm som rader och diameter i cm som kolumner, med summor som går jämnt upp mot inmätningen. Bilagan kräver ingen
+handelssortiment tillsammans, längd i dm som rader och diameter i cm som kolumner, med summor som går jämnt upp mot inmätningen. Bilagan kräver ingen
 prislista; utan den blir det matriser och bilagor men inget fakturaunderlag.
 
 ## Osäkerhet

@@ -123,7 +123,8 @@ def test_every_appendix_has_a_printable_page(tmp_path):
     for appendix in (out / "bilagor").glob("*.md"):
         page = appendix.with_suffix(".html").read_text(encoding="utf-8")
         assert "@page { size: A4 landscape" in page and "<thead>" in page
-        assert page.count("<table") == appendix.read_text(encoding="utf-8").count("| längd, dm |")
+        # One matrix on the page for every matrix in the text; the page also explains how it was found.
+        assert page.count('class="corner"') == appendix.read_text(encoding="utf-8").count("| längd, dm |")
 
 
 def test_a_run_says_when_the_source_description_changed_since_last_month(tmp_path, capsys):

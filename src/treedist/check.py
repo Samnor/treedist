@@ -20,7 +20,7 @@ import pandas as pd
 
 from .adapters import Raw, read_raw, validate
 from .config import Config
-from .contract import TABLES
+from .contract import EAST, LAT, LON, NORTH, STEM, TABLES
 from .core.allocate import CERTAINTY_TIERS, close_month
 from .core.ledger import Ledger, previous_period
 from .schema import AO, BRUTTO, DEST, DIA, LEN, LOGS, SORT, UNKNOWN_CLASS, VINTAGE, VOL
@@ -72,6 +72,8 @@ def check(
     findings += _dates(inputs.harvest, inputs.deliveries)
     findings += _destinations(raw.get("leverans"), inputs)
     findings += _prices(inputs)
+    findings += _places(raw.get("arbetsordrar"), inputs)
+    findings += _stems(raw.get("atgarder"), inputs)
 
     ledger = None
     if state is not None and (state / previous_period(period)).exists():
@@ -96,6 +98,47 @@ def _form(raw: Raw) -> list[Finding]:
         elif frame.empty:
             findings.append(Finding(VARNING, key, "tabellen är tom"))
     return findings
+
+
+def _places(work_orders: pd.DataFrame | None, inputs) -> list[Finding]:
+    """Positions that would put the map in the wrong place without an error: swapped or in another system."""
+    if work_orders is None or not any(c in work_orders.columns for c in (LAT, LON, NORTH, EAST)):
+        return []
+    findings = []
+    table = TABLES["arbetsordrar"]
+    hints = {LAT: "omkastad mot longitud, eller inte WGS84 i grader?", LON: "omkastad mot latitud, eller inte WGS84?",
+             NORTH: "omkastad mot östlig koordinat, eller RT90 i stället för SWEREF 99 TM?",
+             EAST: "omkastad mot nordlig koordinat, eller RT90 i stället för SWEREF 99 TM?"}
+    for column in (LAT, LON, NORTH, EAST):
+        if column not in work_orders.columns:
+            continue
+        spec = table.column(column)
+        numbers = pd.to_numeric(work_orders[column].astype(str).str.replace(",", ".", regex=False), errors="coerce").dropna()
+        outside = ((numbers < spec.low) | (numbers > spec.high)).mean() if len(numbers) else 0.0
+        if outside > 0:
+            findings.append(Finding(VARNING, "arbetsordrar", f"{column}: {outside:.0%} utanför {spec.low:g}–{spec.high:g} "
+                                    f"{spec.unit}, {hints[column]}"))
+    located = len(inputs.facts.sites)
+    total = len(work_orders)
+    level = OK if located == total else INFO
+    findings.append(Finding(level, "arbetsordrar", f"{located} av {total} arbetsordrar har läge och syns på bilagans karta"))
+    return findings
+
+
+def _stems(measures: pd.DataFrame | None, inputs) -> list[Finding]:
+    """Mean stem volumes that look like another unit."""
+    if measures is None or STEM not in measures.columns:
+        return []
+    spec = TABLES["atgarder"].column(STEM)
+    numbers = pd.to_numeric(measures[STEM].astype(str).str.replace(",", ".", regex=False), errors="coerce").dropna()
+    if not len(numbers):
+        return []
+    median = float(numbers.median())
+    if median > spec.high:
+        return [Finding(VARNING, "atgarder", f"{STEM} har median {median:g}: ser ut som dm3, sätt enheter.{STEM} = 0.001")]
+    if median < spec.low:
+        return [Finding(VARNING, "atgarder", f"{STEM} har median {median:g} m3fub: orimligt liten medelstam")]
+    return [Finding(OK, "atgarder", f"{STEM}: median {median:g} m3fub")]
 
 
 def _numeric_classes(values: pd.Series) -> pd.Series:

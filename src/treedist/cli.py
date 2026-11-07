@@ -50,7 +50,7 @@ def _run(args: argparse.Namespace) -> int:
     layout = AppendixLayout(args.bilaga, _floors(args.bilaga_diameter), _floors(args.bilaga_langd))
     # How good the approximations were, from the corrections that settle them; kept beside the ledger.
     corrections = quality.update(ledger, output, quality.load(args.state, args.period))
-    write_month(output, args.out, cfg, sources, layout, inputs.harvest, corrections)
+    write_month(output, args.out, cfg, sources, layout, inputs.harvest, corrections, inputs.facts)
     output.step.ledger.save(args.state)
     corrections.save(args.state, args.period)
     changed = _source_changed(args.state, args.period, args.kalla)
@@ -165,6 +165,7 @@ def _files(args: argparse.Namespace) -> dict[str, Path | None]:
         "prislista": args.prislista,
         "arbetsordrar": args.arbetsordrar,
         "avslutade_ao": args.avslutade_ao,
+        "atgarder": getattr(args, "atgarder", None),
     }
 
 
@@ -337,6 +338,7 @@ def _input_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--prislista", type=Path, help="Valfri. Utan den blir det matriser och bilagor, ingen faktura")
     parser.add_argument("--avslutade-ao", type=Path)
     parser.add_argument("--arbetsordrar", type=Path, help="Planerad destination och grupp per arbetsorder")
+    parser.add_argument("--atgarder", type=Path, help="Valfri. Åtgärder per arbetsorder, med medelstam")
     _model_arguments(parser)
 
 

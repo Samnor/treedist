@@ -11,14 +11,15 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .appendix import AppendixLayout, appendix_html, appendix_markdown, appendix_rows, appendix_workbook
+from .appendix import AppendixLayout, appendix_markdown, appendix_rows, appendix_workbook
 from .appendix import markdown_table as _markdown_table
 from .core.allocate import CERTAINTY_TIERS, TIER_NAMES
 from .config import Config
 from .core.invoice import invoice_total_kr
 from .core.pipeline import MonthOutput
 from .quality import Quality
-from .sankey import sankey_html
+from .sankey import mill_appendix_html
+from .workorders import Facts, work_orders
 from .schema import DEST, DIA, LEN, SORT, VOL, sorted_groups
 
 _ROUNDING = 3
@@ -171,7 +172,7 @@ def _sha256(path: Path) -> str:
 
 def write_month(output: MonthOutput, out_dir: Path, cfg: Config, inputs: dict[str, Path],
                 layout: AppendixLayout = AppendixLayout(), harvest: pd.DataFrame | None = None,
-                quality: Quality | None = None) -> None:
+                quality: Quality | None = None, facts: Facts | None = None) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     _write_matrices(output, out_dir / "matriser")
     _long_matrices(output).round(4).to_csv(out_dir / "matriser_lang.csv", index=False)
@@ -185,7 +186,8 @@ def write_month(output: MonthOutput, out_dir: Path, cfg: Config, inputs: dict[st
     for destination in sorted(set(output.invoice[DEST])):
         name = slug(destination)
         (appendices / f"{name}.md").write_text(appendix_markdown(output, destination, layout), encoding="utf-8")
-        (appendices / f"{name}.html").write_text(appendix_html(output, destination, layout), encoding="utf-8")
+        (appendices / f"{name}.html").write_text(mill_appendix_html(output, destination, quality, layout, facts),
+                                                 encoding="utf-8")
         appendix_rows(output, destination).round(4).to_csv(appendices / f"{name}.csv", index=False)
         appendix_workbook(appendices / f"{name}.xlsx", output, destination, layout, harvest)
     if output.priced:
@@ -194,7 +196,7 @@ def write_month(output: MonthOutput, out_dir: Path, cfg: Config, inputs: dict[st
         for destination in sorted(set(output.invoice[DEST])):
             (invoices / f"{slug(destination)}.md").write_text(_invoice_markdown(output, destination), encoding="utf-8")
     (out_dir / "sammanfattning.md").write_text(_summary_markdown(output), encoding="utf-8")
-    (out_dir / "sakerhet.html").write_text(sankey_html(output, quality), encoding="utf-8")
+    work_orders(output).to_csv(out_dir / "arbetsordrar.csv", index=False, float_format="%.3f")
     if quality is not None:
         quality.by_tier().assign(sedan=quality.since).to_csv(out_dir / "rattelser.csv", float_format="%.3f")
 

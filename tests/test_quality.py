@@ -9,7 +9,8 @@ from treedist import quality
 from treedist.cli import main
 from treedist.core.ledger import Ledger
 from treedist.core.pipeline import run_month
-from treedist.sankey import sankey_html
+from treedist.sankey import mill_appendix_html
+from treedist.schema import DEST
 
 # A: 60 % class 14 and 40 % class 24, ships 20 more than its stock (S2 with A's own shares).
 # B: no harvester data, borrows A's shares (S3). C: no harvester data in GRAN at all (S4).
@@ -50,8 +51,9 @@ def test_a_closed_work_order_is_written_off_not_counted_as_corrected(cfg):
 
 def test_the_page_tells_how_much_changed_class(cfg):
     *_, second, after = months(cfg)
-    page = sankey_html(second, after)
-    assert "40 % av 20,0 m3fub" in page and "100 % av 20,0 m3fub" in page and "Bytte klass vid rättelse, sedan 2026-01" in page
+    page = "".join(mill_appendix_html(second, mill, after) for mill in sorted(set(second.invoice[DEST])))
+    assert "40 % av 20,0 m3fub" in page and "100 % av 20,0 m3fub" in page
+    assert "Bytte klass vid rättelse, alla sågverk sedan 2026-01" in page
     assert "Rättas inte" in page
 
 

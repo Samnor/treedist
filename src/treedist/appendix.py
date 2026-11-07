@@ -19,7 +19,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from . import __version__
 from .core.allocate import CERTAINTY_TIERS, TIER_NAMES
 from .core.pipeline import MonthOutput
 from .schema import AO, DEST, DIA, LEN, SORT, VOL, sorted_groups
@@ -141,13 +140,20 @@ def _blocks(output: MonthOutput, destination: str):
 ALL = "Alla handelssortiment"
 
 
-def _matrices(output: MonthOutput, destination: str):
-    """The delivered matrices in the order they are shown: all assortments together first, when there are several."""
-    blocks = [(sortiment, delivered) for sortiment, delivered, _ in _blocks(output, destination) if len(delivered)]
-    if len(blocks) > 1:
-        yield ALL, None, pd.concat([d for _, d in blocks])
-    for sortiment, delivered in blocks:
-        yield sortiment, sortiment, delivered
+def _together(output: MonthOutput, destination: str) -> tuple[str, pd.DataFrame, pd.DataFrame]:
+    """The appendix's one matrix: this month's delivered lines and the changes to earlier months, all assortments
+    together. Named after the assortment when there is only one."""
+    blocks = list(_blocks(output, destination))
+    name = blocks[0][0] if len(blocks) == 1 else ALL
+    delivered = pd.concat([d for _, d, _ in blocks]) if blocks else output.invoice.iloc[0:0]
+    earlier = pd.concat([e for _, _, e in blocks]) if blocks else output.invoice.iloc[0:0]
+    return name, delivered, earlier
+
+
+def _per_sortiment(output: MonthOutput, destination: str) -> list[tuple[str, float]]:
+    """Delivered m3fub per assortment, for the line that says what the one matrix holds."""
+    return [(sortiment, _litres(delivered).sum() / 1000) for sortiment, delivered, _ in _blocks(output, destination)
+            if len(delivered)]
 
 
 def _title(name: str) -> str:
@@ -182,7 +188,7 @@ def _matrix_markdown(litres: pd.DataFrame, shares: bool) -> str:
 
 
 def appendix_markdown(output: MonthOutput, destination: str, layout: AppendixLayout = AppendixLayout()) -> str:
-    """The appendix as text: all assortments together, then one matrix per assortment for the month."""
+    """The appendix as text: one matrix for all assortments together, and the changes to earlier months."""
     shares = layout.style == "andel"
     shown_as = (
         "Cellerna är procent av diameterklassens levererade volym, så att varje kolumn summerar till 100. Raden och "
@@ -190,24 +196,22 @@ def appendix_markdown(output: MonthOutput, destination: str, layout: AppendixLay
         if shares
         else "Volymerna är m3fub under bark."
     )
-    intro = (f"Levererad volym per handelssortiment. {_CLASSES_NOTE} Volymen är inmätningens; fördelningen på klasser "
+    intro = (f"Levererad volym, alla handelssortiment tillsammans. {_CLASSES_NOTE} Volymen är inmätningens; fördelningen på klasser "
              f"är skattad ur skördarens produktionsrapportering. {shown_as}" + (f" {_BANDS_NOTE}" if layout.banded else ""))
     lines = [f"# Bilaga till faktura {output.step.period}, {destination}", "", intro, ""]
-    together = next((d for name, s, d in _matrices(output, destination) if s is None), None)
-    if together is not None:
-        lines += [f"## {ALL}", "", f"Levererat {_litres(together).sum() / 1000:.3f} m3fub.", "",
-                  _matrix_markdown(grid(together, layout), shares), ""]
-    for sortiment, delivered, earlier in _blocks(output, destination):
-        lines += [f"## {sortiment}", ""]
-        if len(delivered):
-            total = _litres(delivered).sum() / 1000
-            sources = _tier_sources(output, destination, sortiment)
-            lines += [f"Levererat {total:.3f} m3fub. {sources}".rstrip(), "",
-                      _matrix_markdown(grid(delivered, layout), shares), ""]
-        if len(earlier):
-            lines += ["### Ändringar av tidigare månaders leveranser", "",
-                      f"Krediterade lass och rättade fördelningar, netto {_litres(earlier).sum() / 1000:.3f} m3fub.", "",
-                      _matrix_markdown(grid(earlier, layout), False), ""]
+    name, delivered, earlier = _together(output, destination)
+    lines += [f"## {name}", ""]
+    if len(delivered):
+        parts = ", ".join(f"{sortiment} {volume:.3f}" for sortiment, volume in _per_sortiment(output, destination))
+        sources = " ".join(f"{sortiment}: {_tier_sources(output, destination, sortiment)}"
+                           for sortiment, _ in _per_sortiment(output, destination)
+                           if _tier_sources(output, destination, sortiment))
+        lines += [f"Levererat {_litres(delivered).sum() / 1000:.3f} m3fub ({parts}). {sources}".rstrip(), "",
+                  _matrix_markdown(grid(delivered, layout), shares), ""]
+    if len(earlier):
+        lines += ["### Ändringar av tidigare månaders leveranser", "",
+                  f"Krediterade lass och rättade fördelningar, netto {_litres(earlier).sum() / 1000:.3f} m3fub.", "",
+                  _matrix_markdown(grid(earlier, layout), False), ""]
     lines += ["Fördelningens källa:", "", *[f"- {t}: {name}" for t, name in TIER_NAMES.items()], ""]
     return "\n".join(lines)
 
@@ -218,43 +222,6 @@ def appendix_rows(output: MonthOutput, destination: str) -> pd.DataFrame:
 
 
 # HTML, for print
-
-_CSS = """
-@page { size: A4 landscape; margin: 13mm 12mm 12mm; }
-* { box-sizing: border-box; }
-html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { margin: 0; font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #1c2430; font-size: 9pt; }
-header { border-bottom: 1.5pt solid #1c2430; padding-bottom: 6pt; margin-bottom: 10pt; }
-.eyebrow { font-size: 8.5pt; letter-spacing: .04em; text-transform: uppercase; color: #5b6573; }
-h1 { font-size: 18pt; margin: 2pt 0 4pt; font-weight: 650; }
-.lead { margin: 0; color: #3a4452; max-width: 210mm; line-height: 1.4; }
-section { break-before: page; }
-section:first-of-type { break-before: auto; }
-h2 { font-size: 13pt; margin: 0 0 5pt; font-weight: 650; }
-h2 .total { font-size: 10pt; font-weight: 400; color: #5b6573; margin-left: 10pt; font-variant-numeric: tabular-nums; }
-h3 { font-size: 10pt; margin: 12pt 0 4pt; font-weight: 600; color: #3a4452; }
-table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th, td { padding: 2pt 4pt; text-align: right; white-space: nowrap; border: 0.4pt solid #d5dae1; }
-thead th { background: #eef1f5; font-weight: 600; border-bottom: 0.8pt solid #8c96a3; vertical-align: bottom; }
-th.corner { text-align: left; }
-th.axis { text-align: center; color: #3a4452; border-bottom: 0.4pt solid #d5dae1; }
-tbody th { text-align: left; font-weight: 600; background: #f6f8fa; }
-td.sum, th.sum { background: #eef1f5; font-weight: 600; border-left: 0.8pt solid #8c96a3; }
-tr.total th, tr.total td { background: #eef1f5; font-weight: 600; color: #1c2430; border-top: 0.8pt solid #8c96a3; }
-.changes { break-inside: avoid; }
-tr { break-inside: avoid; }
-.note { margin-top: 8pt; font-size: 7.5pt; color: #5b6573; line-height: 1.4; max-width: 230mm; }
-"""
-
-
-def _running(destination: str, period: str) -> str:
-    """Mill, period and page number in the page margins, so that a loose page still says what it belongs to."""
-    words = (destination + " · Bilaga till faktura " + period).replace("\\", "\\\\").replace('"', '\\"')
-    box = "font-family: \"Segoe UI\", \"Helvetica Neue\", Arial, sans-serif; font-size: 7.5pt; color: #5b6573;"
-    return (f'@page {{ @top-left {{ content: "{words}"; {box} }} '
-            f'@bottom-right {{ content: "Sida " counter(page) " av " counter(pages); {box} }} }}'
-            "@page :first { @top-left { content: none; } }")
-
 
 def _sv(value: float, decimals: int) -> str:
     """Swedish number: decimal comma, a no-break space between thousands (a narrow one vanishes in small type)."""
@@ -312,34 +279,37 @@ def _matrix_html(litres: pd.DataFrame, shares: bool) -> str:
     )
 
 
-def appendix_html(output: MonthOutput, destination: str, layout: AppendixLayout = AppendixLayout()) -> str:
-    """A page with only the matrices, percent of the diameter class per cell, for a browser to print as PDF."""
-    blocks = list(_blocks(output, destination))
-    total = sum(_litres(d).sum() for _, d, _ in blocks) / 1000
-    changes = {sortiment: earlier for sortiment, _, earlier in blocks if len(earlier)}
-    sections = []
-    for name, sortiment, delivered in _matrices(output, destination):
-        parts = [f'<h2>{escape(_title(name))}<span class="total">{_sv(_litres(delivered).sum() / 1000, 3)} m3fub</span></h2>',
-                 _matrix_html(grid(delivered, layout), shares=True)]
-        if sortiment in changes:
-            parts.append('<div class="changes"><h3>Ändringar av tidigare månaders leveranser, m3fub</h3>'
-                         f'{_matrix_html(grid(changes.pop(sortiment), layout), shares=False)}</div>')
-        sections.append(f"<section>{''.join(parts)}</section>")
-    for sortiment, earlier in changes.items():  # An assortment with changes but no delivery this month.
-        sections.append(f'<section><h2>{escape(_title(sortiment))}</h2><div class="changes"><h3>Ändringar av tidigare '
-                        f'månaders leveranser, m3fub</h3>{_matrix_html(grid(earlier, layout), shares=False)}</div></section>')
-    note = ("Cellerna är procent av diameterklassens levererade volym, så att varje kolumn summerar till 100; – är "
-            f"ingen volym och <1 under en halv procent. {_CLASSES_NOTE} Summa är m3fub under bark. Volymen är "
-            "inmätningens; fördelningen på klasser är skattad ur skördarens produktionsrapportering."
-            + (f" {_BANDS_NOTE}" if layout.banded else ""))
-    title = f"Bilaga till faktura {output.step.period}, {destination}"
-    return (
-        f'<!doctype html>\n<html lang="sv"><head><meta charset="utf-8"><title>{escape(title)}</title>'
-        f"<style>{_CSS}{_running(destination, output.step.period)}</style></head><body>\n<header><div class=\"eyebrow\">Bilaga till faktura · {output.step.period}"
-        f"</div><h1>{escape(destination)}</h1><p class=\"lead\">Levererad volym {_sv(total, 3)} m3fub under bark i "
-        f"{len(blocks)} handelssortiment.</p><p class=\"note\">{escape(note)}</p></header>\n"
-        + "\n".join(sections) + f"\n<!-- treedist {__version__} -->\n</body></html>\n"
-    )
+def first_matrix_html(output: MonthOutput, destination: str, layout: AppendixLayout = AppendixLayout()) -> str:
+    """The appendix's matrix, all assortments together, as the appendix shows it, so that another page can start
+    from the same matrix."""
+    name, delivered, _ = _together(output, destination)
+    if not len(delivered):
+        return ""
+    return (f'<h2>{escape(_title(name))}<span class="total">{_sv(_litres(delivered).sum() / 1000, 3)} m3fub</span>'
+            f"</h2>{_matrix_html(grid(delivered, layout), shares=True)}")
+
+
+def changes_matrix_html(output: MonthOutput, destination: str, layout: AppendixLayout = AppendixLayout()) -> str:
+    """The changes to earlier months' deliveries, all assortments together, in m3fub, as the appendix shows them."""
+    _, _, earlier = _together(output, destination)
+    if not len(earlier):
+        return ""
+    return ('<div class="changes"><h3>Ändringar av tidigare månaders leveranser, m3fub</h3>'
+            f"{_matrix_html(grid(earlier, layout), shares=False)}</div>")
+
+
+def appendix_lead(output: MonthOutput, destination: str) -> str:
+    """The delivered volume, and per assortment when there are several, as the appendix opens with it."""
+    _, delivered, _ = _together(output, destination)
+    per_sortiment = _per_sortiment(output, destination)
+    held = (f" i {len(per_sortiment)} handelssortiment: "
+            + ", ".join(f"{sortiment} {_sv(volume, 3)}" for sortiment, volume in per_sortiment)
+            + " m3fub" if len(per_sortiment) > 1 else "")
+    return f"Levererad volym {_sv(_litres(delivered).sum() / 1000, 3)} m3fub under bark{held}."
+
+
+MATRIX_NOTE = ("Cellerna är procent av diameterklassens levererade volym, så att varje kolumn summerar till 100; – är "
+               f"ingen volym och <1 under en halv procent. {_CLASSES_NOTE}")
 
 
 # Excel, for checking
@@ -475,8 +445,10 @@ def appendix_workbook(path: Path, output: MonthOutput, destination: str, layout:
     for column in "BCD":
         guide.column_dimensions[column].width = 14
 
-    # The matrices, as formulas over the appendix rows: all assortments together first, as on the page.
-    for name, sortiment, delivered in _matrices(output, destination):
+    # The matrix, as formulas over the appendix rows: all assortments together, as on the page.
+    name, delivered, _ = _together(output, destination)
+    sortiment = None if name == ALL else name
+    for delivered in ([delivered] if len(delivered) else []):
         sheet = book.create_sheet(ALL if sortiment is None else sheets[sortiment])
         litres = grid(delivered, layout)
         n_rows, n_cols = len(litres.index), len(litres.columns)
