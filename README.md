@@ -256,7 +256,7 @@ som är en enhet bred, 1 dm eller 1 cm, visas med bara sin nedre gräns, så `--
 `<30`, `30`, `31` och så vidare till `51+`.
 
 `sakerhet.html` visar månadens volym per sågverk som ett Sankeydiagram: bestämd ur arbetsorderns egen skörd (S1),
-approximerad ur arbetsorderns tidigare skörd (S2) eller lånad från liknande arbetsordrar (S3), eller utan fördelning
+approximerad ur arbetsorderns skörd hittills (S2) eller lånad från liknande arbetsordrar (S3), eller utan fördelning
 (S4). Under diagrammet står samma volymer i en tabell, och på en egen sida efter den förklaras varje del av
 diagrammet och tabellen för den som vill läsa. Sidan hämtar inget från nätet och skrivs ut på A4.
 

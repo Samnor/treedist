@@ -22,7 +22,7 @@ from .schema import DEST, VOL
 # What each class means for the reader, and whether it is settled.
 GROUPS = {
     "S1": ("Bestämd", "Ur arbetsorderns egen skörd"),
-    "S2": ("Approximerad", "Arbetsorderns tidigare skörd"),
+    "S2": ("Approximerad", "Arbetsorderns skörd hittills"),
     "S3": ("Approximerad", "Lånad från liknande arbetsordrar"),
     "S4": ("Ingen fördelning", "Okänd, bokad som OKÄND"),
 }
@@ -259,8 +259,9 @@ def _guide(quality: Quality | None) -> str:
         ("Approximerad (S2, S3), i mitten", "Volym där arbetsorderns eget lager inte räckte eller saknades. Fördelningen "
          "är en skattning: preliminär, och den rättas i en senare månad när skördardata för arbetsordern kommer. Till "
          "höger delas den i sina två slag."),
-        ("S2 Arbetsorderns tidigare skörd, till höger", "Arbetsordern har levererat mer än det som fanns kvar i lagret. "
-         "Det som går utöver lagret fördelas som arbetsorderns hela skörd hittills."),
+        ("S2 Arbetsorderns skörd hittills, till höger", "Arbetsordern har levererat mer än det som fanns kvar i lagret. "
+         "Det som går utöver lagret fördelas som allt skördaren har rapporterat för arbetsordern hittills, även det som redan "
+         "levererats."),
         ("S3 Lånad från liknande arbetsordrar, till höger", "Arbetsordern saknar skördardata. Fördelningen lånas från "
          "andra arbetsordrar i samma handelssortiment, med störst vikt för de som liknar den mest."),
         ("Ingen fördelning (S4), i mitten", "Skördardata saknas för hela handelssortimentet, så det finns inget att låna "
@@ -297,7 +298,7 @@ def sankey_html(output: MonthOutput, quality: Quality | None = None) -> str:
     lead = (f"Av {_sv(total)} m3fub levererat under {period} har {_percent(settled, total)} en fördelning på klasser "
             "som bestäms av arbetsorderns egen skörd.")
     if total - settled > 0.0005:
-        lead += (" Resten är approximerat ur arbetsorderns tidigare skörd, lånat från liknande arbetsordrar eller utan "
+        lead += (" Resten är approximerat ur arbetsorderns skörd hittills, lånat från liknande arbetsordrar eller utan "
                  "fördelning, och rättas i en senare månad när skördardata kommer.")
     if quality is not None:
         measured = quality.by_tier()

@@ -29,7 +29,7 @@ def test_every_class_gets_its_volume_and_the_classes_add_up_to_the_month(mixed):
 def test_the_page_draws_each_flow_and_says_how_much_is_settled(mixed):
     page = sankey_html(mixed)
     assert "<svg" in page and "Av 170,0 m3fub levererat under 2026-01 har 59 %" in page
-    for name in ("Bestämd (S1)", "Approximerad (S2, S3)", "Ingen fördelning (S4)", "S2 Arbetsorderns tidigare skörd",
+    for name in ("Bestämd (S1)", "Approximerad (S2, S3)", "Ingen fördelning (S4)", "S2 Arbetsorderns skörd hittills",
                  "S3 Lånad från liknande arbetsordrar"):
         assert name in page
     # One band per mill and class into the middle, and one per approximated kind out of it.
@@ -47,7 +47,7 @@ def test_a_run_writes_the_page_for_the_month(tmp_path):
 def test_every_part_of_the_page_is_explained_for_the_reader_who_wants_it(mixed):
     page = sankey_html(mixed)
     guide = page.split("Så läser du sidan", 1)[1]
-    for part in ("Sågverken, till vänster", "Bestämd (S1)", "Approximerad (S2, S3)", "S2 Arbetsorderns tidigare skörd",
+    for part in ("Sågverken, till vänster", "Bestämd (S1)", "Approximerad (S2, S3)", "S2 Arbetsorderns skörd hittills",
                  "S3 Lånad från liknande arbetsordrar", "Ingen fördelning (S4)", "Siffrorna vid en nod", "Färgerna",
                  "Tabellen"):
         assert f"<dt>{part}" in guide
