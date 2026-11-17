@@ -252,6 +252,20 @@ Kontrollen gav inget larm på exempelkällorna eller på facit för 24 av bänke
 De två historikuppgifterna har facit per månad och prövades inte. Den är en varning och inte ett stopp, eftersom ett
 riktigt id kan råka se ut som ett sådant värde. Ingen ny kontrollkatalog skrevs för steget.
 
+### Körtid för en månad i verklig storlek (2026-11-18)
+
+Demons andra månad gånger 50: 670 000 produktionsrader, 7 000 lass och tre sågverk, på en ny liggare efter januari.
+Av körtiden var metoden en fjortondel. Mest tid tog arbetsbokens sparade värden, där varje `SUMIFS`-villkor prövades
+cell för cell i Python, 25 miljoner anrop.
+
+| Steg | Tid för månaden | Utdata |
+|---|---|---|
+| Baslinje | 57 s | |
+| Varje villkorskolumn läses en gång till arrayer, och ett villkor blir en jämförelse över kolumnen | 42 s | Alla filer i månadens utdata är lika byte för byte, och arbetsböckernas 2,5 miljoner celler likaså |
+
+Minnet är oförändrat, 1,1 GB. Det som återstår är mest att skriva arbetsbokens rader (openpyxl) och tabellen över
+avtalsobjekt. Mätt en gång per version på en bärbar dator, så talen är ungefärliga.
+
 ## Det som `check` ännu inte ser
 
 - **Fel kolumn som id i arbetsordertabellen.** Missen i kontroll 2. Kan fångas genom att kräva att avtalsobjekten

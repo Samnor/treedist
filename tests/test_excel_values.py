@@ -104,3 +104,21 @@ def test_wrapped_lines_counts_lines_at_whole_words():
     assert wrapped_lines("ett två tre", 11) == 1
     assert wrapped_lines("ett två tre", 7) == 2
     assert wrapped_lines("avverkningsdag", 5) == 3
+
+
+def test_a_criteria_column_read_once_answers_as_cell_by_cell():
+    """The arrays behind SUMIFS give what `_matches` gives for each cell, for every kind of value and criterion."""
+    import numpy as np
+
+    from treedist.excel_values import ExcelError, _Column, _matches
+
+    values = [None, "", "a", "A", "b", "ä", " 24", "24", "24.0", "nan", "inf", "TRUE", "x24", 24, 24.0, 23.5, 0, 0.0, -1,
+              float("nan"), True, False, ExcelError("#DIV/0!"), "<>", "=a"]
+    criteria = [None, "", "a", "A", "=a", "<>a", "<>", "=", "<a", ">=a", "24", "=24", "<>24", "<24", ">=24", "<=23.5",
+                24, 24.0, 0, 1, 1.0, True, False, "nan", "<>nan", "TRUE", "ä", "<>ä", "#DIV/0!", ">", "<=", "x24"]
+    column = _Column(values)
+    for criterion in criteria:
+        expected = np.array([_matches(v, criterion) for v in values], dtype=bool)
+        got = column.mask(criterion)
+        assert got.dtype == bool and got.tolist() == expected.tolist(), criterion
+    assert _Column([]).mask("a").tolist() == []

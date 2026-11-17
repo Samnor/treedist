@@ -36,6 +36,53 @@ class _Range:
         self.key, self.values = key, values
 
 
+class _Column:
+    """A criteria range read once, so that each SUMIFS criterion is one comparison over arrays, not one per cell."""
+
+    def __init__(self, values: list):
+        n = len(values)
+        self.values = values
+        self.boolean = np.fromiter((isinstance(v, bool) for v in values), bool, n)
+        self.number = np.fromiter((isinstance(v, (int, float)) for v in values), bool, n) & ~self.boolean
+        self.text = np.fromiter((isinstance(v, str) for v in values), bool, n)
+        self.empty = np.fromiter((v is None or (isinstance(v, str) and v == "") for v in values), bool, n)
+        self.numbers = np.array([float(v) if isinstance(v, (int, float)) else np.nan for v in values], dtype=float)
+        read = [_as_float(v) if isinstance(v, str) else None for v in values]
+        self.readable = np.fromiter((r is not None for r in read), bool, n)
+        self.read = np.array([np.nan if r is None else r for r in read], dtype=float)
+        self.lower = np.array([v.lower() if isinstance(v, str) else None for v in values], dtype=object)
+
+    def mask(self, criterion) -> np.ndarray:
+        """The same answer as `_matches` for every cell."""
+        if criterion is None:
+            criterion = ""
+        if isinstance(criterion, bool):
+            return self.boolean & (self.numbers == float(criterion))
+        if isinstance(criterion, (int, float)):
+            op, wanted = "=", float(criterion)
+        else:
+            match = _CRITERION.match(str(criterion))
+            op, rest = match.group(1) or "=", match.group(2)
+            number = _as_float(rest)
+            wanted = number if number is not None else rest
+        compare = _COMPARE[op]
+        with np.errstate(invalid="ignore"):
+            if isinstance(wanted, float):
+                if op == "=":
+                    return (((self.number | self.boolean) & (self.numbers == wanted))
+                            | (self.readable & (self.read == wanted)))
+                if op == "<>":
+                    return np.where(self.number, self.numbers != wanted, np.where(self.readable, self.read != wanted, True))
+                return self.number & compare(self.numbers, wanted)
+            if wanted == "":
+                return self.empty.copy() if op == "=" else ~(self.empty | self.boolean)
+            if op in ("=", "<>"):
+                same = self.text & (self.lower == wanted.lower())
+                return same if op == "=" else ~same
+        # Text in order is rare and Excel's rules for it are Python's here: one cell at a time.
+        return np.array([_matches(v, criterion) for v in self.values], dtype=bool)
+
+
 def _number(value):
     """A value as Excel's arithmetic reads it."""
     if value is None or value == "":
@@ -85,6 +132,7 @@ class Evaluator:
         self.memo: dict[tuple[str, str], object] = {}
         self.ranges: dict[tuple, list] = {}
         self.masks: dict[tuple, np.ndarray] = {}
+        self.columns: dict[tuple, _Column] = {}
         self.arrays: dict[tuple, np.ndarray] = {}
 
     # Cells and ranges.
@@ -226,7 +274,9 @@ class Evaluator:
     def _mask(self, where: _Range, criterion) -> np.ndarray:
         key = (where.key, type(criterion).__name__, criterion)
         if key not in self.masks:
-            self.masks[key] = np.array([_matches(v, criterion) for v in where.values], dtype=bool)
+            if where.key not in self.columns:
+                self.columns[where.key] = _Column(where.values)
+            self.masks[key] = self.columns[where.key].mask(criterion)
         return self.masks[key]
 
 
