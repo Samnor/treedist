@@ -12,6 +12,7 @@ judge it; INFO is worth knowing but asks nothing; OK says a check passed.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,7 +25,8 @@ from .config import Config
 from .contract import STEM, TABLES
 from .core.allocate import CERTAINTY_TIERS, BrokenAssumption, close_month
 from .core.ledger import Ledger, previous_period
-from .schema import AO, BRUTTO, DEST, DIA, LEN, LOGS, PRODUCED, PRODUCED_FOR, SORT, VINTAGE, VOL
+from .schema import (AO, BRUTTO, DEST, DIA, LANDING, LEN, LOAD_ID, LOGS, NO_DESTINATION, PRODUCED, PRODUCED_FOR, SORT,
+                     VINTAGE, VOL)
 
 FEL, VARNING, INFO, OK = "FEL", "VARNING", "INFO", "OK"
 # A closed contract object whose delivered and harvested volume differ by more than this.
@@ -71,6 +73,7 @@ def check(
     findings += _dates(inputs.harvest, inputs.deliveries)
     findings += _late(inputs.deliveries, period)
     findings += _destinations(inputs)
+    findings += _no_value(inputs)
     if outside_text(inputs):
         findings.append(Finding(INFO, "matning", outside_text(inputs)))
     findings += _stems(raw.get("avverkningsformer"), inputs)
@@ -325,6 +328,34 @@ def _destinations(inputs) -> list[Finding]:
         findings.append(Finding(VARNING, "matning", f"{share:.0%} av volymen är producerad för en mottagningsplats som "
                                 f"inte finns i månadens produktion: {unknown[:3]}, produktionen har {sorted(known)[:3]}. "
                                 "Skrivs id olika i produktion och mätning?"))
+    return findings
+
+
+# What a source writes where it has no value: a data warehouse's key for a missing row (-1, 0) or a word for it. An
+# empty value stops the month; one of these is read as an id, and the wood is booked on a stock, an avtalsobjekt or a
+# mill that does not exist.
+NO_VALUE = re.compile(r"-\d+|0+|-+|\?+|#?n/?a|nan|null|none|nil|saknas|okänd|okand|unknown|missing|ej angiven",
+                      re.IGNORECASE)
+
+
+def _no_value(inputs) -> list[Finding]:
+    findings = []
+    tables = (("produktion", inputs.harvest, [AO, PRODUCED, PRODUCED_FOR, LANDING]),
+              ("matning", inputs.deliveries, [LOAD_ID, AO, SORT, PRODUCED, DEST, PRODUCED_FOR, LANDING]))
+    for table, frame, columns in tables:
+        total = float(frame[VOL].abs().sum())
+        for column in columns:
+            text = frame[column].astype(str).str.strip()
+            # The validation writes its own mark where an optional place is missing.
+            hit = text.str.fullmatch(NO_VALUE) & ~((column == LANDING) & (text == NO_DESTINATION))
+            if not hit.any():
+                continue
+            share = f", {float(frame.loc[hit, VOL].abs().sum()) / total:.0%} av volymen" if total > 0 else ""
+            values = ", ".join(repr(v) for v in sorted(set(text[hit]))[:3])
+            findings.append(Finding(VARNING, table, f"{column} är {values} på {int(hit.sum())} rader{share}. Det ser ut "
+                                    "som källans värde för en uppgift som saknas, och treedist läser det som ett id: "
+                                    "virket bokas på ett lager, ett avtalsobjekt eller en mottagningsplats som inte "
+                                    "finns. Gör värdet tomt i källan, så att en uppgift som saknas stoppar kontrollen"))
     return findings
 
 

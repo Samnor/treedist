@@ -57,6 +57,8 @@ MISTAKES = [
     ("makulerade lass med", '[matning.filter]\nStatus = "Godkänd"\n', ""),
     ("diameter som klassmitt", "diameterklass = 0.1   # mm -> cm", "diameterklass = 0.1   # mm -> cm\n# MITT"),
     ("antal stockar från fel kolumn", 'antal_stockar = "AntalStockar"', 'antal_stockar = "DiamKlassMM"'),
+    # A data warehouse's key for a missing value, read as an id: the wood lands in a stock of its own.
+    ("saknat värde skrivet som -1 i producerat för", 'avverkningsdatum = "FallDatum"', 'avverkningsdatum = "FallDatum"\n# SAKNAS'),
     # From the first round's control.
     # The sortiment matched against the production; an inmätt sortiment that is wrong is not noticed by check.
     ("mottagare som sortiment", 'producerat_handelssortiment = "KapatSortiment"',
@@ -98,6 +100,14 @@ def _mistake_source(tmp: Path, edits: list[tuple[str, str]]) -> Path:
             harvest["DiamKlassMM"] = (harvest["DiamKlassMM"].astype(int) + 5).astype(str)
             harvest.to_csv(export / f"produktion_{PERIOD}.csv", sep=";", index=False)
             new = new.replace("\n# MITT", "")
+        if new.endswith("# SAKNAS"):
+            # Every sixth harvester row lacks the mill it was cut for, and the export writes the key -1.
+            export = tmp / "export"
+            shutil.copytree(EXAMPLE / "export", export, dirs_exist_ok=True)
+            harvest = pd.read_csv(export / f"produktion_{PERIOD}.csv", sep=";", dtype=str)
+            harvest.loc[harvest.index % 6 == 0, "KapadFor"] = "-1"
+            harvest.to_csv(export / f"produktion_{PERIOD}.csv", sep=";", index=False)
+            new = new.replace("\n# SAKNAS", "")
         if old not in text:
             raise SystemExit(f"Felkatalogen passar inte längre kalla.toml: {old!r}")
         text = text.replace(old, new)

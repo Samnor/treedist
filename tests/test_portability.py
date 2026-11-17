@@ -229,3 +229,22 @@ def test_check_refuses_a_negative_unit_count(tmp_path):
     )
     findings = check("2026-01", Config(), source=adapter)
     assert "antal_matenheter är negativt på 1 rader" in messages(findings, FEL)
+
+
+def test_check_notices_a_missing_value_written_as_a_key(tmp_path):
+    # A data warehouse writes -1 where the harvester gave no mill. Read as an id it is a stock no load takes from.
+    harvest = pd.read_csv(DEMO / "produktion_2026-01.csv", dtype=str)
+    harvest.loc[harvest.index % 6 == 0, "producerat_for_mottagningsplats"] = "-1"
+    harvest.to_csv(tmp_path / "produktion.csv", index=False)
+    files = {**demo_files("2026-01"), "produktion": tmp_path / "produktion.csv"}
+    said = messages(check("2026-01", Config(), files=files), VARNING)
+    assert "producerat_for_mottagningsplats är '-1' på" in said and "17% av volymen" in said
+    assert "uppgift som saknas" not in messages(check("2026-01", Config(), files=demo_files("2026-01")), VARNING)
+
+
+@pytest.mark.parametrize("value, missing", [("-1", True), ("0", True), ("Okänd", True), ("N/A", True), ("-", True),
+                                             ("4102", False), ("AO-1", False), ("S0", False), ("10", False)])
+def test_only_a_value_that_stands_for_none_is_taken_for_missing(value, missing):
+    from treedist.check import NO_VALUE
+
+    assert bool(NO_VALUE.fullmatch(value)) is missing

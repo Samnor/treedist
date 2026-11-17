@@ -236,6 +236,22 @@ utvecklingsuppgifter, två körningar var, med AGENTS.md före och efter:
 - **Missen var slump.** Den var i kreditfällan `t_kredit`. Riktat, fyra körningar med varje version, klarades den
   4 av 4 både före och efter.
 
+### Ett värde för saknas, läst som ett id (2026-11-18)
+
+Ett datalager skriver ofta en egen nyckel där en uppgift saknas, till exempel `-1`. I produktionens producerat för
+mottagningsplats gick det igenom både `check` och `run` utan anmärkning: virket bokades på ett lager med det namnet,
+som inga lass tar ur, och mer av den levererade volymen blev uppskattning (S2). Ett tomt värde stoppar däremot.
+Felet planterades i felkatalogen, på var sjätte rad i exempelkällans produktion, innan kontrollen skrevs.
+
+| Steg | Felkatalog | Falsklarm |
+|---|---|---|
+| Baslinje med det nya felet | 17 av 18 | 0 |
+| Negativa heltal, bara nollor, bara streck eller frågetecken och ord som `okänd`, `saknas`, `null` och `n/a` i en id-kolumn ger `VARNING`, med antal rader och andel av volymen | 18 av 18 | 0 |
+
+Kontrollen gav inget larm på exempelkällorna eller på facit för 24 av bänkens källor, utvecklings- och kontrolluppgifter.
+De två historikuppgifterna har facit per månad och prövades inte. Den är en varning och inte ett stopp, eftersom ett
+riktigt id kan råka se ut som ett sådant värde. Ingen ny kontrollkatalog skrevs för steget.
+
 ## Det som `check` ännu inte ser
 
 - **Fel kolumn som id i arbetsordertabellen.** Missen i kontroll 2. Kan fångas genom att kräva att avtalsobjekten

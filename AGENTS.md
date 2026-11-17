@@ -188,6 +188,7 @@ kopian bygger på. Vid en ny version av treedist: gör om kopian från den nya v
 | Vilken dag gäller en tidpunkt i UTC? | Dagen i svensk tid | Datumet i UTC, så att nattlass hamnar dagen före |
 | Vilken medelstam? | Volym per avverkat träd i m3fub, per avverkningsform i `avverkningsformer` | dm3, eller en enda medelstam för hela avtalsobjektet när den har flera avverkningsformer |
 | Vad gör jag med köpt virke, import och terminalvirke? | Ta med raderna och sätt `utan_avverkning` till `true`, ur avtalsobjektets typ. Bilagan anger då volymen utanför matrisen | Att filtrera bort dem, så att bilagan säger sig visa all volym till sågverket, eller att märka avverkningar som saknar skördardata, så att ett fel i källan döljs |
+| Vad skriver jag där källan saknar en uppgift? | Tomt värde. En obligatorisk uppgift som saknas stoppar då kontrollen, och hämtas ur VIOL 3 | Källans eget värde för saknas, som `-1`, `0` eller `Okänd`. treedist läser det som ett id: skörd utan producerat för mottagningsplats blir ett lager som inga lass tar ur, och mer volym blir uppskattning. `check` varnar för det |
 | Hur läser egna skript utdata och liggare? | Med alla kolumner som text, `dtype=str` | Att låta pandas gissa, så att ledande nollor försvinner och klasser blir flyttal |
 
 ## Klart betyder
