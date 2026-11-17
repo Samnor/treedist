@@ -1,0 +1,40 @@
+[project]
+name = "treedist"
+version = "0.10.0"
+description = "Fördelningsmatriser för virke levererat till sågverk, från skördar- och leveransmätningar av olika säkerhet"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0",
+    "openpyxl>=3.1",
+    "pandas>=2.2",
+]
+
+[project.urls]
+Repository = "https://github.com/Samnor/treedist"
+
+[project.scripts]
+treedist = "treedist.cli:main"
+
+[dependency-groups]
+dev = [
+    "formulas>=1.3.4",
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/treedist"]
+
+# What `treedist init`, `--modell` and `treedist selftest` read; see src/treedist/resources.py.
+[tool.hatch.build.targets.wheel.force-include]
+"modeller" = "treedist/_data/modeller"
+"examples" = "treedist/_data/examples"
+"tests/golden" = "treedist/_data/facit"
+"AGENTS.md" = "treedist/_data/AGENTS.md"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

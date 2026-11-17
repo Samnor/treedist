@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+dist/
+out/
+state/
+# The setup climb's raw log; its results are in docs/portabilitet.md.
+climb/setup_logg.jsonl

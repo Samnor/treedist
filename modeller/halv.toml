@@ -1,0 +1,75 @@
+# Modell halv. Kör med --modell halv; se scripts/modell.py.
+
+harvester_bias = 0
+handling_loss = 0
+oldest_first = true
+draw_gross = false
+stock_per_destination = false
+stock_per_landing = false
+draw_per_day = false
+design_effect = 200.0
+default_log_volume = 0.25
+pool_remaining_share = 0.5
+finite_population = false
+volume_error = false
+log_counts = true
+intervals = true
+mc_draws = 2000
+seed = 20261102
+
+[volume_methods.stockmatning]
+unit_cv = 0.043
+default_units = 150
+systematic_sd = 0.0005
+
+[volume_methods.travmatning]
+unit_cv = 0.051
+default_units = 3
+systematic_sd = 0.0015
+
+[volume_methods.vagning]
+unit_cv = 0.069
+default_units = 3
+systematic_sd = 0.005
+
+[volume_methods.skordarmatning]
+unit_cv = 0.05
+default_units = 150
+systematic_sd = 0.005
+
+[volume_methods.okand]
+unit_cv = 0.08
+default_units = 1
+systematic_sd = 0.02
+
+[modell]
+namn = "halv"
+beskrivning = "Enkel + äldsta först och lätta intervall: brus efter effektivt antal stockar, utan ändlighetskorrektion och volymfel"
+kod = "c1cc805+ändrad"
+sparad = "2026-11-10"
+delar = 6
+delar_av = 15
+anvanda_delar = ["liggare", "aldst_forst", "S2", "dirichlet", "design_effect", "default_log_volume"]
+prisfel = 9.05
+prisfel_naiv = 41.53
+prestanda = 0.871
+varde_90 = 0.901
+poang = 13.389
+standardens_prisfel = 4.23
+kontroll_prisfel = 8.91
+kontroll_prestanda = 0.87
+kontroll_varde_90 = 0.897
+
+[modell.prestanda_per_scenario]
+"avlägg kända" = 0.975
+"bas" = 0.999
+"delade arbetsordrar" = 0.31
+"destination oberoende av grovlek" = 0.999
+"stora skillnader inom AO" = 0.997
+
+[modell.kontroll_prestanda_per_scenario]
+"avlägg kända" = 0.966
+"bas" = 0.999
+"delade arbetsordrar" = 0.334
+"destination oberoende av grovlek" = 0.999
+"stora skillnader inom AO" = 0.997

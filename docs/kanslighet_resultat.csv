@@ -1,0 +1,22 @@
+scenario,metod,index_matris,prisfel,kum_prisfel,varde_90,andel_s1
+bas,A liggare,0.0577,4.3751,1.0848,0.95,0.9755
+bas,B faltning,0.116,24.0227,,,
+bas,Naiv,0.181,40.4245,,,
+"leverans efter skörd året runt, lång lagring",A liggare,0.0594,4.9025,0.9248,0.91,0.9911
+"leverans efter skörd året runt, lång lagring",B faltning,0.0996,18.6578,,,
+"leverans efter skörd året runt, lång lagring",Naiv,0.2093,46.5202,,,
+leverans under pågående skörd året runt,A liggare,0.0536,2.9988,1.1666,0.9542,0.9695
+leverans under pågående skörd året runt,B faltning,0.1273,27.6484,,,
+leverans under pågående skörd året runt,Naiv,0.1618,32.936,,,
+lång lagring,A liggare,0.0582,4.3601,0.9581,0.9275,0.9833
+lång lagring,B faltning,0.1212,25.7602,,,
+lång lagring,Naiv,0.2077,48.2718,,,
+destination oberoende av grovlek,A liggare,0.0559,4.1617,1.1391,0.9504,0.9755
+destination oberoende av grovlek,B faltning,0.1379,32.7913,,,
+destination oberoende av grovlek,Naiv,0.1981,46.637,,,
+mindre arbetsordrar,A liggare,0.0637,4.0123,1.1384,0.9692,0.9717
+mindre arbetsordrar,B faltning,0.1074,19.146,,,
+mindre arbetsordrar,Naiv,0.144,26.4799,,,
+20 % omdirigerat,A liggare,0.0557,4.1526,1.5431,0.9504,0.9749
+20 % omdirigerat,B faltning,0.1525,39.3437,,,
+20 % omdirigerat,Naiv,0.1979,48.8527,,,

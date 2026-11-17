@@ -1,0 +1,56 @@
+# Mappning från ett påhittat källsystems export till treedists tabeller, som har VIOL 3:s termer.
+# Kör: treedist check --period 2026-01 --kalla examples/kalla/kalla.toml
+# Kontraktets namn står till vänster, källans till höger. Se `treedist kontrakt`.
+# Källan har egna termer: dess arbetsorder är VIOL 3:s avtalsobjekt, och J/N säger om transporten är avslutad.
+
+[produktion]
+fil = "export/produktion_{period}.csv"
+separator = ";"
+datumformat = "%Y%m%d"
+
+[produktion.kolumner]
+avtalsobjekt = "AO_Nr"                       # källans arbetsorder
+producerat_handelssortiment = "Sortiment"
+producerat_for_mottagningsplats = "KapadFor"  # mottagningsplatsen virket kapades för
+diameterklass = "DiamKlassMM"
+langdklass = "LangdKlassCM"
+volym_m3fub = "VolymFub"
+antal_stockar = "AntalStockar"
+avverkningsdatum = "FallDatum"
+
+[produktion.enheter]
+diameterklass = 0.1   # mm -> cm
+
+[matning]
+fil = "export/inmatning_{period}.csv"
+separator = ";"
+datumformat = "%Y%m%d"
+
+[matning.kolumner]
+leveransnummer = "Lassnr"
+avtalsobjekt = "AO_Nr"
+handelssortiment = "InmattSortiment"             # det inmätta, som faktureras
+producerat_handelssortiment = "KapatSortiment"   # det skördaren kapade
+mottagningsplats = "Mottagare"                   # där leveransen mättes in
+producerat_for_mottagningsplats = "KapadFor"     # den virket kapades för: lagret lasset hämtades ur
+leveransdatum = "TransportDatum"   # dagen lasset kördes, inte RedovisningDatum
+matdatum = "MatDatum"              # dagen leveransen mättes in
+volym_m3fub = "NettoFub"
+brutto_m3fub = "BruttoFub"
+matmetod = "Matmetod"
+antal_matenheter = "AntalEnheter"
+
+[matning.filter]
+Status = "Godkänd"
+
+[avtalsobjekt]
+fil = "export/arbetsordrar_{period}.csv"
+separator = ";"
+
+[avtalsobjekt.kolumner]
+avtalsobjekt = "AO"
+transport_avslutad = "TransportKlar"
+
+[avtalsobjekt.koder.transport_avslutad]
+"J" = "true"
+"N" = "false"

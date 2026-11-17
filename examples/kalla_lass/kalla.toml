@@ -1,0 +1,22 @@
+# Prototyp: mätningen nämner bara lasset; vilket avtalsobjekt lasset kom från står i en annan fil.
+# Kör: treedist check --period 2026-01 --kalla examples/kalla_lass/kalla.toml
+# Utgå från den här när en kolumn som kontraktet kräver finns i en annan fil än tabellen.
+
+[produktion]
+fil = "../demo/produktion_{period}.csv"   # redan i treedists format: bara fil behövs
+
+[matning]
+fil = "export/inmatning_{period}.csv"
+
+# Kolumnerna i lass_ao läggs till på varje rad i mätningen, matchade på lassnumret. Varje rad måste få
+# exakt en träff: ett lass som saknas i filen, eller som står där med två olika avtalsobjekt, stoppar.
+[[matning.koppla]]
+fil = "export/lass_ao_{period}.csv"
+nyckel = "Lass"   # samma namn i båda filerna; annars ["namnet i mätningen", "namnet i lass_ao"]
+
+[matning.kolumner]
+leveransnummer = "Lass"
+avtalsobjekt = "AO"   # från lass_ao, genom kopplingen
+
+[avtalsobjekt]
+fil = "../demo/avtalsobjekt_{period}.csv"

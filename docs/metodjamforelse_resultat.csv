@@ -1,0 +1,7 @@
+scenario,metod,index_matris,index_diameter,prisfel,cell_90,varde_90,andel_s1,kum_index,kum_prisfel,ao_index_S1,ao_index_S2
+bas,A liggare,0.0579,0.0346,4.2995,0.9821,0.9271,0.9779,0.0232,1.0133,0.0453,
+bas,B faltning,0.119,0.1034,24.1575,,,,,,,
+bas,Naiv,0.1803,0.1594,40.4842,,,,,,,
+stora skillnader inom AO,A liggare,0.075,0.0532,6.8187,0.9567,0.8617,0.9732,0.0369,2.1353,0.0644,0.4477
+stora skillnader inom AO,B faltning,0.1559,0.1431,33.87,,,,,,,
+stora skillnader inom AO,Naiv,0.2247,0.2079,48.5519,,,,,,,

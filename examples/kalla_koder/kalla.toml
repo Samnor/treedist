@@ -1,0 +1,34 @@
+# Prototyp: sortimenten är sifferkoder, och mätningen tar bort prefixet AO från avtalsobjektet.
+# Kör: treedist check --period 2026-01 --kalla examples/kalla_koder/kalla.toml
+# Utgå från den här när en källa skriver koder i stället för namn, eller skriver id annorlunda än de andra tabellerna.
+
+[produktion]
+fil = "export/produktion_{period}.csv"
+
+# Koderna översätts till de namn som de andra tabellerna använder, här ur en fil.
+# En kod som inte finns i filen stoppar, så att inget sortiment tappas tyst.
+[produktion.koder.producerat_handelssortiment]
+fil = "export/sortimentskoder.csv"
+fran = "kod"
+till = "namn"
+
+[matning]
+fil = "export/inmatning_{period}.csv"
+
+# Samma översättning, här skriven direkt i mappningen: "kod" = "namn".
+[matning.koder.handelssortiment]
+"110" = "TALL_SAG"
+"210" = "GRAN_SAG"
+
+[matning.koder.producerat_handelssortiment]
+"110" = "TALL_SAG"
+"210" = "GRAN_SAG"
+
+# Mätningen skriver 00012 där produktionen och avtalsobjekten skriver AO00012. Skriv om till deras form.
+[matning.format.avtalsobjekt]
+prefix = "AO"     # läggs till där det saknas
+# ta_bort = "..."   tar bort ett prefix där det finns
+# bredd = 5         fyller på med nollor framför till så många tecken
+
+[avtalsobjekt]
+fil = "../demo/avtalsobjekt_{period}.csv"

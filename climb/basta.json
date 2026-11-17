@@ -1,0 +1,11 @@
+{
+  "overrides": {},
+  "utveckling": {
+    "poang": 5.961,
+    "prisfel": 4.23,
+    "felindex": 0.0593,
+    "varde_90": 0.936
+  },
+  "skal": "Baslinje med diameterklasser om 1 cm i simulatorn, mätt 2026-11-10",
+  "kod": "c1cc805+ändrad"
+}

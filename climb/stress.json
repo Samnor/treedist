@@ -1,0 +1,2125 @@
+{
+ "referens": "standard-2026-11-09",
+ "seeds": [
+  501,
+  502,
+  503,
+  504,
+  505,
+  506
+ ],
+ "rader": [
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "bas",
+   "seed": 501,
+   "prisfel": 4.733654022038239,
+   "prisfel_naiv": 31.510208784843996,
+   "varde_90": 0.9133333333333333
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "bas",
+   "seed": 502,
+   "prisfel": 4.317095608360115,
+   "prisfel_naiv": 31.610965034681527,
+   "varde_90": 0.9233333333333335
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "bas",
+   "seed": 503,
+   "prisfel": 4.433297146893008,
+   "prisfel_naiv": 40.07690743194458,
+   "varde_90": 0.9400000000000001
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "bas",
+   "seed": 504,
+   "prisfel": 4.324333210543515,
+   "prisfel_naiv": 33.95903923219328,
+   "varde_90": 0.9550000000000001
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "bas",
+   "seed": 505,
+   "prisfel": 3.6275859703351685,
+   "prisfel_naiv": 25.063984078362406,
+   "varde_90": 0.95
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "bas",
+   "seed": 506,
+   "prisfel": 5.411089224162572,
+   "prisfel_naiv": 48.358176944502986,
+   "varde_90": 0.8516666666666666
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 501,
+   "prisfel": 4.8683587748027035,
+   "prisfel_naiv": 31.510619843019253,
+   "varde_90": 0.93
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 502,
+   "prisfel": 4.463562809456288,
+   "prisfel_naiv": 31.611541365334443,
+   "varde_90": 0.9433333333333334
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 503,
+   "prisfel": 4.443632220811224,
+   "prisfel_naiv": 40.077108600360106,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 504,
+   "prisfel": 4.338882894063885,
+   "prisfel_naiv": 33.95942497416327,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 505,
+   "prisfel": 3.73499796400239,
+   "prisfel_naiv": 25.06392746932706,
+   "varde_90": 0.9500000000000002
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 506,
+   "prisfel": 5.4612587586533055,
+   "prisfel_naiv": 48.35781898964649,
+   "varde_90": 0.9099999999999999
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "5 % spill vid hantering",
+   "seed": 501,
+   "prisfel": 4.935508261041278,
+   "prisfel_naiv": 31.651384557884228,
+   "varde_90": 0.9466666666666667
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "5 % spill vid hantering",
+   "seed": 502,
+   "prisfel": 4.549518224681828,
+   "prisfel_naiv": 31.629436469683053,
+   "varde_90": 0.9433333333333334
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "5 % spill vid hantering",
+   "seed": 503,
+   "prisfel": 4.509053917153897,
+   "prisfel_naiv": 40.00891996344019,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "5 % spill vid hantering",
+   "seed": 504,
+   "prisfel": 4.304248823299979,
+   "prisfel_naiv": 33.974172113335854,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "5 % spill vid hantering",
+   "seed": 505,
+   "prisfel": 3.8791399983591597,
+   "prisfel_naiv": 25.13041496020907,
+   "varde_90": 0.9666666666666668
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "5 % spill vid hantering",
+   "seed": 506,
+   "prisfel": 5.4684448240439885,
+   "prisfel_naiv": 48.32340765618441,
+   "varde_90": 0.8766666666666666
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 501,
+   "prisfel": 4.724984479298948,
+   "prisfel_naiv": 31.697495581079956,
+   "varde_90": 0.9133333333333333
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 502,
+   "prisfel": 4.290824451008726,
+   "prisfel_naiv": 31.601563912584616,
+   "varde_90": 0.9233333333333335
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 503,
+   "prisfel": 4.511143656491415,
+   "prisfel_naiv": 40.109555515472564,
+   "varde_90": 0.9600000000000002
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 504,
+   "prisfel": 4.338096993946365,
+   "prisfel_naiv": 33.96123607500071,
+   "varde_90": 0.9383333333333335
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 505,
+   "prisfel": 3.660320105294924,
+   "prisfel_naiv": 25.049889853120384,
+   "varde_90": 0.95
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 506,
+   "prisfel": 5.491149149268953,
+   "prisfel_naiv": 48.5196389353144,
+   "varde_90": 0.8516666666666666
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "lång eftersläpning",
+   "seed": 501,
+   "prisfel": 4.424048169373387,
+   "prisfel_naiv": 42.0243219353445,
+   "varde_90": 0.9133333333333334
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "lång eftersläpning",
+   "seed": 502,
+   "prisfel": 4.630907727729948,
+   "prisfel_naiv": 32.61880389703204,
+   "varde_90": 0.9183333333333333
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "lång eftersläpning",
+   "seed": 503,
+   "prisfel": 4.7481834836118315,
+   "prisfel_naiv": 43.24931104239528,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "lång eftersläpning",
+   "seed": 504,
+   "prisfel": 4.051736866111048,
+   "prisfel_naiv": 36.87745881679232,
+   "varde_90": 0.8633333333333333
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "lång eftersläpning",
+   "seed": 505,
+   "prisfel": 4.970289756951226,
+   "prisfel_naiv": 34.21937518567412,
+   "varde_90": 0.9
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "lång eftersläpning",
+   "seed": 506,
+   "prisfel": 6.187220080361928,
+   "prisfel_naiv": 62.21389144154516,
+   "varde_90": 0.8766666666666666
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "40 % rapporteras sent",
+   "seed": 501,
+   "prisfel": 5.4085551412496065,
+   "prisfel_naiv": 30.478761174958095,
+   "varde_90": 0.93
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "40 % rapporteras sent",
+   "seed": 502,
+   "prisfel": 5.152514446665823,
+   "prisfel_naiv": 30.66766272577949,
+   "varde_90": 0.8899999999999999
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "40 % rapporteras sent",
+   "seed": 503,
+   "prisfel": 5.118991918381068,
+   "prisfel_naiv": 38.161815342337434,
+   "varde_90": 0.9233333333333335
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "40 % rapporteras sent",
+   "seed": 504,
+   "prisfel": 6.585078142769265,
+   "prisfel_naiv": 34.14287690951933,
+   "varde_90": 0.9433333333333334
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "40 % rapporteras sent",
+   "seed": 505,
+   "prisfel": 4.545994751787533,
+   "prisfel_naiv": 24.983465530040935,
+   "varde_90": 0.9083333333333334
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "40 % rapporteras sent",
+   "seed": 506,
+   "prisfel": 6.716720130024706,
+   "prisfel_naiv": 43.742590616283124,
+   "varde_90": 0.8533333333333333
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "25 % omdirigeras",
+   "seed": 501,
+   "prisfel": 4.216900272814292,
+   "prisfel_naiv": 44.06446542166779,
+   "varde_90": 0.93
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "25 % omdirigeras",
+   "seed": 502,
+   "prisfel": 4.6221434395109045,
+   "prisfel_naiv": 61.648394409113074,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "25 % omdirigeras",
+   "seed": 503,
+   "prisfel": 5.801179040594609,
+   "prisfel_naiv": 38.41357410247416,
+   "varde_90": 0.8799999999999999
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "25 % omdirigeras",
+   "seed": 504,
+   "prisfel": 4.400301421467306,
+   "prisfel_naiv": 57.156103518541215,
+   "varde_90": 0.9083333333333332
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "25 % omdirigeras",
+   "seed": 505,
+   "prisfel": 3.9974572290324724,
+   "prisfel_naiv": 52.095399567909354,
+   "varde_90": 0.9633333333333333
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "25 % omdirigeras",
+   "seed": 506,
+   "prisfel": 3.399913269075248,
+   "prisfel_naiv": 40.797678661439484,
+   "varde_90": 0.9666666666666668
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "mest travmätning",
+   "seed": 501,
+   "prisfel": 4.749114579184474,
+   "prisfel_naiv": 31.510208784843996,
+   "varde_90": 0.95
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "mest travmätning",
+   "seed": 502,
+   "prisfel": 4.272860271317202,
+   "prisfel_naiv": 31.610965034681527,
+   "varde_90": 0.93
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "mest travmätning",
+   "seed": 503,
+   "prisfel": 4.394738916951566,
+   "prisfel_naiv": 40.07690743194458,
+   "varde_90": 0.9633333333333333
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "mest travmätning",
+   "seed": 504,
+   "prisfel": 4.334777356168983,
+   "prisfel_naiv": 33.95903923219328,
+   "varde_90": 0.9550000000000001
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "mest travmätning",
+   "seed": 505,
+   "prisfel": 3.653399228924905,
+   "prisfel_naiv": 25.063984078362406,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "mest travmätning",
+   "seed": 506,
+   "prisfel": 5.4054230771722,
+   "prisfel_naiv": 48.358176944502986,
+   "varde_90": 0.8766666666666666
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "klumpiga avlägg",
+   "seed": 501,
+   "prisfel": 6.801844687558995,
+   "prisfel_naiv": 43.97409174492012,
+   "varde_90": 0.8683333333333334
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "klumpiga avlägg",
+   "seed": 502,
+   "prisfel": 5.953537227758305,
+   "prisfel_naiv": 34.66137593992244,
+   "varde_90": 0.8583333333333334
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "klumpiga avlägg",
+   "seed": 503,
+   "prisfel": 7.167464481009562,
+   "prisfel_naiv": 32.339874893207295,
+   "varde_90": 0.8833333333333332
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "klumpiga avlägg",
+   "seed": 504,
+   "prisfel": 7.722514861323442,
+   "prisfel_naiv": 34.68289760428131,
+   "varde_90": 0.8233333333333333
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "klumpiga avlägg",
+   "seed": 505,
+   "prisfel": 5.263430647096031,
+   "prisfel_naiv": 41.42474550245737,
+   "varde_90": 0.9000000000000001
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "klumpiga avlägg",
+   "seed": 506,
+   "prisfel": 7.955008164147751,
+   "prisfel_naiv": 38.16908807655234,
+   "varde_90": 0.8966666666666667
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "små arbetsordrar",
+   "seed": 501,
+   "prisfel": 2.403400497620273,
+   "prisfel_naiv": 24.699391440240152,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "små arbetsordrar",
+   "seed": 502,
+   "prisfel": 2.85398006732147,
+   "prisfel_naiv": 33.88474474867827,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "små arbetsordrar",
+   "seed": 503,
+   "prisfel": 3.0619100458342565,
+   "prisfel_naiv": 28.7759455530934,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "små arbetsordrar",
+   "seed": 504,
+   "prisfel": 2.628033851904984,
+   "prisfel_naiv": 25.808882278710634,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "små arbetsordrar",
+   "seed": 505,
+   "prisfel": 2.873440491844812,
+   "prisfel_naiv": 19.528513878164006,
+   "varde_90": 0.9666666666666666
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "små arbetsordrar",
+   "seed": 506,
+   "prisfel": 2.810177869670335,
+   "prisfel_naiv": 23.461169062516287,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "stora diameterfel",
+   "seed": 501,
+   "prisfel": 7.966989969928521,
+   "prisfel_naiv": 31.397259470268448,
+   "varde_90": 0.74
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "stora diameterfel",
+   "seed": 502,
+   "prisfel": 7.859150054717145,
+   "prisfel_naiv": 32.62603532534,
+   "varde_90": 0.7999999999999999
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "stora diameterfel",
+   "seed": 503,
+   "prisfel": 7.340371684342014,
+   "prisfel_naiv": 41.46281659940469,
+   "varde_90": 0.8233333333333333
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "stora diameterfel",
+   "seed": 504,
+   "prisfel": 8.724554132186213,
+   "prisfel_naiv": 33.43522869295016,
+   "varde_90": 0.7366666666666667
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "stora diameterfel",
+   "seed": 505,
+   "prisfel": 7.24342677211334,
+   "prisfel_naiv": 24.560922723197557,
+   "varde_90": 0.7583333333333333
+  },
+  {
+   "modell": "standard-2026-11-09",
+   "scenario": "stora diameterfel",
+   "seed": 506,
+   "prisfel": 8.972402888729668,
+   "prisfel_naiv": 48.954842450878026,
+   "varde_90": 0.745
+  },
+  {
+   "modell": "halv",
+   "scenario": "bas",
+   "seed": 501,
+   "prisfel": 4.8274757893180995,
+   "prisfel_naiv": 31.510208784843996,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv",
+   "scenario": "bas",
+   "seed": 502,
+   "prisfel": 4.431538337593086,
+   "prisfel_naiv": 31.610965034681527,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv",
+   "scenario": "bas",
+   "seed": 503,
+   "prisfel": 4.426285545205388,
+   "prisfel_naiv": 40.07690743194458,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "bas",
+   "seed": 504,
+   "prisfel": 4.337259817200673,
+   "prisfel_naiv": 33.95903923219328,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "bas",
+   "seed": 505,
+   "prisfel": 3.6996566213790514,
+   "prisfel_naiv": 25.063984078362406,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "bas",
+   "seed": 506,
+   "prisfel": 5.441317770750915,
+   "prisfel_naiv": 48.358176944502986,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 501,
+   "prisfel": 4.982460298963876,
+   "prisfel_naiv": 31.510619843019253,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 502,
+   "prisfel": 4.579846915515618,
+   "prisfel_naiv": 31.611541365334443,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 503,
+   "prisfel": 4.5178444189358755,
+   "prisfel_naiv": 40.077108600360106,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 504,
+   "prisfel": 4.381344621660722,
+   "prisfel_naiv": 33.95942497416327,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 505,
+   "prisfel": 3.8609820935190498,
+   "prisfel_naiv": 25.06392746932706,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 506,
+   "prisfel": 5.513423700139006,
+   "prisfel_naiv": 48.35781898964649,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "5 % spill vid hantering",
+   "seed": 501,
+   "prisfel": 5.043875464717335,
+   "prisfel_naiv": 31.651384557884228,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv",
+   "scenario": "5 % spill vid hantering",
+   "seed": 502,
+   "prisfel": 4.708656203355575,
+   "prisfel_naiv": 31.629436469683053,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv",
+   "scenario": "5 % spill vid hantering",
+   "seed": 503,
+   "prisfel": 4.567760297300547,
+   "prisfel_naiv": 40.00891996344019,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "5 % spill vid hantering",
+   "seed": 504,
+   "prisfel": 4.324228664266164,
+   "prisfel_naiv": 33.974172113335854,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "5 % spill vid hantering",
+   "seed": 505,
+   "prisfel": 4.011780395764652,
+   "prisfel_naiv": 25.13041496020907,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "5 % spill vid hantering",
+   "seed": 506,
+   "prisfel": 5.504405754217532,
+   "prisfel_naiv": 48.32340765618441,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 501,
+   "prisfel": 5.186557768313861,
+   "prisfel_naiv": 31.697495581079956,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 502,
+   "prisfel": 4.987317870567708,
+   "prisfel_naiv": 31.601563912584616,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 503,
+   "prisfel": 4.8496152329700335,
+   "prisfel_naiv": 40.109555515472564,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 504,
+   "prisfel": 4.663895035653415,
+   "prisfel_naiv": 33.96123607500071,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 505,
+   "prisfel": 4.174028930627307,
+   "prisfel_naiv": 25.049889853120384,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 506,
+   "prisfel": 5.633354010298598,
+   "prisfel_naiv": 48.5196389353144,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "lång eftersläpning",
+   "seed": 501,
+   "prisfel": 4.4308931831077984,
+   "prisfel_naiv": 42.0243219353445,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "lång eftersläpning",
+   "seed": 502,
+   "prisfel": 4.711691019704252,
+   "prisfel_naiv": 32.61880389703204,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv",
+   "scenario": "lång eftersläpning",
+   "seed": 503,
+   "prisfel": 4.6828747971642155,
+   "prisfel_naiv": 43.24931104239528,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "lång eftersläpning",
+   "seed": 504,
+   "prisfel": 4.031268671950363,
+   "prisfel_naiv": 36.87745881679232,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "lång eftersläpning",
+   "seed": 505,
+   "prisfel": 4.972963666048484,
+   "prisfel_naiv": 34.21937518567412,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "lång eftersläpning",
+   "seed": 506,
+   "prisfel": 6.229533236875214,
+   "prisfel_naiv": 62.21389144154516,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "40 % rapporteras sent",
+   "seed": 501,
+   "prisfel": 5.436854771939852,
+   "prisfel_naiv": 30.478761174958095,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv",
+   "scenario": "40 % rapporteras sent",
+   "seed": 502,
+   "prisfel": 5.159012673561047,
+   "prisfel_naiv": 30.66766272577949,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv",
+   "scenario": "40 % rapporteras sent",
+   "seed": 503,
+   "prisfel": 5.106875379295139,
+   "prisfel_naiv": 38.161815342337434,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "40 % rapporteras sent",
+   "seed": 504,
+   "prisfel": 6.597915133691529,
+   "prisfel_naiv": 34.14287690951933,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "40 % rapporteras sent",
+   "seed": 505,
+   "prisfel": 4.6193591646674825,
+   "prisfel_naiv": 24.983465530040935,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv",
+   "scenario": "40 % rapporteras sent",
+   "seed": 506,
+   "prisfel": 6.73801387937296,
+   "prisfel_naiv": 43.742590616283124,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "25 % omdirigeras",
+   "seed": 501,
+   "prisfel": 4.253067586155081,
+   "prisfel_naiv": 44.06446542166779,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "25 % omdirigeras",
+   "seed": 502,
+   "prisfel": 4.781604896833879,
+   "prisfel_naiv": 61.648394409113074,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "25 % omdirigeras",
+   "seed": 503,
+   "prisfel": 5.76964781661465,
+   "prisfel_naiv": 38.41357410247416,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv",
+   "scenario": "25 % omdirigeras",
+   "seed": 504,
+   "prisfel": 4.50454862221861,
+   "prisfel_naiv": 57.156103518541215,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv",
+   "scenario": "25 % omdirigeras",
+   "seed": 505,
+   "prisfel": 3.9965024378733824,
+   "prisfel_naiv": 52.095399567909354,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "25 % omdirigeras",
+   "seed": 506,
+   "prisfel": 3.523512516500566,
+   "prisfel_naiv": 40.797678661439484,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "mest travmätning",
+   "seed": 501,
+   "prisfel": 4.832719834355077,
+   "prisfel_naiv": 31.510208784843996,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv",
+   "scenario": "mest travmätning",
+   "seed": 502,
+   "prisfel": 4.3976991332586275,
+   "prisfel_naiv": 31.610965034681527,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv",
+   "scenario": "mest travmätning",
+   "seed": 503,
+   "prisfel": 4.401455192664433,
+   "prisfel_naiv": 40.07690743194458,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv",
+   "scenario": "mest travmätning",
+   "seed": 504,
+   "prisfel": 4.347889640483519,
+   "prisfel_naiv": 33.95903923219328,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "mest travmätning",
+   "seed": 505,
+   "prisfel": 3.733873195172142,
+   "prisfel_naiv": 25.063984078362406,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "mest travmätning",
+   "seed": 506,
+   "prisfel": 5.429894739387404,
+   "prisfel_naiv": 48.358176944502986,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "klumpiga avlägg",
+   "seed": 501,
+   "prisfel": 7.0424945669093075,
+   "prisfel_naiv": 43.97409174492012,
+   "varde_90": 0.975
+  },
+  {
+   "modell": "halv",
+   "scenario": "klumpiga avlägg",
+   "seed": 502,
+   "prisfel": 6.298212171665892,
+   "prisfel_naiv": 34.66137593992244,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "klumpiga avlägg",
+   "seed": 503,
+   "prisfel": 7.386971903018351,
+   "prisfel_naiv": 32.339874893207295,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "klumpiga avlägg",
+   "seed": 504,
+   "prisfel": 8.177752436990714,
+   "prisfel_naiv": 34.68289760428131,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv",
+   "scenario": "klumpiga avlägg",
+   "seed": 505,
+   "prisfel": 5.768309401333938,
+   "prisfel_naiv": 41.42474550245737,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv",
+   "scenario": "klumpiga avlägg",
+   "seed": 506,
+   "prisfel": 8.574237155287644,
+   "prisfel_naiv": 38.16908807655234,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv",
+   "scenario": "små arbetsordrar",
+   "seed": 501,
+   "prisfel": 2.435985079849867,
+   "prisfel_naiv": 24.699391440240152,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "små arbetsordrar",
+   "seed": 502,
+   "prisfel": 2.8882414271094565,
+   "prisfel_naiv": 33.88474474867827,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "små arbetsordrar",
+   "seed": 503,
+   "prisfel": 3.203319229564088,
+   "prisfel_naiv": 28.7759455530934,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "små arbetsordrar",
+   "seed": 504,
+   "prisfel": 2.6273872683486723,
+   "prisfel_naiv": 25.808882278710634,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "små arbetsordrar",
+   "seed": 505,
+   "prisfel": 2.8701813070964883,
+   "prisfel_naiv": 19.528513878164006,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "små arbetsordrar",
+   "seed": 506,
+   "prisfel": 2.8148223644598387,
+   "prisfel_naiv": 23.461169062516287,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "stora diameterfel",
+   "seed": 501,
+   "prisfel": 8.017368720461914,
+   "prisfel_naiv": 31.397259470268448,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv",
+   "scenario": "stora diameterfel",
+   "seed": 502,
+   "prisfel": 8.002614137671497,
+   "prisfel_naiv": 32.62603532534,
+   "varde_90": 0.9633333333333333
+  },
+  {
+   "modell": "halv",
+   "scenario": "stora diameterfel",
+   "seed": 503,
+   "prisfel": 7.285190529750915,
+   "prisfel_naiv": 41.46281659940469,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "stora diameterfel",
+   "seed": 504,
+   "prisfel": 8.606199470619229,
+   "prisfel_naiv": 33.43522869295016,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "stora diameterfel",
+   "seed": 505,
+   "prisfel": 7.30238756995451,
+   "prisfel_naiv": 24.560922723197557,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv",
+   "scenario": "stora diameterfel",
+   "seed": 506,
+   "prisfel": 8.966986817961361,
+   "prisfel_naiv": 48.954842450878026,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "bas",
+   "seed": 501,
+   "prisfel": 4.8274757893180995,
+   "prisfel_naiv": 31.510208784843996,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "bas",
+   "seed": 502,
+   "prisfel": 4.431538337593086,
+   "prisfel_naiv": 31.610965034681527,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "bas",
+   "seed": 503,
+   "prisfel": 4.426285545205388,
+   "prisfel_naiv": 40.07690743194458,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "bas",
+   "seed": 504,
+   "prisfel": 4.337259817200673,
+   "prisfel_naiv": 33.95903923219328,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "bas",
+   "seed": 505,
+   "prisfel": 3.6996566213790514,
+   "prisfel_naiv": 25.063984078362406,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "bas",
+   "seed": 506,
+   "prisfel": 5.441317770750915,
+   "prisfel_naiv": 48.358176944502986,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 501,
+   "prisfel": 4.982460298963876,
+   "prisfel_naiv": 31.510619843019253,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 502,
+   "prisfel": 4.579846915515618,
+   "prisfel_naiv": 31.611541365334443,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 503,
+   "prisfel": 4.5178444189358755,
+   "prisfel_naiv": 40.077108600360106,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 504,
+   "prisfel": 4.381344621660722,
+   "prisfel_naiv": 33.95942497416327,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 505,
+   "prisfel": 3.8609820935190498,
+   "prisfel_naiv": 25.06392746932706,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 506,
+   "prisfel": 5.513423700139006,
+   "prisfel_naiv": 48.35781898964649,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "5 % spill vid hantering",
+   "seed": 501,
+   "prisfel": 5.043875464717335,
+   "prisfel_naiv": 31.651384557884228,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "5 % spill vid hantering",
+   "seed": 502,
+   "prisfel": 4.708656203355575,
+   "prisfel_naiv": 31.629436469683053,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "5 % spill vid hantering",
+   "seed": 503,
+   "prisfel": 4.567760297300547,
+   "prisfel_naiv": 40.00891996344019,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "5 % spill vid hantering",
+   "seed": 504,
+   "prisfel": 4.324228664266164,
+   "prisfel_naiv": 33.974172113335854,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "5 % spill vid hantering",
+   "seed": 505,
+   "prisfel": 4.011780395764652,
+   "prisfel_naiv": 25.13041496020907,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "5 % spill vid hantering",
+   "seed": 506,
+   "prisfel": 5.504405754217532,
+   "prisfel_naiv": 48.32340765618441,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 501,
+   "prisfel": 5.186557768313861,
+   "prisfel_naiv": 31.697495581079956,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 502,
+   "prisfel": 4.987317870567708,
+   "prisfel_naiv": 31.601563912584616,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 503,
+   "prisfel": 4.8496152329700335,
+   "prisfel_naiv": 40.109555515472564,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 504,
+   "prisfel": 4.663895035653415,
+   "prisfel_naiv": 33.96123607500071,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 505,
+   "prisfel": 4.174028930627307,
+   "prisfel_naiv": 25.049889853120384,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 506,
+   "prisfel": 5.633354010298598,
+   "prisfel_naiv": 48.5196389353144,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "lång eftersläpning",
+   "seed": 501,
+   "prisfel": 4.4308931831077984,
+   "prisfel_naiv": 42.0243219353445,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "lång eftersläpning",
+   "seed": 502,
+   "prisfel": 4.711691019704252,
+   "prisfel_naiv": 32.61880389703204,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "lång eftersläpning",
+   "seed": 503,
+   "prisfel": 4.6828747971642155,
+   "prisfel_naiv": 43.24931104239528,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "lång eftersläpning",
+   "seed": 504,
+   "prisfel": 4.031268671950363,
+   "prisfel_naiv": 36.87745881679232,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "lång eftersläpning",
+   "seed": 505,
+   "prisfel": 4.972963666048484,
+   "prisfel_naiv": 34.21937518567412,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "lång eftersläpning",
+   "seed": 506,
+   "prisfel": 6.229533236875214,
+   "prisfel_naiv": 62.21389144154516,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "40 % rapporteras sent",
+   "seed": 501,
+   "prisfel": 5.436854771939852,
+   "prisfel_naiv": 30.478761174958095,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "40 % rapporteras sent",
+   "seed": 502,
+   "prisfel": 5.159012673561047,
+   "prisfel_naiv": 30.66766272577949,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "40 % rapporteras sent",
+   "seed": 503,
+   "prisfel": 5.106875379295139,
+   "prisfel_naiv": 38.161815342337434,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "40 % rapporteras sent",
+   "seed": 504,
+   "prisfel": 6.597915133691529,
+   "prisfel_naiv": 34.14287690951933,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "40 % rapporteras sent",
+   "seed": 505,
+   "prisfel": 4.6193591646674825,
+   "prisfel_naiv": 24.983465530040935,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "40 % rapporteras sent",
+   "seed": 506,
+   "prisfel": 6.73801387937296,
+   "prisfel_naiv": 43.742590616283124,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "25 % omdirigeras",
+   "seed": 501,
+   "prisfel": 4.253067586155081,
+   "prisfel_naiv": 44.06446542166779,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "25 % omdirigeras",
+   "seed": 502,
+   "prisfel": 4.781604896833879,
+   "prisfel_naiv": 61.648394409113074,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "25 % omdirigeras",
+   "seed": 503,
+   "prisfel": 5.76964781661465,
+   "prisfel_naiv": 38.41357410247416,
+   "varde_90": 0.9633333333333333
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "25 % omdirigeras",
+   "seed": 504,
+   "prisfel": 4.50454862221861,
+   "prisfel_naiv": 57.156103518541215,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "25 % omdirigeras",
+   "seed": 505,
+   "prisfel": 3.9965024378733824,
+   "prisfel_naiv": 52.095399567909354,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "25 % omdirigeras",
+   "seed": 506,
+   "prisfel": 3.523512516500566,
+   "prisfel_naiv": 40.797678661439484,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "mest travmätning",
+   "seed": 501,
+   "prisfel": 4.832719834355077,
+   "prisfel_naiv": 31.510208784843996,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "mest travmätning",
+   "seed": 502,
+   "prisfel": 4.3976991332586275,
+   "prisfel_naiv": 31.610965034681527,
+   "varde_90": 0.9800000000000001
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "mest travmätning",
+   "seed": 503,
+   "prisfel": 4.401455192664433,
+   "prisfel_naiv": 40.07690743194458,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "mest travmätning",
+   "seed": 504,
+   "prisfel": 4.347889640483519,
+   "prisfel_naiv": 33.95903923219328,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "mest travmätning",
+   "seed": 505,
+   "prisfel": 3.733873195172142,
+   "prisfel_naiv": 25.063984078362406,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "mest travmätning",
+   "seed": 506,
+   "prisfel": 5.429894739387404,
+   "prisfel_naiv": 48.358176944502986,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "klumpiga avlägg",
+   "seed": 501,
+   "prisfel": 7.0424945669093075,
+   "prisfel_naiv": 43.97409174492012,
+   "varde_90": 0.975
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "klumpiga avlägg",
+   "seed": 502,
+   "prisfel": 6.298212171665892,
+   "prisfel_naiv": 34.66137593992244,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "klumpiga avlägg",
+   "seed": 503,
+   "prisfel": 7.386971903018351,
+   "prisfel_naiv": 32.339874893207295,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "klumpiga avlägg",
+   "seed": 504,
+   "prisfel": 8.177752436990714,
+   "prisfel_naiv": 34.68289760428131,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "klumpiga avlägg",
+   "seed": 505,
+   "prisfel": 5.768309401333938,
+   "prisfel_naiv": 41.42474550245737,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "klumpiga avlägg",
+   "seed": 506,
+   "prisfel": 8.574237155287644,
+   "prisfel_naiv": 38.16908807655234,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "små arbetsordrar",
+   "seed": 501,
+   "prisfel": 2.435985079849867,
+   "prisfel_naiv": 24.699391440240152,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "små arbetsordrar",
+   "seed": 502,
+   "prisfel": 2.8882414271094565,
+   "prisfel_naiv": 33.88474474867827,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "små arbetsordrar",
+   "seed": 503,
+   "prisfel": 3.203319229564088,
+   "prisfel_naiv": 28.7759455530934,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "små arbetsordrar",
+   "seed": 504,
+   "prisfel": 2.6273872683486723,
+   "prisfel_naiv": 25.808882278710634,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "små arbetsordrar",
+   "seed": 505,
+   "prisfel": 2.8701813070964883,
+   "prisfel_naiv": 19.528513878164006,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "små arbetsordrar",
+   "seed": 506,
+   "prisfel": 2.8148223644598387,
+   "prisfel_naiv": 23.461169062516287,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "stora diameterfel",
+   "seed": 501,
+   "prisfel": 8.017368720461914,
+   "prisfel_naiv": 31.397259470268448,
+   "varde_90": 0.9833333333333334
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "stora diameterfel",
+   "seed": 502,
+   "prisfel": 8.002614137671497,
+   "prisfel_naiv": 32.62603532534,
+   "varde_90": 0.9633333333333333
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "stora diameterfel",
+   "seed": 503,
+   "prisfel": 7.285190529750915,
+   "prisfel_naiv": 41.46281659940469,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "stora diameterfel",
+   "seed": 504,
+   "prisfel": 8.606199470619229,
+   "prisfel_naiv": 33.43522869295016,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "stora diameterfel",
+   "seed": 505,
+   "prisfel": 7.30238756995451,
+   "prisfel_naiv": 24.560922723197557,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "halv-volym",
+   "scenario": "stora diameterfel",
+   "seed": 506,
+   "prisfel": 8.966986817961361,
+   "prisfel_naiv": 48.954842450878026,
+   "varde_90": 1.0
+  },
+  {
+   "modell": "enkel",
+   "scenario": "bas",
+   "seed": 501,
+   "prisfel": 5.690180733177156,
+   "prisfel_naiv": 31.510208784843996,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "bas",
+   "seed": 502,
+   "prisfel": 5.2840668287088555,
+   "prisfel_naiv": 31.610965034681527,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "bas",
+   "seed": 503,
+   "prisfel": 5.238390066166536,
+   "prisfel_naiv": 40.07690743194458,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "bas",
+   "seed": 504,
+   "prisfel": 5.207090262212391,
+   "prisfel_naiv": 33.95903923219328,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "bas",
+   "seed": 505,
+   "prisfel": 4.015518912521117,
+   "prisfel_naiv": 25.063984078362406,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "bas",
+   "seed": 506,
+   "prisfel": 5.55049413716539,
+   "prisfel_naiv": 48.358176944502986,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 501,
+   "prisfel": 5.690199853871269,
+   "prisfel_naiv": 31.510619843019253,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 502,
+   "prisfel": 5.280946615344921,
+   "prisfel_naiv": 31.611541365334443,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 503,
+   "prisfel": 5.248847966031513,
+   "prisfel_naiv": 40.077108600360106,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 504,
+   "prisfel": 5.222630495207314,
+   "prisfel_naiv": 33.95942497416327,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 505,
+   "prisfel": 4.02308754014796,
+   "prisfel_naiv": 25.06392746932706,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "skördaren mäter 5 % för mycket",
+   "seed": 506,
+   "prisfel": 5.535049765114463,
+   "prisfel_naiv": 48.35781898964649,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "5 % spill vid hantering",
+   "seed": 501,
+   "prisfel": 5.644720162960544,
+   "prisfel_naiv": 31.651384557884228,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "5 % spill vid hantering",
+   "seed": 502,
+   "prisfel": 5.339406405230329,
+   "prisfel_naiv": 31.629436469683053,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "5 % spill vid hantering",
+   "seed": 503,
+   "prisfel": 5.315942547119292,
+   "prisfel_naiv": 40.00891996344019,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "5 % spill vid hantering",
+   "seed": 504,
+   "prisfel": 5.212970520455611,
+   "prisfel_naiv": 33.974172113335854,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "5 % spill vid hantering",
+   "seed": 505,
+   "prisfel": 4.076655955730358,
+   "prisfel_naiv": 25.13041496020907,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "5 % spill vid hantering",
+   "seed": 506,
+   "prisfel": 5.554243305088439,
+   "prisfel_naiv": 48.32340765618441,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 501,
+   "prisfel": 5.663134683082538,
+   "prisfel_naiv": 31.697495581079956,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 502,
+   "prisfel": 5.269917158915801,
+   "prisfel_naiv": 31.601563912584616,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 503,
+   "prisfel": 5.328571344866399,
+   "prisfel_naiv": 40.109555515472564,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 504,
+   "prisfel": 5.33006081200845,
+   "prisfel_naiv": 33.96123607500071,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 505,
+   "prisfel": 4.044527798605927,
+   "prisfel_naiv": 25.049889853120384,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "10 % skillnad brutto–netto",
+   "seed": 506,
+   "prisfel": 5.592525921952896,
+   "prisfel_naiv": 48.5196389353144,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "lång eftersläpning",
+   "seed": 501,
+   "prisfel": 4.824914479224658,
+   "prisfel_naiv": 42.0243219353445,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "lång eftersläpning",
+   "seed": 502,
+   "prisfel": 5.085996276482942,
+   "prisfel_naiv": 32.61880389703204,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "lång eftersläpning",
+   "seed": 503,
+   "prisfel": 5.119884392545564,
+   "prisfel_naiv": 43.24931104239528,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "lång eftersläpning",
+   "seed": 504,
+   "prisfel": 4.619140323776972,
+   "prisfel_naiv": 36.87745881679232,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "lång eftersläpning",
+   "seed": 505,
+   "prisfel": 5.36123435245291,
+   "prisfel_naiv": 34.21937518567412,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "lång eftersläpning",
+   "seed": 506,
+   "prisfel": 6.451893200151273,
+   "prisfel_naiv": 62.21389144154516,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "40 % rapporteras sent",
+   "seed": 501,
+   "prisfel": 5.678785863687914,
+   "prisfel_naiv": 30.478761174958095,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "40 % rapporteras sent",
+   "seed": 502,
+   "prisfel": 5.762824990988264,
+   "prisfel_naiv": 30.66766272577949,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "40 % rapporteras sent",
+   "seed": 503,
+   "prisfel": 5.565180727703959,
+   "prisfel_naiv": 38.161815342337434,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "40 % rapporteras sent",
+   "seed": 504,
+   "prisfel": 6.738539003735719,
+   "prisfel_naiv": 34.14287690951933,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "40 % rapporteras sent",
+   "seed": 505,
+   "prisfel": 4.829622151696438,
+   "prisfel_naiv": 24.983465530040935,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "40 % rapporteras sent",
+   "seed": 506,
+   "prisfel": 6.811484316391538,
+   "prisfel_naiv": 43.742590616283124,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "25 % omdirigeras",
+   "seed": 501,
+   "prisfel": 5.061827941542943,
+   "prisfel_naiv": 44.06446542166779,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "25 % omdirigeras",
+   "seed": 502,
+   "prisfel": 6.203251625480634,
+   "prisfel_naiv": 61.648394409113074,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "25 % omdirigeras",
+   "seed": 503,
+   "prisfel": 6.3159260091952145,
+   "prisfel_naiv": 38.41357410247416,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "25 % omdirigeras",
+   "seed": 504,
+   "prisfel": 5.1015216998786475,
+   "prisfel_naiv": 57.156103518541215,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "25 % omdirigeras",
+   "seed": 505,
+   "prisfel": 4.699685158363957,
+   "prisfel_naiv": 52.095399567909354,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "25 % omdirigeras",
+   "seed": 506,
+   "prisfel": 4.137460625073797,
+   "prisfel_naiv": 40.797678661439484,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "mest travmätning",
+   "seed": 501,
+   "prisfel": 5.720647602158577,
+   "prisfel_naiv": 31.510208784843996,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "mest travmätning",
+   "seed": 502,
+   "prisfel": 5.2726345498129294,
+   "prisfel_naiv": 31.610965034681527,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "mest travmätning",
+   "seed": 503,
+   "prisfel": 5.2320937005840005,
+   "prisfel_naiv": 40.07690743194458,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "mest travmätning",
+   "seed": 504,
+   "prisfel": 5.194753554351082,
+   "prisfel_naiv": 33.95903923219328,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "mest travmätning",
+   "seed": 505,
+   "prisfel": 4.027627505179796,
+   "prisfel_naiv": 25.063984078362406,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "mest travmätning",
+   "seed": 506,
+   "prisfel": 5.543671496344085,
+   "prisfel_naiv": 48.358176944502986,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "klumpiga avlägg",
+   "seed": 501,
+   "prisfel": 12.448723466617121,
+   "prisfel_naiv": 43.97409174492012,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "klumpiga avlägg",
+   "seed": 502,
+   "prisfel": 8.9387589961165,
+   "prisfel_naiv": 34.66137593992244,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "klumpiga avlägg",
+   "seed": 503,
+   "prisfel": 8.972569542793767,
+   "prisfel_naiv": 32.339874893207295,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "klumpiga avlägg",
+   "seed": 504,
+   "prisfel": 9.333204356148006,
+   "prisfel_naiv": 34.68289760428131,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "klumpiga avlägg",
+   "seed": 505,
+   "prisfel": 14.45868333229403,
+   "prisfel_naiv": 41.42474550245737,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "klumpiga avlägg",
+   "seed": 506,
+   "prisfel": 11.438409578196502,
+   "prisfel_naiv": 38.16908807655234,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "små arbetsordrar",
+   "seed": 501,
+   "prisfel": 3.2142753684467587,
+   "prisfel_naiv": 24.699391440240152,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "små arbetsordrar",
+   "seed": 502,
+   "prisfel": 3.7830630866909574,
+   "prisfel_naiv": 33.88474474867827,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "små arbetsordrar",
+   "seed": 503,
+   "prisfel": 3.577409449560247,
+   "prisfel_naiv": 28.7759455530934,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "små arbetsordrar",
+   "seed": 504,
+   "prisfel": 3.157984345863301,
+   "prisfel_naiv": 25.808882278710634,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "små arbetsordrar",
+   "seed": 505,
+   "prisfel": 3.4098045393877134,
+   "prisfel_naiv": 19.528513878164006,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "små arbetsordrar",
+   "seed": 506,
+   "prisfel": 2.9749743463519147,
+   "prisfel_naiv": 23.461169062516287,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "stora diameterfel",
+   "seed": 501,
+   "prisfel": 8.73375346541977,
+   "prisfel_naiv": 31.397259470268448,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "stora diameterfel",
+   "seed": 502,
+   "prisfel": 8.442925856449795,
+   "prisfel_naiv": 32.62603532534,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "stora diameterfel",
+   "seed": 503,
+   "prisfel": 7.98601510855824,
+   "prisfel_naiv": 41.46281659940469,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "stora diameterfel",
+   "seed": 504,
+   "prisfel": 9.214954986439283,
+   "prisfel_naiv": 33.43522869295016,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "stora diameterfel",
+   "seed": 505,
+   "prisfel": 7.379792687474915,
+   "prisfel_naiv": 24.560922723197557,
+   "varde_90": NaN
+  },
+  {
+   "modell": "enkel",
+   "scenario": "stora diameterfel",
+   "seed": 506,
+   "prisfel": 9.167646640159784,
+   "prisfel_naiv": 48.954842450878026,
+   "varde_90": NaN
+  }
+ ]
+}
