@@ -231,7 +231,7 @@ diameter- eller längdklass.
 | `startplats` | Nej | Avlägget leveransen hämtades från |
 | `matmetod` | Nej | `stockmatning`, `travmatning`, `vagning`, `skordarmatning` eller `okand` |
 | `antal_matenheter` | Nej | Antal stockar eller travar i leveransen |
-| `utan_avverkning` | Nej | `true` för virke som inte kommer från någon avverkning i underlaget: köpt virke, import eller virke från terminal. Det fördelas inte, och bilagan anger volymen utanför matrisen |
+| `utan_avverkning` | Nej | `true` för virke som inte kommer från någon avverkning i underlaget: virke köpt färdigavverkat, import eller virke från terminal. Det fördelas inte, och bilagan anger volymen utanför matrisen |
 | `anskaffningsform` | Nej | Anskaffningsformen som bilagan ska visa den, till exempel egen skog, virkesköp eller import. En per avtalsobjekt. Ger bilagan en del som visar varifrån virket kommer |
 
 Ett lass tar ur lagret för den mottagningsplats det producerades för och bokas där det mättes in. Räcker inte det

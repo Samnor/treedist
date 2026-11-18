@@ -115,14 +115,16 @@ Det enda stickprovet är litet: vid ett sågverk en månad hade alla 297 par av 
 Hela datan ger ett tydligare svar, i två delar [D11]:
 
 - **Avverkat virke har skördardata.** Bland arbetsordrar som är avverkningar saknar 67 av 6 817 stockdata, 0,3 % av
-  deras levererade volym.
+  deras levererade volym. Anskaffningsformen ändrar det lite [D12]: på egen skog saknar 40 av 5 860 avverkningar
+  stockdata, 0,2 % av volymen, och på virkesköp 27 av 1 058, 1,0 %.
 - **Mycket virke är inte avverkat i systemet.** 28 % av den levererade volymen ligger på arbetsordrar som enligt sin
   typ inte har någon produktion: centrala köp, egen terminal, virkesköp utan produktion och import. Ytterligare
   1,5 % är grotskotning.
 
 Antagandet att allt virke kommer från skördare med skördardata håller alltså inte för hela flödet. Det håller för
-det avverkade virket, och det övriga går att känna igen på arbetsorderns typ. Talen gäller alla sortiment; hur stor
-del av sågtimret till ett sågverk som saknar avverkning är inte mätt.
+det avverkade virket, och det övriga går att känna igen på arbetsorderns typ. Anskaffningsformen räcker inte för det:
+virkesköp som är avverkningar har skördardata, och egen skog som är grotskotning har det aldrig [D12]. Talen gäller
+alla sortiment; hur stor del av sågtimret till ett sågverk som saknar avverkning är inte mätt.
 
 Beslutat 2026-11-17: bilagan täcker bara avverkat virke och säger det. Källan tar med det övriga virket och märker
 det `utan_avverkning` ur arbetsorderns typ. treedist håller det utanför matriserna, och bilagan anger hur stor del
@@ -233,3 +235,4 @@ antal.
 | D9 | Hur förhåller sig producerat för och destinerad mottagningsplats i produktionen? | 73,9 miljoner stockar fällda från 2026-01-01, i 5 976 arbetsordrar. De två kolumnerna har samma värde på 0,3 % av stockarna. Ingen är tom; saknas har ett eget värde. Räknat per arbetsorder har 57 % mer än ett värde på producerat för och 88 % mer än ett på destinerad, men värdet för saknas är troligen medräknat som en plats, och talen gäller alla sortiment |
 | D10 | Hur stor del av en arbetsorders volym går till dess största mottagningsplats? | Leveranser körda från 2026-01-01, 20 002 arbetsordrar och 7,1 miljoner m3fub: medel 84 %, median 100 %, kvartiler 64 % och 100 %, volymvägt 64 %. Produktion fälld från 2026-01-01, 5 976 arbetsordrar och 5,0 miljoner m3fub: för producerat för medel 84 %, median 99,9 %, kvartiler 66 % och 100 %, volymvägt 80 %; för destinerad medel 70 %, median 70 %, volymvägt 68 %. Alla sortiment, och värdet för saknas är troligen räknat som en plats |
 | D11 | Vilka arbetsordrar med leveranser saknar stockdata? | Leveranser körda från 2026-01-01, alla sortiment: 20 002 arbetsordrar och 7,1 miljoner m3fub. 13 252 arbetsordrar saknar stockdata, 2,09 miljoner m3fub, 29 %. Av den volymen: centrala köp utan produktion 73 % (11 904 arbetsordrar), egen terminal 11 % (48), virkesköp utan produktion 5 % (527), import 5 % (22), grotskotning 5 % (684), avverkning utan skördardata 0,8 % (67 arbetsordrar, 15 900 m3fub). 6 750 arbetsordrar har stockdata. 1 694 av de 20 002 levererade första gången före 2026 |
+| D12 | Påverkar anskaffningsformen om stockdata finns? | Leveranser redovisade under 2026 mot all stockdata för arbetsordern, alla sortiment. Avverkning: egen skog 5 860 arbetsordrar, 40 utan stockdata (0,7 %), 8 900 m3fub (0,2 % av volymen); virkesköp 1 058, 27 utan (2,6 %), 7 200 m3fub (1,0 %); centrala virkesköp 62, 1 utan, 0 m3fub netto. Grotskotning: 691 arbetsordrar, alla utan, 107 000 m3fub. Utan produktion: centrala köp 12 049, egen terminal 47 och import 22 arbetsordrar, alla utan, 1,88 miljoner m3fub. I de tre sortiment som granskades för ett sågverk saknade inget virkesköp stockdata under året, och i en månad hade alla 59 par av arbetsorder och sortiment det |

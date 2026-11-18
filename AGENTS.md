@@ -94,13 +94,15 @@ Varje lass antas ha skördardata för sitt avtalsobjekt och sitt sortiment (de s
 gäller. Rätta källan efter antagandet som brast: id eller sortiment som skrivs olika i produktion och mätning, eller
 skördardata som inte kommit in. Ingen inställning kommer förbi stoppet.
 
-Virke som inte kommer från någon avverkning i underlaget, som köpt virke, import och virke från terminal, har ingen
-skördardata att fördelas efter. Ta med det i mätningen och sätt `utan_avverkning` till `true` på dess rader, och
-`false` på de andra. Då hålls det utanför matriserna, och bilagan säger hur stor del av sågverkets inmätta volym
-matrisen gäller. Filtrera inte bort det i källan: då tror bilagan att matrisen är all volym. Sätt värdet ur
-avtalsobjektets eller arbetsorderns typ, översatt med `koder`, aldrig ur att skördardata saknas: ett avtalsobjekt som
-är en avverkning men saknar skördardata ska stoppa. Ett avtalsobjekt är märkt på alla sina rader eller inga, och
-treedist stoppar ett märkt avtalsobjekt som har skördardata eller har fördelats en tidigare månad.
+Virke som inte kommer från någon avverkning i underlaget, som virke köpt färdigavverkat, import och virke från
+terminal, har ingen skördardata att fördelas efter. Ta med det i mätningen och sätt `utan_avverkning` till `true` på
+dess rader, och `false` på de andra. Då hålls det utanför matriserna, och bilagan säger hur stor del av sågverkets
+inmätta volym matrisen gäller. Filtrera inte bort det i källan: då tror bilagan att matrisen är all volym. Sätt värdet
+ur avtalsobjektets eller arbetsorderns typ, översatt med `koder`: är det en avverkning eller inte. Sätt det aldrig ur
+att skördardata saknas: ett avtalsobjekt som är en avverkning men saknar skördardata ska stoppa. Sätt det inte heller
+ur anskaffningsformen ensam: ett virkesköp som avverkades med skördare har skördardata och fördelas som egen skog. Ett
+avtalsobjekt är märkt på alla sina rader eller inga, och treedist stoppar ett märkt avtalsobjekt som har skördardata
+eller har fördelats en tidigare månad.
 
 Har källan anskaffningsform, ta med den i mätningens kolumn `anskaffningsform`, som den text bilagan ska visa, en
 per avtalsobjekt och på alla rader. Bilagan får då en del som visar sågverkets inmätta volym per anskaffningsform
@@ -191,7 +193,7 @@ kopian bygger på. Vid en ny version av treedist: gör om kopian från den nya v
 | Vad är `producerat_handelssortiment` i mätningen? | Leveransens egen uppgift om vad skördaren kapade; VIOL 3 har den per leverans. Samma som `handelssortiment` när virket mättes in som det producerades. Har källan en kodlista för det producerade och en annan för det inmätta, skriv om dem till samma namn med `koder` | Att härleda det ur produktionen, att sätta det inmätta när källan har det producerade, eller att lämna två kodlistor för samma sortiment, så att allt virke ser omklassat ut |
 | Vilken dag gäller en tidpunkt i UTC? | Dagen i svensk tid | Datumet i UTC, så att nattlass hamnar dagen före |
 | Vilken medelstam? | Volym per avverkat träd i m3fub, per avverkningsform i `avverkningsformer` | dm3, eller en enda medelstam för hela avtalsobjektet när den har flera avverkningsformer |
-| Vad gör jag med köpt virke, import och terminalvirke? | Ta med raderna och sätt `utan_avverkning` till `true`, ur avtalsobjektets typ. Bilagan anger då volymen utanför matrisen | Att filtrera bort dem, så att bilagan säger sig visa all volym till sågverket, eller att märka avverkningar som saknar skördardata, så att ett fel i källan döljs |
+| Vad gör jag med virke som köpts färdigavverkat, import och terminalvirke? | Ta med raderna och sätt `utan_avverkning` till `true`, ur avtalsobjektets typ, inte ur anskaffningsformen ensam. Bilagan anger då volymen utanför matrisen | Att filtrera bort dem, så att bilagan säger sig visa all volym till sågverket, eller att märka avverkningar som saknar skördardata, så att ett fel i källan döljs |
 | Vad skriver jag där källan saknar en uppgift? | Tomt värde. En obligatorisk uppgift som saknas stoppar då kontrollen, och hämtas ur VIOL 3. Tomt producerat för mottagningsplats i produktionen stoppar inte: virket tas av avtalsobjektets lass när deras egna lager är slut | Källans eget värde för saknas, som `-1`, `0` eller `Okänd`. treedist läser det som ett id: skörd utan producerat för mottagningsplats blir ett lager som inga lass tar ur, och mer volym blir uppskattning. `check` varnar för det |
 | Hur läser egna skript utdata och liggare? | Med alla kolumner som text, `dtype=str` | Att låta pandas gissa, så att ledande nollor försvinner och klasser blir flyttal |
 

@@ -190,9 +190,10 @@ volymbalansen när avtalsobjekt avslutas. Inget av detta är prövat på verklig
   all skördardata som rapporterats till och med månaden, också för virke som fälldes tidigare; annars saknar månadens
   lass skördardata och körningen stoppar. Börja minst sex månader före den första som ska faktureras, så att liggaren
   vet vad som redan levererats och har de lass som senare vänds.
-- **Virke utan avverkning fördelas inte.** Köpt virke, import och virke från terminal har ingen skördardata. Källan
-  märker det `utan_avverkning`, treedist håller det utanför matriserna, och bilagan anger hur stor del av sågverkets
-  inmätta volym matrisen gäller. Ett sågverk som bara fick sådant virke får ingen bilaga. Har källan
+- **Virke utan avverkning fördelas inte.** Virke köpt färdigavverkat, import och virke från terminal har ingen
+  skördardata. Källan märker det `utan_avverkning`, treedist håller det utanför matriserna, och bilagan anger hur stor
+  del av sågverkets inmätta volym matrisen gäller. Ett sågverk som bara fick sådant virke får ingen bilaga. Ett
+  virkesköp som avverkades med skördare har skördardata och fördelas som annat avverkat virke. Har källan
   `anskaffningsform` visar bilagan också den inmätta volymen per anskaffningsform, och vad av den som fördelades ur
   eget lager, som egen skörd i snitt eller står utanför matrisen.
 - **Omklassat virke antas vara ett slumpmässigt urval av lagret.** I verkligheten är det troligen de klenaste eller
