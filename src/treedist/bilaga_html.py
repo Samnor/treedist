@@ -1,7 +1,7 @@
 """The appendix as a printable page: the Builder that draws a mill's appendix (bilaga.py) as HTML.
 
     <out>/bilagor/<mill>.html   first the matrix of all volume delivered to the mill in the month; then a Sankey
-                                diagram from its assortments to where the distribution comes from, with the table
+                                diagram from where the distribution comes from to its assortments, with the table
                                 of sources; then the worked example of volume beyond the stock (exempel.py), the work
                                 orders behind the matrix, and every part in words
 
@@ -223,7 +223,7 @@ def _orders(b: Bilaga) -> str:
         + f"<td>{_felled(r)}</td>{_flagged(_diameters(r), drifted(r))}</tr>"
         for _, r in rows.iterrows())
     lead = orders_lead(rows, b.mean, planned)
-    return (f'<section class="orders"><h2>Avtalsobjekten bakom matrisen <span>· {escape(str(b.mill))} · '
+    return (f'<section class="orders"><h2>Avtalsobjekten bakom matrisen <span>· {escape(b.shown)} · '
             f'{sv(total)} m3fub</span></h2><p class="lead">{escape(lead)}</p><table><thead>'
             f"<tr><th rowspan=\"2\">Avtalsobjekt</th><th class=\"text\" rowspan=\"2\">Sortiment</th>"
             f"<th colspan=\"5\" class=\"group\">Till sågverket i månaden</th>"
@@ -265,9 +265,9 @@ def _origin_section(b: Bilaga) -> str:
             "</p></section>")
 
 
-def _guide(per_day: bool = False, coverage: str = "", origins: bool = False) -> str:
+def _guide(per_day: bool = False, coverage: str = "", origins: bool = False, measures: bool = True) -> str:
     items = "".join(f"<div><dt>{escape(term)}</dt><dd>{escape(text)}</dd></div>"
-                    for term, text in guide(PAGE_GUIDE, per_day, coverage, origins))
+                    for term, text in guide(PAGE_GUIDE, per_day, coverage, origins, measures))
     return f'<section class="guide"><h2>Så läser du bilagan</h2><dl>{items}</dl></section>'
 
 
@@ -328,14 +328,16 @@ def render(b: Bilaga) -> str:
         certainty = _origin_section(b) + "\n" + certainty
     orders = _orders(b) if len(b.rows) else ""
     example = _example(b) if b.total > 0.0005 else ""
-    title = f"Bilaga till faktura {b.period}, {b.mill}"
+    title = f"Bilaga till faktura {b.period}, {b.shown}"
+    # With a name as the heading, the id stands above it: it is what the invoice and the files are called by.
+    place = f" · Mottagningsplats {escape(str(b.mill))}" if b.name else ""
     return (
         f'<!doctype html>\n<html lang="sv"><head><meta charset="utf-8"><title>{escape(title)}</title>'
-        f"<style>{_CSS}{_running_mill(b.mill, b.period)}</style></head><body>\n<header><div class=\"eyebrow\">Bilaga till "
-        f'faktura · {b.period}</div><h1>{escape(str(b.mill))}</h1><p class="lead">{escape(intro(b))}</p></header>\n'
+        f"<style>{_CSS}{_running_mill(b.shown, b.period)}</style></head><body>\n<header><div class=\"eyebrow\">Bilaga till "
+        f'faktura · {b.period}{place}</div><h1>{escape(b.shown)}</h1><p class="lead">{escape(intro(b))}</p></header>\n'
         f'<section class="mill"><div class="matrix">{matrix}{changes_matrix_html(b.output, b.mill, b.layout)}</div>'
         f'<p class="note">{escape(matrix_note(b.output, b.mill, b.layout))}</p></section>\n'
-        f"{certainty}\n{example}\n{orders}\n{_guide(b.output.step.draw_per_day, coverage(b), bool(len(b.origins)))}\n"
+        f"{certainty}\n{example}\n{orders}\n{_guide(b.output.step.draw_per_day, coverage(b), bool(len(b.origins)), bool(len(b.measures)))}\n"
         f"<!-- treedist {__version__} -->\n</body></html>\n"
     )
 

@@ -29,14 +29,14 @@ Med pip, direkt från GitHub. Ange en version, så att metoden och de sparade mo
 pågående serie månader:
 
 ```bash
-pip install "treedist @ git+https://github.com/Samnor/treedist@v0.10.2"
+pip install "treedist @ git+https://github.com/Samnor/treedist@v0.10.3"
 ```
 
 Den raden kräver Git. Utan Git, till exempel på en nyinstallerad Windows-dator, installeras samma version från
 versionens zip-arkiv:
 
 ```bash
-pip install https://github.com/Samnor/treedist/archive/refs/tags/v0.10.2.zip
+pip install https://github.com/Samnor/treedist/archive/refs/tags/v0.10.3.zip
 ```
 
 `treedist init` lägger [AGENTS.md](AGENTS.md) och exemplen i en katalog, och `treedist selftest` kör demons
@@ -233,6 +233,7 @@ diameter- eller längdklass.
 | `antal_matenheter` | Nej | Antal stockar eller travar i leveransen |
 | `utan_avverkning` | Nej | `true` för virke som inte kommer från någon avverkning i underlaget: virke köpt färdigavverkat, import eller virke från terminal. Det fördelas inte, och bilagan anger volymen utanför matrisen |
 | `anskaffningsform` | Nej | Anskaffningsformen som bilagan ska visa den, till exempel egen skog, virkesköp eller import. En per avtalsobjekt. Ger bilagan en del som visar varifrån virket kommer |
+| `mottagningsplats_namn` | Nej | Mottagningsplatsens namn, som bilagan ska visa det. Ett per mottagningsplats. Bilagan får namnet som rubrik och id:t över; filerna heter alltid efter id:t |
 
 Ett lass tar ur lagret för den mottagningsplats det producerades för och bokas där det mättes in. Räcker inte det
 lagret är resten volym utöver lagret (S2); ett lass tar aldrig virke som kapades för en annan mottagningsplats.
@@ -288,7 +289,7 @@ handelssortiment tillsammans. Inledningen anger volymen per sortiment. Varje cel
 halv procent och `–` utan volym; summakolumnen är m3fub och summaraden m3fub, eller tusen m3fub när kolumnerna är
 stora. Krediterade lass från tidigare månader, lass som krediterats efter att de fakturerats, visas i en egen matris i
 m3fub, även den för alla sortiment. Efter matrisen förklarar bilagan hur den togs fram: ett Sankeydiagram från
-sågverkets handelssortiment till fördelningens två källor, samma volymer i en tabell, ett exempel i tre steg på hur
+fördelningens två källor till sågverkets handelssortiment, samma volymer i en tabell, ett exempel i tre steg på hur
 volym utöver lagret fördelas, avtalsobjekten bakom matrisen och en förklaring av varje del (se nedan).
 `treedist pdf --out out/2026-01` skriver
 ut månadens HTML-sidor som PDF med Edge eller Chrome och räknar sidorna; `TREEDIST_BROWSER` pekar ut en annan

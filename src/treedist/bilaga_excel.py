@@ -154,6 +154,8 @@ def add_sheets(book, b: Bilaga, allocated_rows: int) -> None:
         notes.append(f"{ORIGIN_SHEET}: all volym som mättes in vid sågverket under månaden per anskaffningsform, med "
                      "volymen utanför matrisen.")
     first = book["Läs först"]
+    if b.name:
+        first["A1"] = f"Bilaga till faktura {b.period}, {b.name} (mottagningsplats {b.mill})"
     for i, text in enumerate(notes):
         if i == 0:
             first.append([""])
@@ -173,8 +175,7 @@ def _origins(book, b: Bilaga) -> None:
 
     table = origin_table(b.origins)
     header = ["Anskaffningsform", *[f"{source_name(t)}, m3fub" for t in table.columns], "Summa, m3fub", "Andel"]
-    sheet = _start(book, ORIGIN_SHEET, "Varifrån virket kommer", origin_lead(b.origins).replace("Diagrammet", "Tabellen")
-                   .replace(", till vänster, och vad som hände med volymen, till höger", " och vad som hände med volymen"),
+    sheet = _start(book, ORIGIN_SHEET, "Varifrån virket kommer", origin_lead(b.origins, table=True),
                    header, {"A": 30})
     style = _fills()
     first, last = 5, 4 + len(table)

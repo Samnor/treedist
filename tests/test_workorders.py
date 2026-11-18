@@ -123,8 +123,8 @@ def test_the_appendix_has_the_matrix_first_then_how_it_was_found(mixed):  # noqa
                                            "Egen skörd i snitt: så fördelas volym utöver lagret",
                                            "Avtalsobjekten bakom matrisen", "Så läser du bilagan")]
     assert order == sorted(order)
-    # The left of the diagram is the mill's assortments, not the mills.
-    assert "Handelssortimenten, till vänster" in page and "Sågverken, till vänster" not in page
+    # The right of the diagram is the mill's assortments, not the mills.
+    assert "Handelssortimenten, till höger" in page and "Sågverken, till höger" not in page
 
 
 def test_wood_measured_in_as_another_assortment_shows_the_harvest_it_was_produced_as(cfg):

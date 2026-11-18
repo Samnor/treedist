@@ -140,8 +140,8 @@ def certainty_lead(volumes: pd.DataFrame, mill: str, table: bool = False) -> str
         return NOTHING_DELIVERED
     settled, beyond = float(volumes["S1"].sum()), float(volumes["S2"].sum())
     opening = (f"Tabellen visar hur matrisens {sv(total)} m3fub fördelades på klasser."
-               if table else f"Diagrammet visar matrisens {sv(total)} m3fub per handelssortiment, till vänster, och hur "
-               "volymen fördelades på klasser, till höger.")
+               if table else f"Diagrammet visar matrisens {sv(total)} m3fub från avverkning till leverans: till vänster "
+               "vad fördelningen på klasser bygger på, till höger handelssortimenten som mättes in vid sågverket.")
     if beyond <= 0.0005:
         return (f"{opening} All volym ryms i avtalsobjektens eget lager och är fördelad så som skördaren mätte "
                 "stockarna.")
@@ -196,7 +196,7 @@ def orders_lead(rows: pd.DataFrame, matrix_mean: float, planned: pd.Series) -> s
     lead = f"Matrisen bygger på virke från {plural(count)}."
     if count > 1:
         half = int((per_order.cumsum() < total / 2).sum()) + 1
-        lead += (f" Den största, {per_order.index[0]}, står för {percent(float(per_order.iloc[0]), total)} av volymen"
+        lead += (f" Det största, {per_order.index[0]}, står för {percent(float(per_order.iloc[0]), total)} av volymen"
                  + (f", och de {half} största tillsammans för minst hälften." if half > 1 else "."))
     if not pd.isna(matrix_mean):
         lead += f" Matrisens medeldiameter är {sv(matrix_mean)} cm." + _pull(rows, matrix_mean)
@@ -237,47 +237,63 @@ def source_name(tier: str) -> str:
     return APART_NAME if tier == APART else NAMES[tier]
 
 
-def origin_lead(rows: pd.DataFrame) -> str:
-    """What the diagram of anskaffningsformer shows, in words."""
+def origin_lead(rows: pd.DataFrame, table: bool = False) -> str:
+    """What the diagram of anskaffningsformer shows, in words. With `table`, the words open on the table instead, for
+    the workbook, which has no diagram."""
     total = float(rows[VOL].sum())
     apart = float(rows.loc[rows[TIER] == APART, VOL].sum())
-    lead = (f"Diagrammet visar de {sv(total)} m3fub som mättes in vid sågverket under månaden per anskaffningsform, "
-            "till vänster, och vad som hände med volymen, till höger.")
+    measured = f"de {sv(total)} m3fub som mättes in vid sågverket under månaden"
+    lead = (f"Tabellen visar {measured} per anskaffningsform, och vad volymens fördelning på klasser bygger på."
+            if table else f"Diagrammet visar {measured}: till vänster per anskaffningsform, till höger vad volymens "
+            "fördelning på klasser bygger på.")
     if apart <= 0.0005:
         return lead + " All volym kommer från avverkning med skördardata och ingår i matrisen."
     return (lead + f" {percent(total - apart, total)} kommer från avverkning med skördardata och ingår i matrisen. "
             f"Resten, {sv(apart)} m3fub, har ingen avverkning i underlaget och står utanför matrisen.")
 
 
-def coverage(b: Bilaga) -> str:
-    """How much of the wood measured at the mill the matrix stands for, when some of it comes from no harvest."""
+def coverage(b: Bilaga, short: bool = False) -> str:
+    """How much of the wood measured at the mill the matrix stands for, when some of it comes from no harvest. `short`
+    for the appendix's first words, which leave the why to the guide."""
     if b.outside <= 0.0005:
         return ""
     measured = b.total + b.outside
     held = b.outside_by[b.outside_by > 0.0005]
     per = ", ".join(f"{sortiment} {sv(volume)}" if len(held) > 1 else str(sortiment) for sortiment, volume in held.items())
-    return (f"Matrisen gäller virke från avverkning med skördardata: {sv(b.total)} av de {sv(measured)} m3fub som "
-            f"mättes in vid sågverket under månaden, {percent(b.total, measured)}. Resten, {sv(b.outside)} m3fub "
-            f"({per}), är virke utan avverkning i underlaget, till exempel köpt virke, import eller virke från "
-            "terminal. Mätningen anger dess handelssortiment men inga diameter- och längdklasser, så det ingår inte i "
-            "matrisen.")
+    opening = (f"Matrisen gäller virke från avverkning med skördardata: {sv(b.total)} av de {sv(measured)} m3fub som "
+               f"mättes in vid sågverket under månaden, {percent(b.total, measured)}.")
+    if short:
+        return (f"Det är virket från avverkning med skördardata, {percent(b.total, measured)} av de {sv(measured)} "
+                f"m3fub som mättes in vid sågverket under månaden. Resten, {sv(b.outside)} m3fub, har ingen avverkning "
+                "i underlaget och står utanför matrisen.")
+    return (f"{opening} Resten, {sv(b.outside)} m3fub "
+            f"({per}), är virke utan avverkning i underlaget, till exempel virke köpt färdigavverkat, import eller "
+            "virke från terminal. Mätningen anger dess handelssortiment men inga diameter- och längdklasser, så det "
+            "ingår inte i matrisen.")
 
 
 def intro(b: Bilaga) -> str:
-    """The appendix's first words: what was delivered, from how many contract objects, and how much of it the stock held."""
+    """The appendix's first words, kept short: what was delivered, from how many contract objects, how much of it the
+    stock held and how much is an estimate, and that the classes are the harvester's, not the mill's. Where some of the
+    mill's wood stands outside the matrix, the volume is named as the matrix's, and so is all that follows."""
+    apart = b.outside > 0.0005
+    lead = appendix_lead(b.output, b.mill, "Volym i matrisen" if apart else "Levererad volym")
+    if apart:
+        lead += " " + coverage(b, short=True)
     count = b.rows[AO].nunique()
-    found = (" All volym ryms i avtalsobjektens eget lager och är fördelad på klasser så som skördaren mätte stockarna."
-             if b.total - b.settled <= 0.0005 else
-             f" {percent(b.settled, b.total)} av volymen ryms i avtalsobjektens eget lager och är fördelad på klasser "
-             "så som skördaren mätte stockarna. Resten levererades utöver lagret och är fördelad som avtalsobjektets "
-             "hela skörd (egen skörd i snitt), en uppskattning.")
-    return (appendix_lead(b.output, b.mill)
-            + (" " + coverage(b) if coverage(b) else "")
-            + (f" Virket kommer från {plural(count)}." + found if count and b.total > 0.0005 else "")
-            + " Bilagan visar först matrisen, sedan "
-            + ("varifrån virket kommer, hur matrisen togs fram" if len(b.origins) else "hur den togs fram")
-            + ", ett exempel på hur volym utöver lagret "
-            "fördelas, avtalsobjekten bakom matrisen och sist en förklaring av varje del.")
+    if not count or b.total <= 0.0005:
+        return lead
+    within = " i matrisen" if apart else ""
+    beyond = b.total - b.settled
+    found = (f" All volym{within} ryms i avtalsobjektens eget lager och är fördelad på klasser så som skördaren mätte "
+             "stockarna."
+             if beyond <= 0.0005 else
+             f" {percent(b.settled, b.total)} av {'matrisens volym' if apart else 'volymen'} ryms i avtalsobjektens "
+             f"eget lager och är fördelad på klasser så som skördaren mätte stockarna. Resten, "
+             f"{percent(beyond, b.total)}, levererades utöver lagret och är fördelad som avtalsobjektets hela skörd "
+             "(egen skörd i snitt), en uppskattning.")
+    return (lead + f" Virket{within} kommer från {plural(count)}." + found
+            + " Volym och handelssortiment är mätningens vid sågverket; diameter och längd kommer från skördaren.")
 
 
 def measures_lead(held: pd.DataFrame, order: list[str]) -> str:
@@ -315,9 +331,7 @@ def _words(per_day: bool = False, coverage: str = "") -> dict[str, str]:
     if per_day:
         estimate += (" Varje dags lass har bara tagit virke som skördaren avverkat senast den dagen, så volym utöver "
                      "lagret är också det som kördes innan skördaren hade rapporterat virke som räckte.")
-    whole = ("Volym från avverkning med skördardata som levererats till sågverket under månaden" if coverage else
-             "All volym som levererats till sågverket under månaden")
-    apart = f" {coverage}" if coverage else ""
+    whole = "All volym som levererats till sågverket under månaden"
     source_rows = ("En rad per källa: om fördelningen är mätt av skördaren eller uppskattad, vad den bygger på, "
                    "volymen per handelssortiment, summan och andelen av matrisen.")
     orders = ("Varje avtalsobjekt som levererat till sågverket under månaden, en rad per avtalsobjekt och sortiment. "
@@ -325,20 +339,26 @@ def _words(per_day: bool = False, coverage: str = "") -> dict[str, str]:
     marks = "Markerade celler står i fetstil på tonad botten."
     halves = ("En stor skillnad betyder att stockarna ändrades under skörden, så att en månads leverans kan skilja sig "
               "från avtalsobjektets hela skörd. En skillnad på minst 2 cm eller 3 dm är markerad.")
-    limits = ("Källan säger vad fördelningen bygger på, inte hur stort felet är i en enskild bilaga. Även eget lager "
+    limits = ("Fördelningens källa säger vad fördelningen bygger på, inte hur stort felet är i en enskild bilaga. Även eget lager "
               "bygger på skördarens mätning av stockarna och på ett antagande om vilka stockar som lämnade lagret.")
     return {
-        "matrix": (f"{whole}, alla handelssortiment tillsammans.{apart} "
-                   f"{axes} {cells} Summorna är i m3fub. Krediterade lass från tidigare månader står i en egen matris "
-                   "i m3fub."),
-        "origin": ("Allt virke som mättes in vid sågverket under månaden, per anskaffningsform enligt underlaget. Till "
-                   "höger står vad som hände med volymen: fördelad ur avtalsobjektens eget lager, fördelad som egen "
-                   "skörd i snitt, eller utanför matrisen. Utanför matrisen står virke utan avverkning i underlaget, "
-                   "till exempel köpt virke, import eller virke från terminal; det har ingen skördardata att fördelas "
-                   "efter. Båda sidorna summerar till den inmätta volymen, och andelarna är andelar av den."),
-        "diagram": ("Diagrammet läses från vänster till höger. Till vänster står handelssortimenten och till höger "
-                    "fördelningens källor; båda sidorna summerar till matrisens volym. Ett bands bredd visar hur stor "
-                    "volym det gäller. Vid varje stapel står volymen i m3fub, och till höger även andelen av matrisen. "
+        # With wood outside the matrix, the entry opens on how much of the mill's wood the matrix stands for.
+        "matrix": ((f"{coverage} Alla handelssortiment står tillsammans." if coverage else
+                    f"{whole}, alla handelssortiment tillsammans.")
+                   + f" {axes} {cells} Summorna är i m3fub. Krediterade lass från tidigare månader står i en egen "
+                   "matris i m3fub."),
+        "origin": ("Allt virke som mättes in vid sågverket under månaden, per anskaffningsform enligt underlaget. För "
+                   "varje anskaffningsform står vad volymens fördelning på klasser bygger på: avtalsobjektens eget "
+                   "lager eller egen skörd i snitt. Utanför matrisen står virke utan avverkning i underlaget, till "
+                   "exempel virke köpt färdigavverkat, import eller virke från terminal; det har ingen skördardata "
+                   "att fördelas efter. Det är avverkningen som avgör, inte anskaffningsformen: samma anskaffningsform "
+                   "kan stå både i och utanför matrisen. Summan är den inmätta volymen, och andelarna är andelar av "
+                   "den."),
+        "diagram": ("Diagrammet läses från vänster till höger, i den ordning virket rör sig. Till vänster står vad "
+                    "fördelningen på klasser bygger på, skördarens mätning vid avverkningen, och till höger "
+                    "handelssortimenten så som de mättes in vid sågverket; båda sidorna summerar till matrisens volym. "
+                    "Ett bands bredd visar hur stor "
+                    "volym det gäller. Vid varje stapel står volymen i m3fub, och till vänster även andelen av matrisen. "
                     "Blått är eget lager, orange egen skörd i snitt och mörkgrått sortimenten; tabellen under "
                     "diagrammet och exemplet har samma färger. På skärmen visas volymen när markören hålls över ett "
                     "band eller en stapel."),
@@ -370,14 +390,15 @@ def _words(per_day: bool = False, coverage: str = "") -> dict[str, str]:
         "felled": ("Första och sista avverkningsdag enligt skördaren. I kolumnen bredvid står medeldiametern i cm och "
                    "medellängden i dm, volymvägda, för första och andra halvan av skörden i den ordning den "
                    f"avverkades. {halves} Ett streck betyder att avverkningsdag eller klass saknas."),
-        "measures": ("Avverkningsformerna i varje avtalsobjekt enligt underlaget, med medelstam i m3fub och planerad volym. En "
+        "measures": ("Avverkningsformerna i varje avtalsobjekt enligt underlaget, med medelstam i m3fub och planerad volym. Ett "
                      "avtalsobjekt med flera avverkningsformer där den största medelstammen är minst dubbelt så stor som den "
-                     "minsta är markerad: dess delar kan ge olika stockar, så att en månads leverans kan skilja sig "
+                     "minsta är markerat: dess delar kan ge olika stockar, så att en månads leverans kan skilja sig "
                      "från avtalsobjektets hela skörd."),
         "sources": f"{source_rows} Ett streck betyder ingen volym.",
-        "limits": f"{limits} Avverkningsformerna visas bara när underlaget har dem.",
-        "matrix_sheet": (f"Matrisen: {whole[0].lower()}{whole[1:]}, i m3fub.{apart} "
-                         f"{axes} Under den står samma matris som procent av diameterklassens volym, så att "
+        "limits": limits,
+        "matrix_sheet": ((f"{coverage} Fliken visar matrisen i m3fub." if coverage else
+                          f"Matrisen: {whole[0].lower()}{whole[1:]}, i m3fub.")
+                         + f" {axes} Under den står samma matris som procent av diameterklassens volym, så att "
                          "varje kolumn summerar till 100 %. Krediterade lass från tidigare månader ingår inte; de står "
                          "i fliken Krediteringar."),
         "sources_sheet": f"{source_rows} Kod är källans kod i fliken Fördelning.",
@@ -386,17 +407,16 @@ def _words(per_day: bool = False, coverage: str = "") -> dict[str, str]:
         "felled_sheet": ("Första och sista avverkningsdag enligt skördaren, och medeldiametern i cm och medellängden i "
                          "dm, volymvägda, för första och andra halvan av skörden i den ordning den avverkades. "
                          f"{halves} En tom cell betyder att avverkningsdag eller klass saknas."),
-        "limits_file": limits,
     }
 
 
 # The parts each format explains, in its order, with the term it uses: the appendix (HTML) and the workbook.
 PAGE_GUIDE = [
     ("Matrisen", "matrix"),
-    ("Diagrammet", "diagram"),
-    ("Handelssortimenten, till vänster", "assortments"),
-    ("Eget lager, till höger", "S1"),
-    ("Egen skörd i snitt, till höger", "S2"),
+    ("Hur matrisen togs fram", "diagram"),
+    ("Eget lager, till vänster", "S1"),
+    ("Egen skörd i snitt, till vänster", "S2"),
+    ("Handelssortimenten, till höger", "assortments"),
     ("Tabellen under diagrammet", "sources"),
     ("Exemplet", "example"),
     ("Avtalsobjekten bakom matrisen", "orders"),
@@ -416,7 +436,7 @@ FILE_GUIDE = [
     ("Skörd och leverans", "progress"),
     ("Avverkad och skördens halvor", "felled_sheet"),
     ("Avverkningsformer och medelstam", "measures"),
-    ("Vad filen inte säger", "limits_file"),
+    ("Vad filen inte säger", "limits"),
 ]
 
 
@@ -425,12 +445,15 @@ ORIGIN_GUIDE = ("Varifrån virket kommer", "origin")
 
 
 def guide(parts: list[tuple[str, str]], per_day: bool = False, coverage: str = "",
-          origins: bool = False) -> list[tuple[str, str]]:
+          origins: bool = False, measures: bool = True) -> list[tuple[str, str]]:
     """(term, explanation) for the parts a format shows, in its order. `coverage` when the matrix leaves out wood that
-    comes from no harvest, `origins` when the appendix shows the anskaffningsformer."""
+    comes from no harvest, `origins` when the appendix shows the anskaffningsformer, `measures` false when it shows no
+    avverkningsformer: a part that is not there is not explained."""
     words = _words(per_day, coverage)
     if origins:
         parts = [parts[0], ORIGIN_GUIDE, *parts[1:]]
+    if not measures:
+        parts = [(term, key) for term, key in parts if key != "measures"]
     return [(term, words[key]) for term, key in parts]
 
 
@@ -450,6 +473,13 @@ class Bilaga:
     outside_by: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
     # m3fub per anskaffningsform, assortment and source, with the wood outside the matrix; empty without anskaffningsform
     origins: pd.DataFrame = field(default_factory=lambda: pd.DataFrame(columns=ORIGIN_COLUMNS))
+    # The mill's name, where the source has one; the id is still what the files are called
+    name: str = ""
+
+    @property
+    def shown(self) -> str:
+        """What the appendix calls the mill: its name, or its id where the source has no name."""
+        return self.name or str(self.mill)
 
     @property
     def period(self) -> str:
@@ -485,4 +515,5 @@ def build(output: MonthOutput, mill: str, layout: AppendixLayout = AppendixLayou
         measures=held[held[AO].isin(set(rows[AO]))] if len(held) else held,
         outside_by=facts.outside_at(mill),
         origins=origin_rows(output, mill, facts),
+        name=str(facts.mill_names.get(mill, "")),
     )

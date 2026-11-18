@@ -1,4 +1,5 @@
-"""The Sankey diagram on the appendix's page: from the mill's assortments to where the distribution came from.
+"""The Sankey diagrams on the appendix's page. Each reads in the order the wood moves: what is with the seller
+first, on the left, and the delivery to the mill on the right.
 
 It is plain SVG with no script or web font, so it opens and prints on a machine without internet.
 """
@@ -53,7 +54,8 @@ def _band(x0: float, y0: float, x1: float, y1: float, thickness: float) -> str:
 
 
 def sankey_svg(volumes: pd.DataFrame) -> str:
-    """The diagram: the mill's assortments → where their distribution on classes comes from."""
+    """The diagram, in the order the wood moves: where the distribution on classes comes from, the avtalsobjekt's
+    stock and harvest → the assortments measured in at the mill."""
     total = float(volumes.to_numpy().sum())
     if total <= 0:
         return "<p>Ingen levererad volym denna månad.</p>"
@@ -63,22 +65,22 @@ def sankey_svg(volumes: pd.DataFrame) -> str:
 
     gaps = GAP * max(len(mills), len(sources)) - GAP
     scale = (HEIGHT - 40 - gaps) / total
-    left, right = _stack(dict(mills), scale), _stack(sources, scale)
+    left, right = _stack(sources, scale), _stack(dict(mills), scale)
 
     parts = []
     out_y = {name: y for name, (y, _) in left.items()}
     in_y = {name: y for name, (y, _) in right.items()}
-    for mill in mills.index:
-        for tier in sources:
+    for tier in sources:
+        for mill in mills.index:
             volume = float(volumes.at[mill, tier])
             if volume <= 0:
                 continue
             thickness = volume * scale
-            parts.append(f'<path d="{_band(X[0] + NODE, out_y[mill], X[1], in_y[tier], thickness)}" '
-                         f'fill="{COLOURS[tier]}" fill-opacity="0.3"><title>{escape(str(mill))} → '
-                         f'{escape(NAMES[tier])}: {sv(volume)} m3fub</title></path>')
-            out_y[mill] += thickness
-            in_y[tier] += thickness
+            parts.append(f'<path d="{_band(X[0] + NODE, out_y[tier], X[1], in_y[mill], thickness)}" '
+                         f'fill="{COLOURS[tier]}" fill-opacity="0.3"><title>{escape(NAMES[tier])} → '
+                         f'{escape(str(mill))}: {sv(volume)} m3fub</title></path>')
+            out_y[tier] += thickness
+            in_y[mill] += thickness
 
     def node(x: float, y: float, height: float, colour: str, title: str) -> str:
         return (f'<rect x="{x}" y="{y:.1f}" width="{NODE}" height="{max(height, 1.5):.1f}" rx="2" fill="{colour}">'
@@ -88,18 +90,19 @@ def sankey_svg(volumes: pd.DataFrame) -> str:
         return (f'<text x="{x}" y="{y:.1f}" text-anchor="{anchor}" class="name">{escape(name)}'
                 f'<tspan x="{x}" dy="1.25em" class="detail">{escape(detail)}</tspan></text>')
 
+    # The sources also show their share of the matrix: how much is measured and how much is an estimate.
     columns = [
-        (X[0], "end", left, {m: (str(m), float(mills[m]), COLOURS["mill"]) for m in left}),
-        (X[1], "start", right, {t: (NAMES[t], sources[t], COLOURS[t]) for t in right}),
+        (X[0], "end", left, {t: (NAMES[t], sources[t], COLOURS[t]) for t in left}, True),
+        (X[1], "start", right, {m: (str(m), float(mills[m]), COLOURS["mill"]) for m in right}, False),
     ]
-    for x, anchor, placed, texts in columns:
+    for x, anchor, placed, texts, share in columns:
         # Labels sit level with their node, but never on top of the label above.
         gap = 34
         centres = _spread([y + height / 2 for y, height in placed.values()], gap, HEIGHT + 30 - gap / 2)
         for (name, (y, height)), centre in zip(placed.items(), centres):
             text, volume, colour = texts[name]
             parts.append(node(x, y, height, colour, f"{text}: {sv(volume)} m3fub"))
-            detail = f"{sv(volume)} m3fub" + (f" · {percent(volume, total)}" if anchor == "start" else "")
+            detail = f"{sv(volume)} m3fub" + (f" · {percent(volume, total)}" if share else "")
             parts.append(label(x - 8 if anchor == "end" else x + NODE + 8, centre - 4, anchor, text, detail))
     return (f'<svg viewBox="0 0 {WIDTH} {HEIGHT + 30}" role="img" aria-label="Var volymens fördelning kommer ifrån">'
             + "".join(parts) + "</svg>")

@@ -40,7 +40,7 @@ def diagram(page):
 
 def test_the_page_draws_each_flow_and_says_how_much_is_estimated(mixed):
     page = appendix(mixed)
-    assert "<svg" in page and "Diagrammet visar matrisens 170,0 m3fub per handelssortiment" in page
+    assert "<svg" in page and "Diagrammet visar matrisens 170,0 m3fub från avverkning till leverans" in page
     assert "88 % ryms i avtalsobjektens eget lager och är fördelad så som skördaren mätte stockarna" in page
     assert "Resten, 12 %, levererades utöver lagret och är fördelad som avtalsobjektets hela skörd (egen skörd i snitt). " \
            "Det är en uppskattning, inte en mätning." in page
@@ -50,8 +50,14 @@ def test_the_page_draws_each_flow_and_says_how_much_is_estimated(mixed):
         assert name in page
     for gone in ("Liknande avtalsobjekt", "Okänd", "Approximerad", "lånad"):
         assert gone not in page, gone
-    # One band per assortment and source: GRAN to its stock, TALL to its stock and to the estimate.
+    # One band per source and assortment: the stock to TALL and to GRAN, the estimate to TALL.
     assert len(re.findall(r"<path ", diagram(page))) == 3
+    # The diagram reads in the order the wood moves: the sources on the left, the delivered assortments on the right.
+    drawn = diagram(page)
+    assert re.findall(r"<title>([^:<]*) → ([^:<]*):", drawn) == [("Eget lager", "TALL"), ("Eget lager", "GRAN"),
+                                                                ("Egen skörd i snitt", "TALL")]
+    at = {name: float(x) for x, name in re.findall(r'<text x="([\d.]+)"[^>]*class="name">([^<]*)<', drawn)}
+    assert max(at["Eget lager"], at["Egen skörd i snitt"]) < min(at["TALL"], at["GRAN"])
     # Nothing is fetched from the internet, so the page works on a locked-down machine.
     assert "http" not in page.replace('xmlns="http://www.w3.org/2000/svg"', "")
 
@@ -75,10 +81,11 @@ def test_a_run_writes_how_the_matrix_was_found_into_each_appendix(tmp_path):
 def test_every_part_of_the_page_is_explained_for_the_reader_who_wants_it(mixed):
     page = appendix(mixed)
     guide = page.split("Så läser du bilagan", 1)[1]
-    parts = ["Matrisen", "Diagrammet", "Handelssortimenten, till vänster", "Eget lager, till höger",
-             "Egen skörd i snitt, till höger", "Tabellen under diagrammet", "Exemplet", "Avtalsobjekten bakom matrisen",
+    # Each part is called by its heading on the page. The page here has no avverkningsformer, so none are explained.
+    parts = ["Matrisen", "Hur matrisen togs fram", "Eget lager, till vänster", "Egen skörd i snitt, till vänster",
+             "Handelssortimenten, till höger", "Tabellen under diagrammet", "Exemplet", "Avtalsobjekten bakom matrisen",
              "Medeldiameter och Annan klass än hela skörden", "Hela avtalsobjektet", "Avverkad och skördens halvor",
-             "Avverkningsformer och medelstam", "Vad bilagan inte säger"]
+             "Vad bilagan inte säger"]
     assert re.findall(r"<dt>([^<]*)", guide) == parts
     # The figures at the bars and the colours are explained with the diagram.
     assert "Vid varje stapel står volymen i m3fub" in guide and "Blått är eget lager, orange egen skörd i snitt" in guide

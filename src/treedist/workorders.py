@@ -160,6 +160,9 @@ class Facts:
     # Anskaffningsform per avtalsobjekt, where the source has it: shown in the appendix, never read by the method.
     origin: pd.Series = field(default_factory=lambda: pd.Series(dtype=object))
 
+    # The name per mottagningsplats, where the source has it: what the appendix calls the mill.
+    mill_names: pd.Series = field(default_factory=lambda: pd.Series(dtype=object))
+
     def outside_at(self, mill: str) -> pd.Series:
         """Net m3fub measured at the mill this month from no harvest, per measured assortment: the measurement names
         the assortment of such wood too, but nothing gives its diameter and length classes."""

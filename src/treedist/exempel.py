@@ -257,12 +257,12 @@ def this_month(b: Bilaga) -> tuple[str, list[dict[str, str]]]:
     """What the mill's own month holds beyond the stock, in a sentence, and the contract objects that brought most of it."""
     beyond = float(b.volumes["S2"].sum()) if len(b.volumes) else 0.0
     if beyond <= 0.0005:
-        return (f"Den här månaden ryms all volym till {b.mill} i avtalsobjektens eget lager, så inget är fördelat som "
+        return (f"Den här månaden ryms all volym till {b.shown} i avtalsobjektens eget lager, så inget är fördelat som "
                 "egen skörd i snitt."), []
     rows = b.rows[b.rows["S2"] > 0.0005].sort_values("S2", ascending=False)
     count = rows[AO].nunique()
-    lead = (f"Den här månaden levererades {sv(beyond)} m3fub utöver lagret till {b.mill}, {percent(beyond, b.total)} av "
-            f"matrisen, från {plural(count)}. Den är fördelad som varje avtalsobjekts hela skörd hittills.")
+    lead = (f"Den här månaden levererades {sv(beyond)} m3fub utöver lagret till {b.shown}, {percent(beyond, b.total)} av "
+            f"matrisen, från {plural(count)}. Volymen är fördelad som varje avtalsobjekts hela skörd hittills.")
     if len(rows) > SHOWN:
         lead += f" Tabellen visar de {SHOWN} rader som har mest volym utöver lagret."
     table = [{"Avtalsobjekt": str(r[AO]), "Sortiment": str(r[SORT]),

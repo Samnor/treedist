@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from ..contract import AO, DONE, ORIGIN, OUTSIDE, REQUIRED_TABLES
+from ..contract import AO, DEST, DONE, MILL_NAME, ORIGIN, OUTSIDE, REQUIRED_TABLES
 from ..schema import (
     validate_deliveries,
     validate_harvest,
@@ -73,7 +73,8 @@ def validate(raw: Raw, period: str) -> Inputs:
         harvest=harvest,
         deliveries=deliveries,
         transport_done=validate_work_orders(raw["avtalsobjekt"]) if "avtalsobjekt" in raw else frozenset(),
-        facts=Facts(measures(raw.get("avverkningsformer")), apart, _origins(raw["matning"])),
+        facts=Facts(measures(raw.get("avverkningsformer")), apart, _origins(raw["matning"]),
+                    _mill_names(raw["matning"])),
     )
 
 
@@ -88,6 +89,20 @@ def _origins(measured: pd.DataFrame) -> pd.Series:
         listed = ", ".join(several[:5]) + (f" och {len(several) - 5} till" if len(several) > 5 else "")
         raise ValueError(f"Mätning: {len(several)} avtalsobjekt har flera olika {ORIGIN}: {listed}. En per avtalsobjekt")
     return rows.set_index(AO)[ORIGIN]
+
+
+def _mill_names(measured: pd.DataFrame) -> pd.Series:
+    """The name per mottagningsplats, for the appendix; empty when the source has none."""
+    if MILL_NAME not in measured.columns or DEST not in measured.columns:
+        return pd.Series(dtype=object)
+    rows = measured[[DEST, MILL_NAME]].dropna().astype(str).apply(lambda c: c.str.strip())
+    rows = rows[rows[MILL_NAME] != ""].drop_duplicates()
+    several = sorted(rows.loc[rows[DEST].duplicated(keep=False), DEST].unique())
+    if several:
+        listed = ", ".join(several[:5]) + (f" och {len(several) - 5} till" if len(several) > 5 else "")
+        raise ValueError(f"Mätning: {len(several)} mottagningsplatser har flera olika {MILL_NAME}: {listed}. Ett per "
+                         "mottagningsplats")
+    return rows.set_index(DEST)[MILL_NAME]
 
 
 def _outside_is_the_whole_contract_object(apart: pd.DataFrame, deliveries: pd.DataFrame, harvest: pd.DataFrame) -> None:

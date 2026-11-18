@@ -362,14 +362,15 @@ def changes_matrix_html(output: MonthOutput, destination: str, layout: AppendixL
             f"{_matrix_html(grid(earlier, layout), shares=False)}</div>")
 
 
-def appendix_lead(output: MonthOutput, destination: str) -> str:
-    """The delivered volume, and per assortment when there are several, as the appendix opens with it."""
+def appendix_lead(output: MonthOutput, destination: str, what: str = "Levererad volym") -> str:
+    """The delivered volume, and per assortment when there are several, as the appendix opens with it. `what` names the
+    volume, for an appendix whose matrix is not all the wood delivered to the mill."""
     _, delivered, _ = _together(output, destination)
     per_sortiment = _per_sortiment(output, destination)
     held = (f" i {len(per_sortiment)} handelssortiment: "
             + ", ".join(f"{sortiment} {_sv(volume, 3)}" for sortiment, volume in per_sortiment)
             + " m3fub" if len(per_sortiment) > 1 else "")
-    return f"Levererad volym {_sv(_litres(delivered).sum() / 1000, 3)} m3fub{held}."
+    return f"{what} {_sv(_litres(delivered).sum() / 1000, 3)} m3fub{held}."
 
 
 # The names the appendix shows for the sources, beside the codes the rows use.

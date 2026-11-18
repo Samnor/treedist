@@ -108,6 +108,8 @@ Har källan anskaffningsform, ta med den i mätningens kolumn `anskaffningsform`
 per avtalsobjekt och på alla rader. Bilagan får då en del som visar sågverkets inmätta volym per anskaffningsform
 och hur mycket av varje som står utanför matrisen. Metoden läser den inte. Delar källan in virket på flera
 uppgifter, till exempel anskaffningsform och arbetsordertyp, slå ihop dem till en text i källbeskrivningen.
+Har källan mottagningsplatsens namn, ta med det i mätningens kolumn `mottagningsplats_namn`, ett per mottagningsplats.
+Bilagan får då namnet som rubrik, med id:t över. Filerna heter alltid efter id:t.
 En äldre fil till `--config` med `own_harvest_only = true` eller `correction_on_invoice = false` läses som förut;
 de motsatta värdena, och inställningarna för lånad fördelning, stoppar med besked om vilka rader som ska bort.
 
@@ -121,7 +123,7 @@ i projektkatalogen och i git:
 treedist --version
 ```
 
-Hämta källkoden för den versionen, till exempel `https://github.com/Samnor/treedist/archive/refs/tags/v0.10.2.zip`,
+Hämta källkoden för den versionen, till exempel `https://github.com/Samnor/treedist/archive/refs/tags/v0.10.3.zip`,
 packa upp den till `treedist-lokal/` i projektet och installera kopian i stället för paketet:
 
 ```bash

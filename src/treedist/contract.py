@@ -38,6 +38,7 @@ MEASURE = "avverkningsform"
 STEM = "medelstam_m3fub"
 OUTSIDE = "utan_avverkning"
 ORIGIN = "anskaffningsform"
+MILL_NAME = "mottagningsplats_namn"
 
 NO_CLASS = "-"
 NO_DESTINATION = "-"
@@ -124,11 +125,13 @@ TABLES = {
             Column(LANDING, "text", False, "Startplatsen, det avlägg leveransen hämtades från"),
             Column("matmetod", "text", False, "Mätmetod, en av " + ", ".join(MEASURING_METHODS)),
             Column("antal_matenheter", "tal", False, "Antal stockar eller travar i leveransen", "st", 0, None),
-            Column(OUTSIDE, "logisk", False, "true när virket inte kommer från någon avverkning i underlaget: köpt "
-                   "virke, import eller virke från terminal. Annars false. Sätts ur avtalsobjektets typ, aldrig för "
+            Column(OUTSIDE, "logisk", False, "true när virket inte kommer från någon avverkning i underlaget: virke "
+                   "köpt färdigavverkat, import eller virke från terminal. Annars false. Sätts ur avtalsobjektets typ, aldrig för "
                    "att skördardata saknas. Leveransen fördelas inte, och bilagan anger dess volym utanför matrisen"),
             Column(ORIGIN, "text", False, "Anskaffningsform, som källan vill att den visas, till exempel egen skog, "
                    "virkesköp eller import. En per avtalsobjekt. Visas i bilagan; metoden läser den inte"),
+            Column(MILL_NAME, "text", False, "Mottagningsplatsens namn, som bilagan ska visa det. Ett per "
+                   "mottagningsplats. Utan namn visar bilagan mottagningsplatsens id; filerna heter alltid efter id"),
         ),
     ),
     "avtalsobjekt": Table(
