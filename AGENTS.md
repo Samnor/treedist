@@ -115,7 +115,7 @@ i projektkatalogen och i git:
 treedist --version
 ```
 
-Hämta källkoden för den versionen, till exempel `https://github.com/Samnor/treedist/archive/refs/tags/v0.10.0.zip`,
+Hämta källkoden för den versionen, till exempel `https://github.com/Samnor/treedist/archive/refs/tags/v0.10.1.zip`,
 packa upp den till `treedist-lokal/` i projektet och installera kopian i stället för paketet:
 
 ```bash
