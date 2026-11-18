@@ -6,6 +6,7 @@ oldest_first = false
 draw_gross = false
 stock_per_destination = false
 stock_per_landing = false
+stock_without_destination = false
 draw_per_day = false
 design_effect = 200.0
 default_log_volume = 0.25

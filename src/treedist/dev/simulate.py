@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from .prices import PRICE_COLUMNS
-from ..schema import AO, BRUTTO, DEST, DIA, LEN, LOGS, PRODUCED, PRODUCED_FOR, SORT, VOL
+from ..schema import AO, BRUTTO, DEST, DIA, LEN, LOGS, NO_DESTINATION, PRODUCED, PRODUCED_FOR, SORT, VOL
 
 SORTIMENT = ("GRAN_SAG", "TALL_SAG")
 DESTINATIONS = ("SAG_KLEN", "SAG_MIX", "SAG_GROV")
@@ -80,6 +80,10 @@ class SimParams:
     # landing_error_share of the logs placed at another landing.
     report_landings: bool = False
     landing_error_share: float = 0.1
+    # Share of the harvest reported without the mottagningsplats it was produced for, which hpr leaves optional: of
+    # the logs, or of whole avtalsobjekt when unknown_destination_whole is on. The deliveries always carry it.
+    unknown_destination_share: float = 0.0
+    unknown_destination_whole: bool = False
 
 
 @dataclass
@@ -289,6 +293,16 @@ def simulate_flow(params: SimParams) -> Flow:
                 log_frames.append(logs)
 
     logs = pd.concat(log_frames, ignore_index=True)
+    logs["reported_for"] = logs["produced_for"]
+    if params.unknown_destination_share > 0:
+        # A generator of its own, so that the flow is the same with and without the gap.
+        gap = np.random.default_rng([params.seed, 17])
+        if params.unknown_destination_whole:
+            orders = np.sort(logs[AO].unique())
+            unknown = logs[AO].isin(orders[gap.random(len(orders)) < params.unknown_destination_share]).to_numpy()
+        else:
+            unknown = gap.random(len(logs)) < params.unknown_destination_share
+        logs.loc[unknown, "reported_for"] = NO_DESTINATION
     deliveries = pd.DataFrame(delivery_rows)
     deliveries["period"] = deliveries["leveransdatum"].str[:7]
     return Flow(periods, logs, deliveries, destinations)
@@ -303,9 +317,9 @@ def monthly(flow: Flow) -> list[SimMonth]:
     for period in periods:
         reported = logs[logs["reported"] == period].assign(avverkningsdatum=lambda df: df["harvested"].dt.strftime("%Y-%m-%d"))
         harvest = (
-            reported.groupby([AO, SORT, "produced_for", "startplats", "measured_d", "l", "avverkningsdatum"], as_index=False)
+            reported.groupby([AO, SORT, "reported_for", "startplats", "measured_d", "l", "avverkningsdatum"], as_index=False)
             .agg(**{VOL: ("measured_v", "sum"), LOGS: ("v", "size")})
-            .rename(columns={"measured_d": DIA, "l": LEN, "produced_for": PRODUCED_FOR, SORT: PRODUCED})
+            .rename(columns={"measured_d": DIA, "l": LEN, "reported_for": PRODUCED_FOR, SORT: PRODUCED})
         )
         harvest[VOL] = harvest[VOL].round(3)
         if (harvest["startplats"] == "").all():

@@ -86,7 +86,8 @@ TABLES = {
             Column(PRODUCED_FOR, "text", True,
                    "Producerat för mottagningsplats, den skördaren kapade för. Samma id som mottagningsplatsen i "
                    "mätningen. Varje mottagningsplats har sitt eget lager; det är avtalsobjektets destinering per "
-                   "handelssortiment"),
+                   "handelssortiment. Tomt där skördaren inte rapporterat den, aldrig källans värde för saknas: det "
+                   "virket tas av avtalsobjektets lass när deras egna lager är slut"),
             Column(DIA, "klass", True, "Diameterklass: klassens nedre gräns enligt produktdefinitionen. Tom för sortiment "
                    "utan klasser", "cm", 5, 80),
             Column(LEN, "klass", True, "Längdklass: klassens nedre gräns enligt produktdefinitionen. Tom för sortiment utan "

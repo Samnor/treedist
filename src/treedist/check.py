@@ -321,13 +321,35 @@ def _destinations(inputs) -> list[Finding]:
                                 "fel kolumn?"))
     else:
         findings.append(Finding(OK, "matning", f"{same:.0%} av volymen mättes in där den producerades för"))
-    known = set(harvest[PRODUCED_FOR])
+    known = set(harvest[PRODUCED_FOR]) - {NO_DESTINATION}
     unknown = sorted(set(deliveries[PRODUCED_FOR]) - known)
     if unknown and known:
         share = float(deliveries.loc[deliveries[PRODUCED_FOR].isin(unknown), VOL].abs().sum()) / total
         findings.append(Finding(VARNING, "matning", f"{share:.0%} av volymen är producerad för en mottagningsplats som "
                                 f"inte finns i månadens produktion: {unknown[:3]}, produktionen har {sorted(known)[:3]}. "
                                 "Skrivs id olika i produktion och mätning?"))
+    return findings + _without_destination(inputs)
+
+
+def _without_destination(inputs) -> list[Finding]:
+    """Harvest reported without the mottagningsplats it was produced for, which hpr leaves optional. It is taken by
+    the avtalsobjekt's loads once their own stock is empty, which is right where an assortment has one mill; where it
+    is cut for several, which mill the wood was for is not known."""
+    harvest, deliveries = inputs.harvest, inputs.deliveries
+    total = float(harvest[VOL].sum())
+    missing = harvest[harvest[PRODUCED_FOR] == NO_DESTINATION]
+    if total <= 0 or missing.empty:
+        return []
+    findings = [Finding(INFO, "produktion", f"{float(missing[VOL].sum()) / total:.0%} av volymen saknar producerat för "
+                        "mottagningsplats. Det virket tas av avtalsobjektets lass när deras egna lager är slut")]
+    mills = deliveries.groupby([AO, PRODUCED])[PRODUCED_FOR].nunique()
+    shared = missing.merge(mills[mills > 1].rename("mills"), left_on=[AO, PRODUCED], right_index=True)
+    if len(shared):
+        findings.append(Finding(VARNING, "produktion", f"{float(shared[VOL].sum()) / total:.0%} av volymen saknar "
+                                "producerat för mottagningsplats i avtalsobjekt och sortiment vars lass är producerade "
+                                f"för flera mottagningsplatser, till exempel {sorted(set(shared[AO]))[:3]}. Där går det "
+                                "inte att veta vilken mottagningsplats virket kapades för, och lassen delar på det. "
+                                "Hämta uppgiften ur VIOL 3 om den finns"))
     return findings
 
 
@@ -347,7 +369,8 @@ def _no_value(inputs) -> list[Finding]:
         for column in columns:
             text = frame[column].astype(str).str.strip()
             # The validation writes its own mark where an optional place is missing.
-            hit = text.str.fullmatch(NO_VALUE) & ~((column == LANDING) & (text == NO_DESTINATION))
+            optional = column == LANDING or (table == "produktion" and column == PRODUCED_FOR)
+            hit = text.str.fullmatch(NO_VALUE) & ~(optional & (text == NO_DESTINATION))
             if not hit.any():
                 continue
             share = f", {float(frame.loc[hit, VOL].abs().sum()) / total:.0%} av volymen" if total > 0 else ""
@@ -355,7 +378,8 @@ def _no_value(inputs) -> list[Finding]:
             findings.append(Finding(VARNING, table, f"{column} är {values} på {int(hit.sum())} rader{share}. Det ser ut "
                                     "som källans värde för en uppgift som saknas, och treedist läser det som ett id: "
                                     "virket bokas på ett lager, ett avtalsobjekt eller en mottagningsplats som inte "
-                                    "finns. Gör värdet tomt i källan, så att en uppgift som saknas stoppar kontrollen"))
+                                    "finns. Gör värdet tomt i källan: då stoppar kontrollen där uppgiften krävs, och skörd utan producerat "
+                                        "för mottagningsplats tas av avtalsobjektets lass när deras egna lager är slut"))
     return findings
 
 

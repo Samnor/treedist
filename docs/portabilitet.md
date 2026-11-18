@@ -240,7 +240,8 @@ utvecklingsuppgifter, två körningar var, med AGENTS.md före och efter:
 
 Ett datalager skriver ofta en egen nyckel där en uppgift saknas, till exempel `-1`. I produktionens producerat för
 mottagningsplats gick det igenom både `check` och `run` utan anmärkning: virket bokades på ett lager med det namnet,
-som inga lass tar ur, och mer av den levererade volymen blev uppskattning (S2). Ett tomt värde stoppar däremot.
+som inga lass tar ur, och mer av den levererade volymen blev uppskattning (S2). Ett tomt värde stoppade däremot;
+sedan 0.10.2 är det tillåtet i just den kolumnen, och virket tas då av avtalsobjektets lass.
 Felet planterades i felkatalogen, på var sjätte rad i exempelkällans produktion, innan kontrollen skrevs.
 
 | Steg | Felkatalog | Falsklarm |

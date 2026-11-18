@@ -22,7 +22,11 @@ treedist kräver de VIOL 3-uppgifter metoden vilar på, och gissar inte i deras 
 för mottagningsplats per rad i produktionen, och leveransnummer, leveransdatum, mätdatum, bruttovolym, producerat
 handelssortiment och både inmätt och producerat för mottagningsplats per leverans. Två av dem är frivilliga i hpr:
 producerat för mottagningsplats och stammens avverkningstid. Saknar källans export någon av dem, hämta den ur VIOL 3
-hellre än att härleda den; `treedist check` säger vilken som saknas. Var varje definition kommer ifrån står i
+hellre än att härleda den; `treedist check` säger vilken som saknas. Finns producerat för mottagningsplats inte att få
+för en skördarrad, lämna värdet tomt: virket är då avtalsobjektets, och dess lass tar det som eget lager när lagret för
+deras egen mottagningsplats är slut. `check` säger hur stor del av volymen det gäller, och varnar där avtalsobjektets
+lass av sortimentet är producerade för flera mottagningsplatser, för där går det inte att veta vems virket var. Var
+varje definition kommer ifrån står i
 [docs/kallor.md](docs/kallor.md#viol-3-kontraktets-termer-och-vad-de-vilar-på). En källa som läser VIOL 3
 direkt har samma id och koder i produktion och mätning och behöver varken `koder` eller `format` nedan; de finns för
 företagens egna system.
@@ -115,7 +119,7 @@ i projektkatalogen och i git:
 treedist --version
 ```
 
-Hämta källkoden för den versionen, till exempel `https://github.com/Samnor/treedist/archive/refs/tags/v0.10.1.zip`,
+Hämta källkoden för den versionen, till exempel `https://github.com/Samnor/treedist/archive/refs/tags/v0.10.2.zip`,
 packa upp den till `treedist-lokal/` i projektet och installera kopian i stället för paketet:
 
 ```bash
@@ -188,7 +192,7 @@ kopian bygger på. Vid en ny version av treedist: gör om kopian från den nya v
 | Vilken dag gäller en tidpunkt i UTC? | Dagen i svensk tid | Datumet i UTC, så att nattlass hamnar dagen före |
 | Vilken medelstam? | Volym per avverkat träd i m3fub, per avverkningsform i `avverkningsformer` | dm3, eller en enda medelstam för hela avtalsobjektet när den har flera avverkningsformer |
 | Vad gör jag med köpt virke, import och terminalvirke? | Ta med raderna och sätt `utan_avverkning` till `true`, ur avtalsobjektets typ. Bilagan anger då volymen utanför matrisen | Att filtrera bort dem, så att bilagan säger sig visa all volym till sågverket, eller att märka avverkningar som saknar skördardata, så att ett fel i källan döljs |
-| Vad skriver jag där källan saknar en uppgift? | Tomt värde. En obligatorisk uppgift som saknas stoppar då kontrollen, och hämtas ur VIOL 3 | Källans eget värde för saknas, som `-1`, `0` eller `Okänd`. treedist läser det som ett id: skörd utan producerat för mottagningsplats blir ett lager som inga lass tar ur, och mer volym blir uppskattning. `check` varnar för det |
+| Vad skriver jag där källan saknar en uppgift? | Tomt värde. En obligatorisk uppgift som saknas stoppar då kontrollen, och hämtas ur VIOL 3. Tomt producerat för mottagningsplats i produktionen stoppar inte: virket tas av avtalsobjektets lass när deras egna lager är slut | Källans eget värde för saknas, som `-1`, `0` eller `Okänd`. treedist läser det som ett id: skörd utan producerat för mottagningsplats blir ett lager som inga lass tar ur, och mer volym blir uppskattning. `check` varnar för det |
 | Hur läser egna skript utdata och liggare? | Med alla kolumner som text, `dtype=str` | Att låta pandas gissa, så att ledande nollor försvinner och klasser blir flyttal |
 
 ## Klart betyder

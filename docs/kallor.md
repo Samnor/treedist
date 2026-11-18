@@ -36,7 +36,8 @@ Vilka av treedists krav som håller mot dessa källor och mot datan står i [kra
 2026-11-17, se [stickproven](antaganden.md#stickprov-ur-verklig-data): varje leverans har
 producerat handelssortiment och producerat för mottagningsplats, en korrigering har leveransnumret för lasset den
 vänder, och avverkningsdatum finns på varje stock. Producerat för mottagningsplats saknas däremot på ungefär var
-sjätte stock i produktionen.
+sjätte stock i produktionen. Sedan 2026-11-18 läses den som tom där: virket är avtalsobjektets, och dess lass tar
+det när deras egna lager är slut ([metod.md](metod.md)).
 
 Redovisningsdatum, dagen en rad redovisades, står inte i något av dokumenten ovan: varken mätbeskedets beskrivning
 eller Principer för mätning och redovisning av kvantiteter nämner ordet. I den verkliga datan är det ändå det enda

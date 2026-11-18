@@ -21,6 +21,10 @@ class Config:
     # A delivery draws the wood the harvester cut for the mill it was produced for (VIOL 3: Producerat för
     # mottagningsplats), and never another mill's.
     stock_per_destination: bool = True
+    # Harvest reported without the mottagningsplats it was produced for, which hpr leaves optional, is a pile of its
+    # own that every load of the avtalsobjekt draws once its own pile is empty. Off, no load draws it, and what the
+    # own pile cannot cover is volume beyond the stock.
+    stock_without_destination: bool = True
     # A load first draws the wood at its start place, the landing (VIOL 3), when both sources give it.
     stock_per_landing: bool = True
     # The day method: each day's loads take only wood felled by that day, and what it cannot cover is volume beyond

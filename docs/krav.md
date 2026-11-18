@@ -57,10 +57,17 @@ sågverk. Det är rätt tänkt när uppgiften finns, eftersom virke som kapats f
 - **I sortimentsstrukturen.** Att ange *producerat för mottagningsplats* är ett av flera sätt att hålla isär virke
   till olika industrier. Ett annat är ett industrispecifikt handelssortiment, och då behövs uppgiften inte [B3 §3.2].
 
-Datan säger samma sak: uppgiften saknas på omkring var sjätte stock [D1]. Med dagens krav stoppar alltså varje månad
-som har sådana rader.
+Datan säger samma sak: uppgiften saknas på omkring var sjätte stock [D1]. Till 2026-11-18 stoppade kravet varje
+månad som har sådana rader.
 
-Det går inte att säga vad som ska gälla i stället förrän tre saker är kända, och ingen av dem är besvarad [D1]:
+**Sedan 2026-11-18 stoppar det inte.** Skördarraden har alltid sitt avtalsobjekt, och det räcker för att veta vems
+virket är. Källan lämnar värdet tomt, och virket blir avtalsobjektets lager utan känd mottagningsplats: ett lass tar
+det när lagret för dess egen mottagningsplats är slut, som eget lager (S1). Går sortimentet till en mottagningsplats
+är det samma sak som om uppgiften hade funnits. Kapas det för flera delar deras lass på virket, och det som
+uppgiften skulle ha sagt är förlorat; `check` varnar för den volymen. Mätt i simulatorn med 17 % av skörden utan
+uppgift står det i [metodjamforelse.md](metodjamforelse.md).
+
+Hur mycket luckan kostar beror på tre saker, och ingen av dem är besvarad [D1]:
 
 - Om luckan finns i sågtimret eller i massaved och energived.
 - Om den gäller hela avtalsobjekt eller spridda stockar.
@@ -68,8 +75,8 @@ Det går inte att säga vad som ska gälla i stället förrän tre saker är kä
   [D3], så värdet kommer någon annanstans ifrån, troligen destineringen: ett destinerat sortiment bär paret
   producerat handelssortiment och producerat för mottagningsplats [B2].
 
-Den tredje frågan avgör. Har leveransen ett värde som skörden saknar, hittar lasset inget lager, och då hjälper det
-inte att bara släppa kravet.
+Den tredje frågan avgjorde varför det inte räckte att bara släppa kravet: har leveransen ett värde som skörden
+saknar, hittar lasset inget lager för sin mottagningsplats. Lagret utan känd mottagningsplats är svaret på det.
 
 Ett svar pekar på en väg framåt. Datalagret har också en destinerad mottagningsplats per stock, och de två
 kolumnerna har samma värde på bara 0,3 % av stockarna [D9]. Saknas markeras med ett eget värde i båda, så högst
@@ -181,8 +188,8 @@ inte hittar sitt lass kan inte krediteras rätt.
 
 Tre saker, i ordning efter hur mycket de avgör. Den andra är gjord.
 
-1. **Ta reda på vad luckan i producerat för mottagningsplats är**, med de tre frågorna ovan. Innan dess går en
-   verklig månad inte att köra.
+1. **Ta reda på vad luckan i producerat för mottagningsplats är**, med de tre frågorna ovan. Sedan 2026-11-18 går
+   en verklig månad att köra med luckan, men där ett sortiment kapas för flera mottagningsplatser kostar den.
 2. **Gjort 2026-11-17: bilagan anger virke utan avverkning utanför matrisen**, med kolumnen `utan_avverkning`.
    Kvar är att mäta hur stor del av sågtimret till ett sågverk det gäller.
 3. **Skriv om motiveringen i AGENTS.md och kontraktet** för de två kraven som inte vilar på VIOL 3, så att ingen tror

@@ -184,8 +184,9 @@ def _draw_stock(block: pd.DataFrame, dated: pd.DataFrame, volume: float, cfg: Co
 
     Each load takes the wood of the mottagningsplats it was produced for (VIOL 3: Producerat för mottagningsplats),
     and what it takes is booked at the mill it was measured at. What that stock cannot cover is not taken: it is
-    volume beyond the stock, never wood cut for another mottagningsplats. Without stock per destination the stock is
-    one pile, and what is taken is under None, for every mill.
+    volume beyond the stock, never wood cut for another mottagningsplats. With `stock_without_destination`, wood
+    reported without a mottagningsplats is taken before that. Without stock per destination the stock is one pile,
+    and what is taken is under None, for every mill.
     """
     if not cfg.stock_per_destination:
         taken, block = split(block, _draw_fractions(block, dated, volume, cfg.oldest_first, follow))
@@ -193,16 +194,40 @@ def _draw_stock(block: pd.DataFrame, dated: pd.DataFrame, volume: float, cfg: Co
     loads = dated if cfg.stock_per_landing else dated.assign(**{LANDING: NO_DESTINATION})
     gross = loads[VOL] / loads[VOL].sum() * volume
     taken_by: dict = {}
+
+    def book(taken: pd.DataFrame, at: pd.DataFrame) -> None:
+        """What the loads `at` took, at the mills they were measured at."""
+        for mill, share in (at.groupby(DEST, sort=True)[VOL].sum() / at[VOL].sum()).items():
+            taken_by.setdefault(mill, []).append(
+                taken if share == 1.0 else taken.assign(**{VOL: taken[VOL] * share, LOGS: taken[LOGS] * share}))
+
+    # Gross volume per mottagningsplats and landing that the loads' own pile did not cover.
+    short: dict[tuple[str, str], float] = {}
     for pile, own_loads in loads.groupby(PRODUCED_FOR, sort=True):
         mine = block[PRODUCED_FOR] == pile
         need = gross[own_loads.index].groupby(own_loads[LANDING], sort=True).sum()
         drawn, left = _draw_pile(block[mine], own_loads, need, cfg.oldest_first, follow)
         block = pd.concat([block[~mine], left], ignore_index=True)
-        for landing in need.index.intersection(list(drawn)):
-            taken, at = drawn[landing], own_loads[own_loads[LANDING] == landing]
-            for mill, share in (at.groupby(DEST, sort=True)[VOL].sum() / at[VOL].sum()).items():
-                taken_by.setdefault(mill, []).append(
-                    taken if share == 1.0 else taken.assign(**{VOL: taken[VOL] * share, LOGS: taken[LOGS] * share}))
+        for landing, amount in need.items():
+            got = float(drawn[landing][VOL].sum()) if landing in drawn else 0.0
+            if landing in drawn:
+                book(drawn[landing], own_loads[own_loads[LANDING] == landing])
+            if pile != NO_DESTINATION and amount - got > 1e-9:
+                short[(pile, landing)] = amount - got
+    spare = block[PRODUCED_FOR] == NO_DESTINATION
+    if cfg.stock_without_destination and short and spare.any():
+        # Wood the harvester reported without a mottagningsplats is the avtalsobjekt's own, and was driven to one of
+        # them: the loads whose own pile is empty take it, each landing's first.
+        lacking = pd.Series(short)
+        waiting = loads[[key in short for key in zip(loads[PRODUCED_FOR], loads[LANDING])]]
+        drawn, left = _draw_pile(block[spare], waiting, lacking.groupby(level=1, sort=True).sum(), cfg.oldest_first,
+                                 follow)
+        block = pd.concat([block[~spare], left], ignore_index=True)
+        for landing, taken in drawn.items():
+            here = lacking.xs(landing, level=1)
+            for pile, share in (here / here.sum()).items():
+                part = taken if share == 1.0 else taken.assign(**{VOL: taken[VOL] * share, LOGS: taken[LOGS] * share})
+                book(part, waiting[(waiting[PRODUCED_FOR] == pile) & (waiting[LANDING] == landing)])
     return {mill: pd.concat(parts, ignore_index=True) for mill, parts in taken_by.items()}, block
 
 

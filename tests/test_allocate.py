@@ -311,6 +311,40 @@ def test_a_load_takes_the_wood_produced_for_its_mill_and_never_another_mills(cfg
     assert step.ledger.stock.groupby(PRODUCED_FOR)[VOL].sum().to_dict() == pytest.approx({"GROV": 50.0})
 
 
+def _month_with_unreported_destination(cfg, on: bool):
+    """KLEN's wood is 50, of which 20 was reported without the mottagningsplats it was produced for, as hpr allows."""
+    raw = pd.DataFrame(
+        [("A", "TALL", "14", "400", 30.0, "KLEN"), ("A", "TALL", "18", "400", 20.0, "-"),
+         ("A", "TALL", "30", "500", 50.0, "GROV")],
+        columns=["avtalsobjekt", "producerat_handelssortiment", "diameterklass", "langdklass", "volym_m3fub", "producerat_for_mottagningsplats"],
+    )
+    deliveries = checked_deliveries(pd.DataFrame(
+        [("A", "TALL", 45.0, "KLEN", "KLEN"), ("A", "TALL", 40.0, "GROV", "GROV")],
+        columns=["avtalsobjekt", "handelssortiment", "volym_m3fub", "mottagningsplats", "producerat_for_mottagningsplats"],
+    ).assign(leveransnummer=["1", "2"], leveransdatum="2026-01-20", matmetod="stockmatning"), "2026-01")
+    return close_month(Ledger.empty(), checked_harvest(raw, "2026-01"), deliveries, "2026-01", set(),
+                       replace(cfg, stock_without_destination=on))
+
+
+def test_wood_reported_without_a_mottagningsplats_is_taken_once_the_loads_own_pile_is_empty(cfg):
+    step = _month_with_unreported_destination(cfg, True)
+    per_mill = step.allocation.groupby([DEST, TIER, DIA])[VOL].sum()
+    # KLEN's load takes its own 30 and 15 of the 20 without a mottagningsplats; nothing is an estimate.
+    assert per_mill[("KLEN", "S1", "14")] == pytest.approx(30.0)
+    assert per_mill[("KLEN", "S1", "18")] == pytest.approx(15.0)
+    assert not (step.allocation[TIER] == "S2").any()
+    # GROV's load is covered by its own pile and leaves the other alone.
+    assert per_mill["GROV"].to_dict() == pytest.approx({("S1", "30"): 40.0})
+    assert step.ledger.stock.groupby(PRODUCED_FOR)[VOL].sum().to_dict() == pytest.approx({"-": 5.0, "GROV": 10.0})
+
+
+def test_without_the_setting_no_load_takes_wood_reported_without_a_mottagningsplats(cfg):
+    step = _month_with_unreported_destination(cfg, False)
+    per_mill = step.allocation.groupby([DEST, TIER])[VOL].sum()
+    assert per_mill[("KLEN", "S1")] == pytest.approx(30.0)
+    assert per_mill[("KLEN", "S2")] == pytest.approx(15.0)
+
+
 def test_a_load_first_takes_the_wood_at_its_start_place(cfg):
 
     raw = pd.DataFrame(

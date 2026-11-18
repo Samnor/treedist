@@ -57,7 +57,11 @@ För varje kombination av avtalsobjekt och handelssortiment (AO × sortiment):
 4. **Destination.** Levererad volym bokas hos mottagningsplatsen leveransen mättes in vid. Lagret är uppdelat på den
    mottagningsplats skördaren kapade för (VIOL 3: *Producerat för mottagningsplats*), och varje leverans säger vilken
    det var. Lasset tar bara ur det lagret, också när det mättes in någon annanstans; det som lagret inte räcker till
-   är volym utöver lagret (S2), aldrig virke som kapades för en annan mottagningsplats. Anger både produktionen och
+   är volym utöver lagret (S2), aldrig virke som kapades för en annan mottagningsplats. Uppgiften är frivillig i hpr.
+   Skörd som rapporterats utan den är avtalsobjektets virke utan känd mottagningsplats: ett lass tar det när lagret
+   för dess egen mottagningsplats är slut, som eget lager (S1), och först det som inte heller ryms där är volym utöver
+   lagret. Där ett sortiment från avtalsobjektet kapas för flera mottagningsplatser delar deras lass på det virket,
+   eftersom arbetsordern inte säger vems det var. Anger både produktionen och
    mätningen startplatsen, avlägget, tar varje lass först virket vid sitt eget avlägg, och det som inte räcker ur
    resten av samma lager, eftersom avlägget räknas fram ur stamkoordinaterna och kan bli fel.
 5. **Omklassning.** Lagret förs på det sortiment skördaren producerade. Virke som mätts in som ett annat sortiment dras
@@ -141,6 +145,7 @@ Metodens parametrar, som `treedist run` läser (`src/treedist/config.py`):
 | `draw_gross` | på | Av: nettovolymen lämnar lagret, bruttovolymen används inte |
 | `stock_per_landing` | på | Av: lasset drar ur hela lagret för den mottagningsplats det producerades för, inte först vid sitt avlägg. Gör ingen skillnad när produktionen eller mätningen saknar `startplats` |
 | `stock_per_destination` | på | Av: alla mottagningsplatser delar avtalsobjektets lager, som före 2026-11-08 |
+| `stock_without_destination` | på | Av: inget lass tar skörd som rapporterats utan producerat för mottagningsplats, och det som lassets eget lager inte räcker till blir volym utöver lagret (S2), som före 2026-11-18. Gör ingen skillnad när varje skördarrad har uppgiften |
 
 Ett lass som vänds en senare månad krediteras alltid med den fördelning dess månad fakturerades med, hittad med
 leveransnumret. Tills 2026-11-17 gick det att stänga av (`credit_per_load`); en konfiguration med `credit_per_load =

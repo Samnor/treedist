@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 
 from treedist.adapters import load
-from treedist.check import FEL, VARNING, check
+from treedist.check import FEL, INFO, VARNING, check
 from treedist.cli import main
 from treedist.config import Config
 from treedist.contract import CONTRACT_VERSION, TABLES, markdown
@@ -240,6 +240,34 @@ def test_check_notices_a_missing_value_written_as_a_key(tmp_path):
     said = messages(check("2026-01", Config(), files=files), VARNING)
     assert "producerat_for_mottagningsplats är '-1' på" in said and "17% av volymen" in said
     assert "uppgift som saknas" not in messages(check("2026-01", Config(), files=demo_files("2026-01")), VARNING)
+
+
+def test_harvest_without_producerat_for_is_read_and_said_not_stopped(tmp_path):
+    # hpr leaves the mottagningsplats the wood was produced for optional. Left empty, the wood is the avtalsobjekt's:
+    # the check says how much, and warns only where an assortment's loads were produced for several mills.
+    harvest = pd.read_csv(DEMO / "produktion_2026-01.csv", dtype=str)
+    harvest.loc[harvest.index % 6 == 0, "producerat_for_mottagningsplats"] = ""
+    harvest.to_csv(tmp_path / "produktion.csv", index=False)
+    files = {**demo_files("2026-01"), "produktion": tmp_path / "produktion.csv"}
+    findings = check("2026-01", Config(), files=files)
+    assert not messages(findings, FEL)
+    assert "17% av volymen saknar producerat för mottagningsplats" in messages(findings, INFO)
+    assert "uppgift som saknas" not in messages(findings, VARNING)
+
+def test_check_warns_where_wood_without_producerat_for_is_shared_between_mills():
+    from types import SimpleNamespace
+
+    from treedist.check import _without_destination
+
+    columns = ["avtalsobjekt", "producerat_handelssortiment", "producerat_for_mottagningsplats", "volym_m3fub"]
+    harvest = pd.DataFrame([("A", "TALL", "KLEN", 60.0), ("A", "TALL", "-", 20.0), ("B", "TALL", "-", 20.0)], columns=columns)
+    deliveries = pd.DataFrame([("A", "TALL", "KLEN", 40.0), ("A", "TALL", "GROV", 40.0), ("B", "TALL", "KLEN", 20.0)],
+                              columns=columns)
+    findings = _without_destination(SimpleNamespace(harvest=harvest, deliveries=deliveries))
+    assert "40% av volymen saknar producerat för mottagningsplats" in messages(findings, INFO)
+    # B's assortment has one mill, so its wood is that mill's; A's is cut for two, and which is not known.
+    said = messages(findings, VARNING)
+    assert "20% av volymen" in said and "['A']" in said
 
 
 @pytest.mark.parametrize("value, missing", [("-1", True), ("0", True), ("Okänd", True), ("N/A", True), ("-", True),

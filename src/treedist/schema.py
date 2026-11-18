@@ -96,13 +96,14 @@ def validate_harvest(df: pd.DataFrame, period: str) -> pd.DataFrame:
     the assortment the harvester produced and the mottagningsplats it produced the wood for."""
     name = "Produktion"
     _require_columns(df, HARVEST_REQUIRED, name)
-    _require_keys(df, [AO, PRODUCED, PRODUCED_FOR], name)
+    _require_keys(df, [AO, PRODUCED], name)
 
     out = df[HARVEST_REQUIRED].copy()
     out[AO] = out[AO].astype(str).str.strip()
     out[PRODUCED] = out[PRODUCED].astype(str).str.strip()
-    # The mottagningsplats the harvester cut the wood for: its stock is that mottagningsplats' own.
-    out[PRODUCED_FOR] = out[PRODUCED_FOR].astype(str).str.strip()
+    # The mottagningsplats the harvester cut the wood for: its stock is that mottagningsplats' own. hpr leaves it
+    # optional; wood reported without it is the avtalsobjekt's, for the loads whose own stock is empty.
+    out[PRODUCED_FOR] = _text_or_none(df, PRODUCED_FOR)
     out[DIA] = df[DIA].map(_normalize_group).astype(object)
     out[LEN] = df[LEN].map(_normalize_group).astype(object)
     out[VOL] = _numeric(df, VOL, name)

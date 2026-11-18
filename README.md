@@ -29,14 +29,14 @@ Med pip, direkt från GitHub. Ange en version, så att metoden och de sparade mo
 pågående serie månader:
 
 ```bash
-pip install "treedist @ git+https://github.com/Samnor/treedist@v0.10.1"
+pip install "treedist @ git+https://github.com/Samnor/treedist@v0.10.2"
 ```
 
 Den raden kräver Git. Utan Git, till exempel på en nyinstallerad Windows-dator, installeras samma version från
 versionens zip-arkiv:
 
 ```bash
-pip install https://github.com/Samnor/treedist/archive/refs/tags/v0.10.1.zip
+pip install https://github.com/Samnor/treedist/archive/refs/tags/v0.10.2.zip
 ```
 
 `treedist init` lägger [AGENTS.md](AGENTS.md) och exemplen i en katalog, och `treedist selftest` kör demons
